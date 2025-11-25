@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class SpringSecurityAuditorAware implements AuditorAware<Member> {
+public class AuditorAwareImpl implements AuditorAware<Member> {
 
     private final MemberRepository memberRepository;
 
