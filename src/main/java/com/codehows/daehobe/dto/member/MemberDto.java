@@ -1,4 +1,4 @@
-package com.codehows.daehobe.dto;
+package com.codehows.daehobe.dto.member;
 
 public class MemberDto {
 
