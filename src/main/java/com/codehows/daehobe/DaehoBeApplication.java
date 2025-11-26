@@ -5,8 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
-@EnableJpaAuditing
-//@EnableJpaAuditing(auditorAwareRef = "springSecurityAuditorAware")
+@EnableJpaAuditing(auditorAwareRef = "auditorProvider") // "auditorProvider"는 AuditConfig에 정의한 Bean 이름
 public class DaehoBeApplication {
 
     public static void main(String[] args) {

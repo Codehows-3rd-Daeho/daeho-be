@@ -3,6 +3,7 @@ package com.codehows.daehobe.service.masterData;
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
 import com.codehows.daehobe.entity.Category;
 import com.codehows.daehobe.repository.CategoryRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,5 +24,18 @@ public class CategoryService {
             dtoList.add(new MasterDataDto(category.getId(), category.getName()));
         }
         return dtoList;
+    }
+
+    public Long createCategory(MasterDataDto masterDataDto) {
+        Category category = Category.builder()
+                .name(masterDataDto.getName())
+                .build();
+        categoryRepository.save(category);
+        return category.getId();
+    }
+
+    public void deleteCategory(Long id) {
+        Category category = categoryRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        categoryRepository.delete(category);
     }
 }

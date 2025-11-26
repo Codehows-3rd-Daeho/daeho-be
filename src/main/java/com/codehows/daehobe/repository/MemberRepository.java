@@ -8,4 +8,8 @@ public interface MemberRepository extends JpaRepository<Member,Long>{
     Optional<Member> findByLoginId(String currentUsername);
 
     boolean existsByLoginId(String loginId);
+
+    int countByJobPositionId(Long id);
+
+    int countByDepartmentId(Long id);
 }

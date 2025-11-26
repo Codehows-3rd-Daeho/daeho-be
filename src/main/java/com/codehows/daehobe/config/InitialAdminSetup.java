@@ -1,0 +1,79 @@
+package com.codehows.daehobe.config;
+
+import com.codehows.daehobe.constant.Role;
+import com.codehows.daehobe.entity.Department;
+import com.codehows.daehobe.entity.JobPosition;
+import com.codehows.daehobe.entity.Member;
+import com.codehows.daehobe.repository.DepartmentRepository;
+import com.codehows.daehobe.repository.JobPositionRepository;
+import com.codehows.daehobe.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+// --- 4. 초기 데이터 설정 Configuration ---
+@Configuration
+@RequiredArgsConstructor
+public class InitialAdminSetup {
+
+    private final PasswordEncoder passwordEncoder;
+
+    private final MemberRepository memberRepository;
+
+    private final DepartmentRepository departmentRepository;
+
+    private final JobPositionRepository jobPositionRepository;
+
+
+    @Bean
+    public CommandLineRunner initAdminUser() {
+        return args -> {
+            final String ADMIN_LOGIN_ID = "admin";
+            final String ADMIN_PASSWORD = "12341234";
+
+            // 1. 관리자 계정 존재 여부 확인
+            if (memberRepository.findByLoginId(ADMIN_LOGIN_ID).isEmpty()) {
+
+                // 2. 필수 의존성 (Department, JobPosition) 생성 및 저장
+                // Department.builder()를 사용하여 엔티티 생성
+                Department defaultDept = departmentRepository.save(
+                        Department.builder()
+                                .name("관리자 부서")
+                                .build()
+                );
+
+                // JobPosition.builder()를 사용하여 엔티티 생성
+                JobPosition defaultPos = jobPositionRepository.save(
+                        JobPosition.builder()
+                                .name("시스템 관리자")
+                                .build()
+                );
+
+                // 3. Member 엔티티 생성 및 비밀번호 인코딩
+                String encodedPassword = passwordEncoder.encode(ADMIN_PASSWORD);
+
+                Member adminMember = Member.builder()
+                        .loginId(ADMIN_LOGIN_ID)
+                        .password(encodedPassword)
+                        .name("관리자")
+                        .department(defaultDept)
+                        .jobPosition(defaultPos)
+                        .phone("010-0000-0000")
+                        .email("admin@example.com")
+                        .isEmployed(true)
+                        .role(Role.ADMIN)
+                        .build();
+
+                // 4. 저장
+                memberRepository.save(adminMember);
+
+                System.out.println("--- 초기 관리자 계정 생성 완료 (ID: " + ADMIN_LOGIN_ID + ", PW: " + ADMIN_PASSWORD + ") ---");
+            } else {
+                System.out.println("초기 관리자 계정(" + ADMIN_LOGIN_ID + ")이 이미 존재합니다. 생성 스킵.");
+            }
+        };
+    }
+}

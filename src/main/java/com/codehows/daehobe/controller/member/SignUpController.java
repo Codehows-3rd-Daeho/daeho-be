@@ -1,12 +1,11 @@
 package com.codehows.daehobe.controller.member;
 
-import com.codehows.daehobe.dto.MemberDto;
+import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.entity.Member;
 import com.codehows.daehobe.repository.MemberRepository;
 import com.codehows.daehobe.service.member.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

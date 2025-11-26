@@ -13,7 +13,7 @@ import lombok.*;
 @AllArgsConstructor
 public class Category extends BaseEntity{
     @Id
-    @Column(name = "category")
+    @Column(name = "category_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
