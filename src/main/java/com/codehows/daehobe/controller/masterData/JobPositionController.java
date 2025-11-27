@@ -46,19 +46,18 @@ public class JobPositionController {
         }
         catch (ReferencedEntityException e) {
             e.printStackTrace();
-            // 409 Conflict 상태 코드와 예외 메시지를 반환
+            // 409 Conflict 상태 코드와 예외 메시지 반환
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(e.getMessage());
         } catch (EntityNotFoundException e) {
             e.printStackTrace();
-            // 404 Not Found 상태 코드 반환
+            // 404 Not Found
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("삭제하려는 직급을 찾을 수 없습니다.");
         } catch (Exception e) {
             e.printStackTrace();
             // 그 외
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("직급 삭제 중 알 수 없는 오류 발생");
+            return ResponseEntity.status(500).body("직급 삭제 중 오류 발생");
         }
     }
 

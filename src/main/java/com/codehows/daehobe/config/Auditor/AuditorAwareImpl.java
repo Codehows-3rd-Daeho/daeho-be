@@ -13,7 +13,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Optional;
 
 // JPA가 @CreatedBy나 @LastModifiedBy 값을 넣어줄 때 "누가" 했는지를 여기서 가져감
-
 @RequiredArgsConstructor
 public class AuditorAwareImpl implements AuditorAware<Member> {
 

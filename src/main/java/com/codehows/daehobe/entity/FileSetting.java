@@ -16,9 +16,8 @@ public class FileSetting {
     @Column(name = "file_setting_id", nullable = false)
     private Long id;
 
-    @Column( nullable = false)
     private String extension;
 
-    @Column(nullable = false)
+    // 바이트로 변환하여 저장.
     private Long size;
 }

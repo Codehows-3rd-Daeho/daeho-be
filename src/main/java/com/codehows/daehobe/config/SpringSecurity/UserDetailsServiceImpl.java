@@ -33,7 +33,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         UserDetails userDetails = null; // 최종 반환할 UserDetails 객체
 
-        // 2 DB에 유저가 존재하면 UserDetails 객체로 변환
+        // 2 그 Member 정보를 Spring Security 내부 인증 시스템이 이해할 수 있는 UserDetails 객체(User)로 변환.
         if(member.isPresent()){
             Member user = member.get();
 
@@ -42,7 +42,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             // - 이 객체를 AuthenticationManager가 인증할 때 사용
             userDetails = User.withUsername(loginId)
                     .password(user.getPassword()) // DB에 저장된 암호화된 비밀번호
-                    .roles(String.valueOf(user.getRole()))       // 권한 정보 <-- 여기서 ROLE_ 접두사가 붙음.
+                    .roles(String.valueOf(user.getRole()))       // 권한 정보
                     .build();
         } else {
             // 3 DB에 유저가 존재하지 않으면 예외 발생
@@ -51,7 +51,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         // 4 최종적으로 UserDetails 반환
-        // AuthenticationManager에서 비밀번호 비교 후 인증 성공 시 Authentication 객체 생성
+        // 이후 AuthenticationManager에서 비밀번호 비교 후 인증 성공 시 Authentication 객체 생성
         return userDetails;
     }
 }
