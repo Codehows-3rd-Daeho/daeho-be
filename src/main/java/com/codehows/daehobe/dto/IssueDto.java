@@ -29,8 +29,9 @@ public class IssueDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private List<Long> departmentId;
-    private List<Long> membersId;
+    private List<Long> memberId;
     private boolean isDel = false;
+
 
 
     //Entity -> Dto
