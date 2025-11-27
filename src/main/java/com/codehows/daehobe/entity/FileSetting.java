@@ -4,20 +4,20 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "department")
+@Table(name = "file_setting")
 @Getter
 @Setter
-@ToString
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Department extends BaseEntity{
+@Builder
+public class FileSetting {
     @Id
-    @Column(name = "department_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "file_setting_id", nullable = false)
     private Long id;
 
-    // 부서명
-    @Column(unique = true, nullable = false)
-    private String name;
+    private String extension;
+
+    // 바이트로 변환하여 저장.
+    private Long size;
 }
