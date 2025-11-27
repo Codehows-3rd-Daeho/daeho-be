@@ -41,7 +41,7 @@ pipeline {
                 script {
                     echo 'Building and deploying with docker-compose...'
                     sh """
-                        docker-compose up -d --build
+                        docker compose up -d --build
                     """
                 }
             }
