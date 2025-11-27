@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "meeting_dpt")
-@IdClass(MeetingDepartmentId.class) // 복합키: member_id + issue_id
+@IdClass(MeetingDepartmentId.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,15 +18,18 @@ import lombok.NoArgsConstructor;
 public class MeetingDepartment extends BaseEntity {
 
         @Id
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "meeting_id", nullable = false)
-        private Meeting meeingId;
-
+        @Column(name = "meeting_id")
+        private Long meetingId;
 
         @Id
+        @Column(name = "department_id")
+        private Long departmentId;
+
         @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "department_id", nullable = false)
-        private Department departmentId;
+        @JoinColumn(name = "meeting_id", insertable = false, updatable = false)
+        private Meeting meeting;
 
-
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "department_id", insertable = false, updatable = false)
+        private Department department;
 }

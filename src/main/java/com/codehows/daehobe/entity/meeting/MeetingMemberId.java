@@ -5,13 +5,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MeetingDepartmentId implements Serializable {
+public class MeetingMemberId {
+    private Long memberId;
     private Long meetingId;
-    private Long departmentId;
 }
