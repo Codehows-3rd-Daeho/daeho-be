@@ -1,6 +1,7 @@
 package com.codehows.daehobe.entity.meeting;
 
 import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMemberId;
 import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "meeting_member")
-@IdClass(IssueMemberId.class) // 복합키: member_id + issue_id
+@IdClass(MeetingMemberId.class) // 복합키: member_id + issue_id
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -36,5 +37,5 @@ public class MeetingMember extends BaseEntity {
 
         @Column(name = "is_read", nullable = false)
         private boolean isRead = false;
-
+        
 }
