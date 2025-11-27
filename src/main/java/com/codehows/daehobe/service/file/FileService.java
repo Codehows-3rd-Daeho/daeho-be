@@ -1,9 +1,9 @@
-package com.codehows.daehobe.service;
+package com.codehows.daehobe.service.file;
 
-import com.codehows.daehobe.dto.FileDto;
-import com.codehows.daehobe.entity.File;
-import com.codehows.daehobe.entity.TargetType;
-import com.codehows.daehobe.repository.FileRepository;
+import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.entity.file.File;
+import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.repository.file.FileRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

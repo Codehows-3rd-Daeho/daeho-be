@@ -1,4 +1,4 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.masterData;
 
 import jakarta.persistence.*;
 import lombok.*;

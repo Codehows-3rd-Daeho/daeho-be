@@ -1,7 +1,7 @@
-package com.codehows.daehobe.controller;
+package com.codehows.daehobe.controller.issue;
 
 
-import com.codehows.daehobe.dto.IssueDto;
+import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.service.issue.IssueService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class IssueController {
     //ResponseEntity: HTTP 상태 코드, 헤더 등을 함께 설정 가능하게 하는 wrapper(다른 객체나 값을 감싸는 객체)
     //<T>: 보낼 데이터
     @PostMapping("/register")
-    public ResponseEntity<IssueDto> register(
+    public ResponseEntity<IssueDto> createIssue(
             @RequestPart("data") IssueDto issueDto ,
             @RequestPart(value = "file", required = false)List<MultipartFile> multipartFiles){
 

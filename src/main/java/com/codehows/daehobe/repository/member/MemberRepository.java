@@ -1,5 +1,5 @@
-package com.codehows.daehobe.repository;
-import com.codehows.daehobe.entity.Member;
+package com.codehows.daehobe.repository.member;
+import com.codehows.daehobe.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

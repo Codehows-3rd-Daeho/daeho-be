@@ -1,14 +1,13 @@
 package com.codehows.daehobe.config;
 
 import com.codehows.daehobe.constant.Role;
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.entity.JobPosition;
-import com.codehows.daehobe.entity.Member;
-import com.codehows.daehobe.repository.DepartmentRepository;
-import com.codehows.daehobe.repository.JobPositionRepository;
-import com.codehows.daehobe.repository.MemberRepository;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.masterData.JobPosition;
+import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.masterData.DepartmentRepository;
+import com.codehows.daehobe.repository.masterData.JobPositionRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

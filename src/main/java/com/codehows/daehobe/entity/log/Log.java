@@ -1,0 +1,38 @@
+package com.codehows.daehobe.entity.log;
+
+import com.codehows.daehobe.constant.ChangeType;
+import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Builder
+@Getter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class Log extends BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "log_id")
+    private Long Id; // PK
+
+    @Column(nullable = false)
+    private Long targetId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", nullable = false)
+    private TargetType targetType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "change_type", nullable = false)
+    private ChangeType changeType;
+
+    @Column(name = "message", nullable = false, columnDefinition = "TEXT")
+    private String message;
+
+    @Column(name = "update_field", nullable = false)
+    private String updateField;
+}

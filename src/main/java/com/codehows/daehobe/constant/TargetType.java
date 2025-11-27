@@ -1,6 +1,5 @@
 package com.codehows.daehobe.constant;
 
 public enum TargetType {
-    ISSUE,
-    MEETING
+    ISSUE,MEETING, COMMENT, STT
 }
