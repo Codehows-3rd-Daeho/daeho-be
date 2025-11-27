@@ -36,6 +36,13 @@ services:
       dockerfile: Dockerfile
     container_name: spring-backend
     restart: unless-stopped
+    environment:
+      # Spring Boot 환경변수 (application.yml 값을 덮어씀)
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/daeho_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     ports:
       - "8080:8080"
     depends_on:
