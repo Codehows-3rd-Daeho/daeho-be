@@ -46,7 +46,7 @@ public class IssueService {
 
         //참여자
         // 1. DTO에서 참여자 이름 목록 (List<String>) 추출
-        List<Long> memberId = issueDto.getMembersId();
+        List<Long> memberId = issueDto.getMemberId();
         //2. 참여자 저장 서비스 호출
         if(memberId != null && !memberId.isEmpty()) {
             issueMemberService.saveIssueMember(saveIssue.getIssueId(), memberId);
