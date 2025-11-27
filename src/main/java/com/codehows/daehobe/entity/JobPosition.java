@@ -11,7 +11,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Job_position extends BaseEntity {
+public class JobPosition extends BaseEntity {
 
     @Id
     @Column(name = "job_positon_id")

@@ -1,10 +1,8 @@
 package com.codehows.daehobe.entity;
 
 import com.codehows.daehobe.constant.Role;
-import com.codehows.daehobe.dto.MemberDto;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Entity
 @Table(name = "member")
@@ -40,7 +38,7 @@ public class Member extends BaseEntity {
     // 직급
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_position_id", nullable = false)
-    private Job_position jobPosition;
+    private JobPosition jobPosition;
 
     // 전화번호
     @Column(nullable = false)
