@@ -15,7 +15,7 @@ public class Department extends BaseEntity{
     @Id
     @Column(name = "department_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     // 부서명
     @Column(unique = true, nullable = false)
