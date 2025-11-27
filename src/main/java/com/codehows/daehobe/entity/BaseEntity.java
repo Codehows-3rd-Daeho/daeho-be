@@ -1,5 +1,6 @@
 package com.codehows.daehobe.entity;
 
+import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
 
 import lombok.Getter;
@@ -16,7 +17,6 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class) // auditing 기능 적용
 @MappedSuperclass // 다른 엔티티 클래스들이 상속받을 때, 이 클래스의 필드들을 자식 엔티티의 컬럼으로 포함시킴. 독립적으로 쿼리 대상이 되는 테이블은 아님
 @Getter
-@Setter
 public abstract class BaseEntity {
     @CreatedDate
     @Column(updatable = false) // 수정할 수 없다

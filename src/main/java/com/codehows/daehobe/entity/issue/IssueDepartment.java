@@ -1,7 +1,7 @@
 package com.codehows.daehobe.entity.issue;
 
 import com.codehows.daehobe.entity.BaseEntity;
-import com.codehows.daehobe.entity.Department;
+import com.codehows.daehobe.entity.masterData.Department;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,8 +9,6 @@ import lombok.*;
 @Table(name = "issue_dpt")
 @IdClass(IssueDepartmentId.class) // 복합키: member_id + issue_id
 @Getter
-@Setter
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

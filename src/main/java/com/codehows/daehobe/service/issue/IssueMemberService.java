@@ -1,17 +1,19 @@
 package com.codehows.daehobe.service.issue;
 
-import com.codehows.daehobe.entity.Member;
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
-import com.codehows.daehobe.repository.MemberRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class IssueMemberService {
 

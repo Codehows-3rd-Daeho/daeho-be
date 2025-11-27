@@ -1,9 +1,7 @@
 package com.codehows.daehobe.config.Auditor;
 
-import com.codehows.daehobe.entity.Member;
-import com.codehows.daehobe.repository.MemberRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;

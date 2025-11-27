@@ -1,23 +1,16 @@
 package com.codehows.daehobe.entity.issue;
 
-import com.codehows.daehobe.dto.IssueDto;
-import com.codehows.daehobe.dto.IssueMemberDto;
 import com.codehows.daehobe.entity.BaseEntity;
-import com.codehows.daehobe.entity.Category;
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.entity.Status;
+import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.constant.Status;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "issue")
 @Getter
-@Setter
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -35,7 +28,7 @@ public class Issue extends BaseEntity {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id")
     private Category categoryId;
 
     @Column(name = "start_date", nullable = false)

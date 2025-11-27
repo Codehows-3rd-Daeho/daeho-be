@@ -1,18 +1,20 @@
 package com.codehows.daehobe.service.issue;
 
-import com.codehows.daehobe.entity.Department;
+import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
-import com.codehows.daehobe.repository.DepartmentRepository;
+import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class IssueDepartmentService {
 
     private DepartmentRepository departmentRepository;

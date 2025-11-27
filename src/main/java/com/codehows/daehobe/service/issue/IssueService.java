@@ -1,16 +1,18 @@
 package com.codehows.daehobe.service.issue;
 
-import com.codehows.daehobe.dto.IssueDto;
+import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.repository.issue.IssueRepository;
-import com.codehows.daehobe.service.FileService;
+import com.codehows.daehobe.service.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class IssueService {
 
@@ -38,7 +40,7 @@ public class IssueService {
 
         //부서
         // 1. DTO에서 부서 이름 목록 (List<String>) 추출
-        List<Long> departmentId = issueDto.getDepartmentId();
+        List<Long> departmentId = issueDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
         if(departmentId != null && !departmentId.isEmpty()) {
             departmentService.saveDepartment(saveIssue.getIssueId(), departmentId);
@@ -46,7 +48,7 @@ public class IssueService {
 
         //참여자
         // 1. DTO에서 참여자 이름 목록 (List<String>) 추출
-        List<Long> memberId = issueDto.getMemberId();
+        List<Long> memberId = issueDto.getMemberIds();
         //2. 참여자 저장 서비스 호출
         if(memberId != null && !memberId.isEmpty()) {
             issueMemberService.saveIssueMember(saveIssue.getIssueId(), memberId);
