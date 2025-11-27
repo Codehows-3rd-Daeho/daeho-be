@@ -20,7 +20,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 40s  # 초기화 시간 증가
+      start_period: 40s # 초기화 시간 증가
 
   spring-backend:
     build:
@@ -28,7 +28,6 @@ services:
       dockerfile: Dockerfile
     container_name: spring-backend
     restart: unless-stopped
-    environment:
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/daeho_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
