@@ -2,6 +2,8 @@ package com.codehows.daehobe.entity;
 
 import jakarta.persistence.*;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -10,8 +12,11 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+// JPA가 엔티티 생명주기 이벤트(예: 저장, 수정 등)를 감지할 때, AuditingEntityListener가 자동으로 호출되어 생성일/수정일을 자동으로 세팅
 @EntityListeners(AuditingEntityListener.class) // auditing 기능 적용
-@MappedSuperclass // 공통 매핑 정보만 제공
+@MappedSuperclass // 다른 엔티티 클래스들이 상속받을 때, 이 클래스의 필드들을 자식 엔티티의 컬럼으로 포함시킴. 독립적으로 쿼리 대상이 되는 테이블은 아님
+@Getter
+@Setter
 public abstract class BaseEntity {
     @CreatedDate
     @Column(updatable = false) // 수정할 수 없다
@@ -21,12 +26,12 @@ public abstract class BaseEntity {
     private LocalDateTime updatedAt;
 
     @CreatedBy
-    //@ManyToOne(fetch = FetchType.LAZY)
-    private String createdBy;
-    //private Member createdBy
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private Member createdBy;
 
     @LastModifiedBy
-    //@ManyToOne(fetch = FetchType.LAZY)
-    private String updatedBy;
-    //private Member updatedBy
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private Member updatedBy;
 }

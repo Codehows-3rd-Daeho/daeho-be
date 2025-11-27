@@ -12,3 +12,7 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
 
     List<Member> findByIdIn(List<Long> id);
 }
+    int countByJobPositionId(Long id);
+
+    int countByDepartmentId(Long id);
+}
