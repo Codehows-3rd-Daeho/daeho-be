@@ -1,10 +1,9 @@
 package com.codehows.daehobe.service.masterData;
 
-import com.codehows.daehobe.exception.ReferencedEntityException;
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.entity.JobPosition;
-import com.codehows.daehobe.repository.JobPositionRepository;
-import com.codehows.daehobe.repository.MemberRepository;
+import com.codehows.daehobe.entity.masterData.JobPosition;
+import com.codehows.daehobe.repository.masterData.JobPositionRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,14 +41,6 @@ public class JobPositionService {
         // 참조하는 Member가 있는지 확인
         // JobPosition ID를 사용하여 해당 직급을 참조하는 Member 수를 카운트
         int memberCount = memberRepository.countByJobPositionId(jobPosition.getId());
-
-        if (memberCount > 0) {
-            // 참조하는 엔티티가 있다면 커스텀 예외(DependentDataException)를 던진다.
-            throw new ReferencedEntityException(
-                    "해당 직급을 사용하는 직원 " + memberCount + "명이 있어 삭제할 수 없습니다.",
-                    memberCount
-            );
-        }
         jobPositionRepository.delete(jobPosition);
     }
 }

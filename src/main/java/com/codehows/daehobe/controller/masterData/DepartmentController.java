@@ -1,8 +1,7 @@
 package com.codehows.daehobe.controller.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.exception.ReferencedEntityException;
+import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.service.masterData.DepartmentService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -44,11 +43,6 @@ public class DepartmentController {
         try {
             departmentService.deleteDpt(id); // 성공 시 204 No Content 반환
             return ResponseEntity.noContent().build();
-        } catch (ReferencedEntityException e) {
-            e.printStackTrace();
-            // 409 Conflict 상태 코드와 예외 메시지를 반환
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(e.getMessage());
         } catch (EntityNotFoundException e) {
             e.printStackTrace();
             // 404 Not Found 상태 코드 반환

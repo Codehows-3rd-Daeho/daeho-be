@@ -2,12 +2,12 @@ package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.dto.member.MemberDto;
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.entity.JobPosition;
-import com.codehows.daehobe.entity.Member;
-import com.codehows.daehobe.repository.DepartmentRepository;
-import com.codehows.daehobe.repository.JobPositionRepository;
-import com.codehows.daehobe.repository.MemberRepository;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.masterData.JobPosition;
+import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.masterData.DepartmentRepository;
+import com.codehows.daehobe.repository.masterData.JobPositionRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

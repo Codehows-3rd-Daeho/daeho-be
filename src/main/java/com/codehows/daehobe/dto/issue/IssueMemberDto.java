@@ -1,6 +1,5 @@
-package com.codehows.daehobe.dto;
+package com.codehows.daehobe.dto.issue;
 
-import com.codehows.daehobe.entity.Department;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import lombok.*;
 

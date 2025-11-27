@@ -1,25 +1,34 @@
-package com.codehows.daehobe.entity.issue;
+package com.codehows.daehobe.entity.meeting;
 
-import com.codehows.daehobe.entity.BaseEntity;
-import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.file.File;
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.masterData.Category;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "issue")
+@Table(name = "meeitng")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Issue extends BaseEntity {
+public class Meeting extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "issue_id")
-    private Long issueId; // PK
+    @Column(name = "meeting_id")
+    private Long meetingId; // PK
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "issue_id")
+    private Issue issueId;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -41,8 +50,11 @@ public class Issue extends BaseEntity {
     @Column(name = "status", nullable = false)
     private Status status;
 
+    // 회의록 id
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "file_id")
+    private File fileId;
+
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
-
-
 }

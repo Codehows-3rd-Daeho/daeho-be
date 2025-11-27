@@ -1,6 +1,6 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.file;
 
-import com.codehows.daehobe.dto.FileDto;
+import com.codehows.daehobe.constant.TargetType;
 import jakarta.persistence.*;
 import lombok.*;
 

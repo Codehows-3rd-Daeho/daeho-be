@@ -1,7 +1,7 @@
-package com.codehows.daehobe.dto;
+package com.codehows.daehobe.dto.file;
 
-import com.codehows.daehobe.entity.File;
-import com.codehows.daehobe.entity.TargetType;
+import com.codehows.daehobe.entity.file.File;
+import com.codehows.daehobe.constant.TargetType;
 import lombok.*;
 
 @Getter

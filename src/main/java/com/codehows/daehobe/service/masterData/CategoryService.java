@@ -1,8 +1,8 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.entity.Category;
-import com.codehows.daehobe.repository.CategoryRepository;
+import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.repository.masterData.CategoryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

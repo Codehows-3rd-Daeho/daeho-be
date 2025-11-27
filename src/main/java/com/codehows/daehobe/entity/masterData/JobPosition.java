@@ -1,23 +1,24 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.masterData;
 
+import com.codehows.daehobe.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "category")
+@Table(name = "job_positon")
 @Getter
-@Setter
-@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Category extends BaseEntity{
+public class JobPosition extends BaseEntity {
+
     @Id
-    @Column(name = "category_id")
+    @Column(name = "job_positon_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
-    // 카테고리명
+    // 직급명
     @Column(unique = true, nullable = false)
     private String name;
+
 }

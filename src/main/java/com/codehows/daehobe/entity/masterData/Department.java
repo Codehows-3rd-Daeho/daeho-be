@@ -1,5 +1,6 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.masterData;
 
+import com.codehows.daehobe.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,7 +12,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Department extends BaseEntity{
+public class Department extends BaseEntity {
     @Id
     @Column(name = "department_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)

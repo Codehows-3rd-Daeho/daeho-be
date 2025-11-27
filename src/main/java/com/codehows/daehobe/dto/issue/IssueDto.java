@@ -1,19 +1,12 @@
-package com.codehows.daehobe.dto;
+package com.codehows.daehobe.dto.issue;
 
-import com.codehows.daehobe.entity.Category;
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.entity.File;
-import com.codehows.daehobe.entity.Status;
+import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.entity.issue.Issue;
-import com.codehows.daehobe.entity.issue.IssueMember;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -28,8 +21,8 @@ public class IssueDto {
     private Category categoryId;
     private LocalDate startDate;
     private LocalDate endDate;
-    private List<Long> departmentId;
-    private List<Long> memberId;
+    private List<Long> departmentIds;
+    private List<Long> memberIds;
     private boolean isDel = false;
 
 
@@ -41,7 +34,7 @@ public class IssueDto {
                 .title(issue.getTitle())
                 .content(issue.getContent())
                 .status(issue.getStatus())
-//                .categoryId(issue.getCategoryId())
+//                .categoryIds(issue.getCategoryId())
                 .startDate(issue.getStartDate())
                 .endDate(issue.getEndDate())
 //                .department(issue.getDepartment())

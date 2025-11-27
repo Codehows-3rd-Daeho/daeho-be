@@ -1,7 +1,6 @@
 package com.codehows.daehobe.entity.issue;
-import com.codehows.daehobe.dto.IssueMemberDto;
 import com.codehows.daehobe.entity.BaseEntity;
-import com.codehows.daehobe.entity.Member;
+import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,8 +8,6 @@ import lombok.*;
 @Table(name = "issue_member")
 @IdClass(IssueMemberId.class) // 복합키: member_id + issue_id
 @Getter
-@Setter
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -24,8 +21,6 @@ public class IssueMember extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member memberId;
-
-
 
     @Column(name = "is_host", nullable = false)
     private boolean isHost;

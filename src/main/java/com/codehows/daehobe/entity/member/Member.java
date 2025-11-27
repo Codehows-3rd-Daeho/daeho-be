@@ -1,14 +1,15 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.member;
 
 import com.codehows.daehobe.constant.Role;
+import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.masterData.JobPosition;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
 @Table(name = "member")
 @Getter
-@Setter
-@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,12 +33,12 @@ public class Member extends BaseEntity {
 
     // 부서
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "department_id", nullable = false)
+    @JoinColumn(name = "department_id")
     private Department department;
 
     // 직급
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_position_id", nullable = false)
+    @JoinColumn(name = "job_position_id")
     private JobPosition jobPosition;
 
     // 전화번호
@@ -62,11 +63,4 @@ public class Member extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
-//
-//    public static Member toEntity(MemberDto dto, PasswordEncoder encoder) {
-//        return Member.builder()
-//                .loginId(dto.)
-//                .role(Role.USER) // 기본 권한 설정
-//                .build();
-//    }
 }

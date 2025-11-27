@@ -1,18 +1,17 @@
-package com.codehows.daehobe.entity;
+package com.codehows.daehobe.entity.comment;
 
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
 @Table(name = "comment")
 @Getter
-@Setter
-@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Comment extends BaseEntity{
+public class Comment extends BaseEntity {
 
     @Id
     @Column(name = "comment_id")

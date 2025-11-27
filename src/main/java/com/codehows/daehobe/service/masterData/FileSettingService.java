@@ -1,8 +1,8 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.entity.FileSetting;
-import com.codehows.daehobe.repository.FileSettingRepository;
+import com.codehows.daehobe.entity.masterData.FileSetting;
+import com.codehows.daehobe.repository.masterData.FileSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,7 +1,6 @@
 package com.codehows.daehobe.controller.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.exception.ReferencedEntityException;
 import com.codehows.daehobe.service.masterData.JobPositionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -43,12 +42,6 @@ public class JobPositionController {
         try {
             jobPositionService.deletePos(id);
             return ResponseEntity.noContent().build(); // 204 No Content 반환
-        }
-        catch (ReferencedEntityException e) {
-            e.printStackTrace();
-            // 409 Conflict 상태 코드와 예외 메시지 반환
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(e.getMessage());
         } catch (EntityNotFoundException e) {
             e.printStackTrace();
             // 404 Not Found

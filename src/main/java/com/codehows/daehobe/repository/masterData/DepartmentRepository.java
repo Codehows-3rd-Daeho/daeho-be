@@ -1,11 +1,9 @@
-package com.codehows.daehobe.repository;
+package com.codehows.daehobe.repository.masterData;
 
-import com.codehows.daehobe.entity.Department;
-import com.codehows.daehobe.entity.File;
+import com.codehows.daehobe.entity.masterData.Department;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 
 public interface DepartmentRepository extends JpaRepository<Department,Long> {
