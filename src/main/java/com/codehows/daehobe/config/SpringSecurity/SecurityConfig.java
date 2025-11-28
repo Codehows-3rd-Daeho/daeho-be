@@ -43,7 +43,7 @@ public class SecurityConfig {
 
                 // 요청 URL 별 접근 권한 설정
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/login", "/signup/**","/masterData/**").permitAll()
+                        .requestMatchers("/login", "/signup/**","/masterData/**", "/issue/**").permitAll()
                         .requestMatchers("/masterData/**").permitAll()
                         .requestMatchers("/", "/index.html",  "/sw.js", "/manifest.webmanifest").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN") //admin으로 시작하는 경로는 admin role일 경우에만 접근 가능하도록.

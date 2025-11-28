@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "issue")
@@ -43,6 +45,14 @@ public class Issue extends BaseEntity {
 
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
+
+    // 부서 매핑 필드
+    @OneToMany(mappedBy = "issueId", fetch = FetchType.LAZY)
+    private List<IssueDepartment> issueDepartments = new ArrayList<>();
+
+    // 참여자 매핑 필드
+    @OneToMany(mappedBy = "issueId", fetch = FetchType.LAZY)
+    private List<IssueMember> issueMembers = new ArrayList<>();
 
 
 }

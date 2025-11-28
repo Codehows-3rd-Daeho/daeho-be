@@ -30,9 +30,9 @@ public class IssueMemberService {
         //2. 참여자 조회
         List<Member> members = memberRepository.findByIdIn(memberId);
         //3. 이슈 참여자 엔티티 생성 및 저장
-        List<IssueMember> issueMembers = members.stream()
-                .map(member -> new IssueMember(issue, member))
-                .toList();
+//        List<IssueMember> issueMembers = members.stream()
+//                .map(member -> new IssueMember(issue, member))
+//                .toList();
 
 
         return null;

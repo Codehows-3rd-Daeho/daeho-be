@@ -63,4 +63,11 @@ public class IssueService {
         return saveIssue;
 
     }
+
+    // 이슈 조회 삭제 안된것들만
+    public List<IssueDto> findAllNoDel() {
+        return issueRepository.findByIsDel(false).stream()
+                .map(IssueDto::fromEntity)
+                .toList();
+    }
 }

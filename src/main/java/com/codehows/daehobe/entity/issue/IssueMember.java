@@ -32,11 +32,5 @@ public class IssueMember extends BaseEntity {
     private boolean isRead = false;
 
 
-    public IssueMember(Issue issue, Member member) {
-        this.issueId = issue;
-        this.memberId = member;
-    }
-
-
 }
 

@@ -30,16 +30,24 @@ public class IssueDto {
     //Entity -> Dto
     public static IssueDto fromEntity(Issue issue) {
 
+        List<Long> departmentIds = issue.getIssueDepartments().stream()
+                .map(id -> id.getDepartmentId().getId())
+                .toList();
+
+        List<Long> memberIds = issue.getIssueMembers().stream()
+                .map(id -> id.getMemberId().getId())
+                .toList();
+
         return IssueDto.builder()
                 .title(issue.getTitle())
                 .content(issue.getContent())
                 .status(issue.getStatus())
-//                .categoryIds(issue.getCategoryId())
+                .categoryId(issue.getCategoryId())
                 .startDate(issue.getStartDate())
                 .endDate(issue.getEndDate())
-//                .department(issue.getDepartment())
-//                .members(issue.getMembers())
-                .isDel(false)
+                .departmentIds(departmentIds)
+                .memberIds(memberIds)
+                .isDel(issue.isDel())
                 .build();
     }
 
