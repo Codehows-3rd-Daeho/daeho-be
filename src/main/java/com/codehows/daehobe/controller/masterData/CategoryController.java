@@ -1,6 +1,7 @@
 package com.codehows.daehobe.controller.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
+import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +28,12 @@ public class CategoryController {
     @PostMapping("/admin/category")
     public ResponseEntity<?> createCategory(@RequestBody MasterDataDto masterDataDto) {
         try {
-            Long cateId = categoryService.createCategory(masterDataDto);
-            return ResponseEntity.ok(cateId);
+            Category category = categoryService.createCategory(masterDataDto);
+            return ResponseEntity.ok(category);
+        } catch (IllegalArgumentException e) {
+            // 중복
+            return ResponseEntity.badRequest().body(e.getMessage());
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("카테고리 등록 중 오류 발생");
