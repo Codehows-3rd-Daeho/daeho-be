@@ -41,16 +41,16 @@ public class JwtService {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         // 헤더가 존재하고 "Bearer "로 시작하면
         if (header != null && header.startsWith(PREFIX)) {
-                // "Bearer " 접두어를 제거하고 순수 토큰만 남김
-                String token = header.replace(PREFIX, "");
-                var claims = Jwts.parserBuilder()
-                        .setSigningKey(SIGNING_KEY)
-                        .build()
-                        .parseClaimsJws(token)
-                        .getBody();
+            // "Bearer " 접두어를 제거하고 순수 토큰만 남김
+            String token = header.replace(PREFIX, "");
+            var claims = Jwts.parserBuilder()
+                    .setSigningKey(SIGNING_KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-                String loginId = claims.getSubject();
-                String role = claims.get("role", String.class);
+            String loginId = claims.getSubject();
+            String role = claims.get("role", String.class);
 
             // 아이디가 존재하면 반환
             if (loginId != null && role != null) {
@@ -66,3 +66,6 @@ public class JwtService {
     }
 
 }
+
+
+

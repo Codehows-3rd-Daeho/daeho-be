@@ -17,6 +17,11 @@ import java.util.List;
 public class CategoryService {
     private final CategoryRepository categoryRepository;
 
+    public Category getCategoryById(Long id) {
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+    }
+
     public List<MasterDataDto> findAll() {
         List<Category> categories = categoryRepository.findAll();
         List<MasterDataDto> dtoList = new ArrayList<>();

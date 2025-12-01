@@ -7,6 +7,7 @@ import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +16,12 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class IssueDepartmentService {
 
-    private DepartmentRepository departmentRepository;
-    private IssueRepository issueRepository;
-    private IssueDepartmentRepository issueDepartmentRepository;
+    private final DepartmentRepository departmentRepository;
+    private final IssueRepository issueRepository;
+    private final IssueDepartmentRepository issueDepartmentRepository;
 
     public  List<IssueDepartment> saveDepartment(Long issueId, List<Long> departmentId) {
 

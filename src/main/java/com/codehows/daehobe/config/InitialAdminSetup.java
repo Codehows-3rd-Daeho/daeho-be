@@ -38,18 +38,18 @@ public class InitialAdminSetup {
 
                 // 2. 필수 의존성 (Department, JobPosition) 생성 및 저장
                 // Department.builder()를 사용하여 엔티티 생성
-                Department defaultDept = departmentRepository.save(
-                        Department.builder()
-                                .name("관리자 부서")
-                                .build()
-                );
-
-                // JobPosition.builder()를 사용하여 엔티티 생성
-                JobPosition defaultPos = jobPositionRepository.save(
-                        JobPosition.builder()
-                                .name("시스템 관리자")
-                                .build()
-                );
+//                Department defaultDept = departmentRepository.save(
+//                        Department.builder()
+//                                .name("관리자 부서")
+//                                .build()
+//                );
+//
+//                // JobPosition.builder()를 사용하여 엔티티 생성
+//                JobPosition defaultPos = jobPositionRepository.save(
+//                        JobPosition.builder()
+//                                .name("시스템 관리자")
+//                                .build()
+//                );
 
                 // 3. Member 엔티티 생성 및 비밀번호 인코딩
                 String encodedPassword = passwordEncoder.encode(ADMIN_PASSWORD);
@@ -58,8 +58,8 @@ public class InitialAdminSetup {
                         .loginId(ADMIN_LOGIN_ID)
                         .password(encodedPassword)
                         .name("관리자")
-                        .department(defaultDept)
-                        .jobPosition(defaultPos)
+//                        .department(defaultDept)
+//                        .jobPosition(defaultPos)
                         .phone("010-0000-0000")
                         .email("admin@example.com")
                         .isEmployed(true)

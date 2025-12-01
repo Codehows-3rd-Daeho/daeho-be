@@ -4,6 +4,7 @@ import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.repository.file.FileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,11 +16,12 @@ import java.util.stream.Collectors;
 
 
 @Service
+@RequiredArgsConstructor
 public class FileService {
 
     @Value("${fileLocation}")
     private String fileLocation;
-    private FileRepository fileRepository;
+    private final FileRepository fileRepository;
 
     //파일 업로드
 //    MultipartFile List를 받아 각 파일별로 originalName savedName path size targetType를 저장한다
