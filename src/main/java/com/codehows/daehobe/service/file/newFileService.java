@@ -14,38 +14,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class FileService {
+public class newFileService {
 
     @Value("${fileLocation}")
     private String fileLocation;
     private final FileRepository fileRepository;
 
+    /**
+     * 파일 업로드/수정 통합
+     *
+     * @param targetId         대상 엔티티 ID
+     * @param newFiles         새로 업로드할 파일 (null 가능)
+     * @param filesToRemoveIds 삭제할 기존 파일 ID 리스트 (null 가능)
+     * @param targetType       대상 타입
+     */
+    public void updateFiles(Long targetId,
+                            List<MultipartFile> newFiles,
+                            List<Long> filesToRemoveIds,
+                            TargetType targetType) {
+        // 1. 삭제할 기존 파일 삭제
+        if (filesToRemoveIds != null && !filesToRemoveIds.isEmpty()) {
+            List<File> filesToDelete = fileRepository.findAllById(filesToRemoveIds);
+            deleteFiles(filesToDelete);
+        }
+
+        // 2. 새 파일 저장
+        if (newFiles != null && !newFiles.isEmpty()) {
+            uploadFiles(targetId, newFiles, targetType);
+        }
+
+        // 3. 기존 파일 중 삭제되지 않은 파일은 그대로 유지 (DB에 변경 없음)
+    }
+
+    // ---------------------- 기존 메서드 재사용 ----------------------
+
     // 파일 업로드
-    // MultipartFile List를 받아 각 파일별로 originalName savedName path size targetType를 저장한다
     public void uploadFiles(Long targetId, List<MultipartFile> multipartFiles, TargetType targetType) {
         List<File> files = new ArrayList<>();
         for (MultipartFile file : multipartFiles) {
             files.add(saveFiles(file, targetId, targetType));
         }
         fileRepository.saveAll(files);
-    }
-
-    // 파일 수정 (기존 삭제 후 새로 저장)
-    public void updateFiles(Long targetId, List<MultipartFile> newFiles, TargetType targetType) {
-        //  기존 파일 조회
-        List<File> existingFiles = fileRepository.findByTargetIdAndTargetType(targetId, targetType);
-
-        // 기존 파일 삭제
-        deleteFiles(existingFiles);
-
-        // 새 파일 저장
-        for (MultipartFile file : newFiles) {
-            fileRepository.save(saveFiles(file, targetId, targetType));
-        }
     }
 
     // ---------------------- private helper ----------------------
@@ -58,7 +70,6 @@ public class FileService {
         Long size = multipartFile.getSize();
 
         java.io.File dir = new java.io.File(fileLocation);
-        //  폴더가 없으면 생성
         if (!dir.exists()) dir.mkdirs();
 
         try {
@@ -85,5 +96,4 @@ public class FileService {
         }
         fileRepository.deleteAll(files);
     }
-
 }

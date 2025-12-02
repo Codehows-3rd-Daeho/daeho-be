@@ -3,6 +3,7 @@ package com.codehows.daehobe.controller.member;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
 import com.codehows.daehobe.service.member.MemberService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -10,7 +11,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -65,9 +68,10 @@ public class MemberController {
     }
 
     @PutMapping("/admin/member/{id}")
-    public ResponseEntity<?> updateMember(@PathVariable Long id, @RequestBody MemberDto memberDto) {
+    public ResponseEntity<?> updateMember(@PathVariable Long id, @RequestPart("data") @Valid MemberDto memberDto,
+                                          @RequestPart(value = "file", required = false) List<MultipartFile> profileImage) {
         try {
-            memberService.updateMember(id, memberDto);
+            memberService.updateMember(id, memberDto, profileImage);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             e.printStackTrace();

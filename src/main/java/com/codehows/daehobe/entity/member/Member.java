@@ -51,12 +51,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String email;
 
-    // 프로필 이미지 url
-    private String profileUrl;
-
-    // 프로필 이미지 파일명
-    private String profileFilename;
-
     // 재직여부
     @Column(nullable = false)
     private Boolean isEmployed;

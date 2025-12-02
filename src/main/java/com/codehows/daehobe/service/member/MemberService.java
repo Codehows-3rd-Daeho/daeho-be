@@ -1,14 +1,18 @@
 package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.constant.Role;
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
+import com.codehows.daehobe.service.file.FileService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +21,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,12 +36,14 @@ public class MemberService {
     private final JobPositionRepository jobPositionRepository;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FileService fileService;
+    private final FileRepository fileRepository;
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int PASSWORD_LENGTH = 8;
     private static final SecureRandom random = new SecureRandom();
 
-    public Member createMember(@Valid MemberDto memberDto) {
+    public Member createMember(@Valid MemberDto memberDto, List<MultipartFile> profileImage) {
         JobPosition pos = getJobPosition(memberDto.getJobPositionId());
         Department dpt = getDepartment(memberDto.getDepartmentId());
 
@@ -51,8 +60,15 @@ public class MemberService {
                 .role(Role.USER)
                 .build();
 
-        // DB 저장
-        return memberRepository.save(member);
+        // 회원저장
+        memberRepository.save(member);
+
+        // 파일저장
+        if (profileImage != null) {
+            fileService.uploadFiles(member.getId(), profileImage, TargetType.MEMBER);
+        }
+
+        return member;
     }
 
 
@@ -63,7 +79,10 @@ public class MemberService {
 
     public MemberDto getMemberDtl(Long id) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
-        return MemberDto.fromEntity(member);
+        File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
+        ;
+        String profileUrl = (profileFile != null) ? profileFile.getPath() : null;
+        return MemberDto.fromEntity(member, profileUrl);
     }
 
     public String generatePwd(Long id) {
@@ -76,16 +95,21 @@ public class MemberService {
         return newPwd;
     }
 
-    public Member updateMember(Long id, MemberDto memberDto) {
+    public Member updateMember(Long id, MemberDto memberDto, List<MultipartFile> profileImage) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
         JobPosition pos = getJobPosition(memberDto.getJobPositionId());
         Department dpt = getDepartment(memberDto.getDepartmentId());
 
+        // 회원 수정
         member.update(memberDto, dpt, pos, passwordEncoder);
+        // 파일저장
+        if (profileImage != null) {
+            fileService.updateFiles(member.getId(), profileImage, TargetType.MEMBER);
+        }
         return member;
     }
 
-    // =====================================================
+    // ---------------------- private helper ----------------------
     private JobPosition getJobPosition(Long id) {
         return id == null ? null :
                 jobPositionRepository.findById(id)

@@ -8,7 +8,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -20,9 +22,10 @@ public class SignUpController {
 
     // 회원가입
     @PostMapping
-    public ResponseEntity<?> signUp(@RequestBody @Valid MemberDto memberDto) {
+    public ResponseEntity<?> signUp(@RequestPart("data") @Valid MemberDto memberDto,
+                                    @RequestPart(value = "file", required = false) List<MultipartFile> profileImage) {
         try {
-            Member member = memberService.createMember(memberDto);
+            Member member = memberService.createMember(memberDto, profileImage);
             return ResponseEntity.ok(member);
         } catch (Exception e) {
             e.printStackTrace();

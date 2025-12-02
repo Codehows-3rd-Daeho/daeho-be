@@ -9,4 +9,5 @@ public interface JobPositionRepository extends JpaRepository<JobPosition,Long> {
     boolean existsByName(String positionName);
 
     Optional<JobPosition> findByName(String 직급1);
+
 }

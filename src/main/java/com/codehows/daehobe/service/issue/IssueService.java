@@ -1,5 +1,6 @@
 package com.codehows.daehobe.service.issue;
 
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.repository.issue.IssueRepository;
@@ -21,7 +22,7 @@ public class IssueService {
     private final IssueDepartmentService departmentService;
     private final IssueMemberService issueMemberService;
 
-    public Issue createIssue(IssueDto issueDto , List<MultipartFile> multipartFiles) {
+    public Issue createIssue(IssueDto issueDto, List<MultipartFile> multipartFiles) {
 
         //entity에 dto로 받은 값 넣기(builder 사용)
         Issue saveIssue = Issue.builder()
@@ -42,7 +43,7 @@ public class IssueService {
         // 1. DTO에서 부서 이름 목록 (List<String>) 추출
         List<Long> departmentId = issueDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
-        if(departmentId != null && !departmentId.isEmpty()) {
+        if (departmentId != null && !departmentId.isEmpty()) {
             departmentService.saveDepartment(saveIssue.getIssueId(), departmentId);
         }
 
@@ -50,14 +51,14 @@ public class IssueService {
         // 1. DTO에서 참여자 이름 목록 (List<String>) 추출
         List<Long> memberId = issueDto.getMemberIds();
         //2. 참여자 저장 서비스 호출
-        if(memberId != null && !memberId.isEmpty()) {
+        if (memberId != null && !memberId.isEmpty()) {
             issueMemberService.saveIssueMember(saveIssue.getIssueId(), memberId);
         }
 
 
         //파일저장 서비스 호출
-        if(multipartFiles != null) {
-            fileService.uploadFiles(saveIssue.getIssueId(),  multipartFiles);
+        if (multipartFiles != null) {
+            fileService.uploadFiles(saveIssue.getIssueId(), multipartFiles, TargetType.ISSUE);
         }
 
         return saveIssue;

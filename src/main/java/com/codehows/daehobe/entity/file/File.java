@@ -31,7 +31,7 @@ public class File {
     @Column(name = "size", nullable = false)
     private Long size;
 
-    // 여러 타겟(이슈, 회의, 댓글, STT) 중 하나와 연결
+    // 여러 타겟(이슈, 회의, 댓글, STT, 회원) 중 하나와 연결
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 

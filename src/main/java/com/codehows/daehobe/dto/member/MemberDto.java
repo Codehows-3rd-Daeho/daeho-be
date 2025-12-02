@@ -22,7 +22,6 @@ public class MemberDto {
     private String loginId;
 
     // 비밀번호: 공백/한글 제외 8~20자
-    @NotBlank(message = "비밀번호는 필수 입력값입니다.")
     @Pattern(regexp = "^[^\\sㄱ-ㅎ가-힣]{8,20}$", message = "비밀번호는 8~20자로 입력하세요.")
     private String password;
 
@@ -53,10 +52,7 @@ public class MemberDto {
     // 프로필 이미지 url
     private String profileUrl;
 
-    // 프로필 이미지 파일명
-    private String profileFilename;
-
-    public static MemberDto fromEntity(Member member) {
+    public static MemberDto fromEntity(Member member, String profileUrl) {
         return MemberDto.builder()
                 .id(member.getId())
                 .loginId(member.getLoginId())
@@ -66,6 +62,7 @@ public class MemberDto {
                 .phone(member.getPhone())
                 .email(member.getEmail())
                 .isEmployed(member.getIsEmployed())
+                .profileUrl(profileUrl)
                 .build();
     }
 

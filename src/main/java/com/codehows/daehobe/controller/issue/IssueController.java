@@ -24,10 +24,10 @@ public class IssueController {
     //<T>: 보낼 데이터
     @PostMapping("/register")
     public ResponseEntity<IssueDto> createIssue(
-            @RequestPart("data") IssueDto issueDto ,
-            @RequestPart(value = "file", required = false)List<MultipartFile> multipartFiles){
+            @RequestPart("data") IssueDto issueDto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        Issue  saveIssue = issueService.createIssue(issueDto, multipartFiles);
+        Issue saveIssue = issueService.createIssue(issueDto, multipartFiles);
 
         IssueDto responseIssueDto = IssueDto.fromEntity(saveIssue);
 
