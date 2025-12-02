@@ -12,12 +12,14 @@ import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.security.SecureRandom;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -28,9 +30,13 @@ public class MemberService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
 
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int PASSWORD_LENGTH = 8;
+    private static final SecureRandom random = new SecureRandom();
+
     public Member createMember(@Valid MemberDto memberDto) {
-        JobPosition pos = jobPositionRepository.findById(memberDto.getJobPositionId()).orElseThrow(EntityNotFoundException::new);
-        Department dpt = departmentRepository.findById(memberDto.getDepartmentId()).orElseThrow(EntityNotFoundException::new);
+        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
+        Department dpt = getDepartment(memberDto.getDepartmentId());
 
         // DTO → Entity 변환
         Member member = Member.builder()
@@ -49,22 +55,55 @@ public class MemberService {
         return memberRepository.save(member);
     }
 
-    public List<MemberListDto> findAll() {
-        List<Member> memberList = memberRepository.findAll();
-        List<MemberListDto> dtoList = new ArrayList<>();
 
-        for (Member member : memberList) {
-            MemberListDto dto = MemberListDto.builder()
-                    .id(member.getId())
-                    .name(member.getName())
-                    .departmentName(member.getDepartment().getName())
-                    .jobPositionName(member.getJobPosition().getName())
-                    .phone(member.getPhone())
-                    .email(member.getEmail())
-                    .isEmployed(member.getIsEmployed())
-                    .build();
-            dtoList.add(dto);
-        }
-        return dtoList;
+    public Page<MemberListDto> findAll(Pageable pageable) {
+        return memberRepository.findAll(pageable)
+                .map(MemberListDto::fromEntity);
     }
+
+    public MemberDto getMemberDtl(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+        return MemberDto.fromEntity(member);
+    }
+
+    public String generatePwd(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+
+        // 임시 비밀번호 생성
+        String newPwd = generateTempPassword();
+        String encodedPassword = passwordEncoder.encode(newPwd);
+        member.updatePassword(encodedPassword);
+        return newPwd;
+    }
+
+    public Member updateMember(Long id, MemberDto memberDto) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
+        Department dpt = getDepartment(memberDto.getDepartmentId());
+
+        member.update(memberDto, dpt, pos, passwordEncoder);
+        return member;
+    }
+
+    // =====================================================
+    private JobPosition getJobPosition(Long id) {
+        return id == null ? null :
+                jobPositionRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("직급이 존재하지 않습니다."));
+    }
+
+    private Department getDepartment(Long id) {
+        return id == null ? null :
+                departmentRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("부서가 존재하지 않습니다."));
+    }
+
+    // 8자 영숫자 임시 비밀번호 생성
+    private String generateTempPassword() {
+        return random.ints(PASSWORD_LENGTH, 0, CHARACTERS.length())
+                .mapToObj(CHARACTERS::charAt)
+                .map(Object::toString)
+                .collect(Collectors.joining());
+    }
+
 }

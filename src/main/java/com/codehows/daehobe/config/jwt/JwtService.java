@@ -50,13 +50,13 @@ public class JwtService {
                     .parseClaimsJws(token)
                     .getBody();
 
-            String loginId = claims.getSubject();
+            String memberId = claims.getSubject();
             String role = claims.get("role", String.class);
 
             // 아이디가 존재하면 반환
-            if (loginId != null && role != null) {
+            if (memberId != null && role != null) {
                 return Map.of(
-                        "loginId", loginId,
+                        "memberId", memberId,
                         "role", role
                 );
             }

@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.member;
 
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -54,5 +55,19 @@ public class MemberDto {
 
     // 프로필 이미지 파일명
     private String profileFilename;
+
+    public static MemberDto fromEntity(Member member) {
+        return MemberDto.builder()
+                .id(member.getId())
+                .loginId(member.getLoginId())
+                .name(member.getName())
+                .departmentId(member.getDepartment() != null ? member.getDepartment().getId() : null)
+                .jobPositionId(member.getJobPosition() != null ? member.getJobPosition().getId() : null)
+                .phone(member.getPhone())
+                .email(member.getEmail())
+                .isEmployed(member.getIsEmployed())
+                .build();
+    }
+
 
 }

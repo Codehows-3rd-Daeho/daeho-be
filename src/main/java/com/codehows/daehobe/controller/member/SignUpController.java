@@ -24,7 +24,7 @@ public class SignUpController {
         try {
             Member member = memberService.createMember(memberDto);
             return ResponseEntity.ok(member);
-        }  catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("회원 생성 중 오류 발생");
         }

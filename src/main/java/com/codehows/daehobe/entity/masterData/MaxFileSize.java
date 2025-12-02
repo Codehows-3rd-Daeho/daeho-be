@@ -9,7 +9,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MaxFileSize extends BaseEntity {
+public class MaxFileSize extends  BaseEntity {
 
     @Id
     @Column(name = "max_file_size_id", nullable = false)

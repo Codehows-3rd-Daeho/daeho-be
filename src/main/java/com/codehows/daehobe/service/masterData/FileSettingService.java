@@ -43,10 +43,9 @@ public class FileSettingService {
         MaxFileSize existing = maxFileSizeRepository.findById(ROW_ID).orElse(null);
 
         if (existing != null) {
-            // 2) 기존 엔티티 수정 (Dirty Checking)
             existing.updateSize(newSizeInBytes);
         } else {
-            // 3) 없으면 새 엔티티 생성
+            // 없으면 새 엔티티 생성
             MaxFileSize created = new MaxFileSize(ROW_ID, newSizeInBytes);
             maxFileSizeRepository.save(created);
         }
