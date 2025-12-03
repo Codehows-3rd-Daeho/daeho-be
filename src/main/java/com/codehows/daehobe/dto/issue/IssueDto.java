@@ -23,8 +23,8 @@ public class IssueDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private List<Long> departmentIds;
-    private List<Long> memberIds;
-    private String isDel;
+    private List<IssueMemberDto> members;
+    private Boolean isDel;
 
 
 
@@ -47,20 +47,4 @@ public class IssueDto {
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

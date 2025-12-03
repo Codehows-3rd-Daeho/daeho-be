@@ -5,10 +5,7 @@ import com.codehows.daehobe.dto.masterData.PartMemberListDto;
 import com.codehows.daehobe.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -42,5 +39,6 @@ public class PartMemberController {
             return ResponseEntity.status(500).body("주관자 조회 중 오류 발생");
         }
     }
+
 
 }
