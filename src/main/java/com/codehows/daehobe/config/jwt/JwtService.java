@@ -22,10 +22,10 @@ public class JwtService {
     static final Key SIGNING_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     // loginId(ID)를 받아서 JWT 생성
-    public String generateToken(String loginId, String role) {
+    public String generateToken(String memberId, String role) {
         return Jwts.builder()
                 // 토큰의 주제를 loginId 지정
-                .setSubject(loginId)
+                .setSubject(memberId)
                 // USER or ADMIN
                 .claim("role", role)
                 // 만료 시간 설정 (현재시간 + 유효시간)

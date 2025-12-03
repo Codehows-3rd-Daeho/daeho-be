@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.member;
 
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import jakarta.validation.constraints.Email;
@@ -49,10 +50,13 @@ public class MemberDto {
     @NotNull(message = "재직 여부를 선택해주세요.")
     private Boolean isEmployed;
 
+    // 프로필 이미지 id
+    private Long profileFileId;
+
     // 프로필 이미지 url
     private String profileUrl;
 
-    public static MemberDto fromEntity(Member member, String profileUrl) {
+    public static MemberDto fromEntity(Member member, File profileFile) {
         return MemberDto.builder()
                 .id(member.getId())
                 .loginId(member.getLoginId())
@@ -62,9 +66,8 @@ public class MemberDto {
                 .phone(member.getPhone())
                 .email(member.getEmail())
                 .isEmployed(member.getIsEmployed())
-                .profileUrl(profileUrl)
+                .profileUrl(profileFile != null ? profileFile.getPath() : null)
+                .profileFileId(profileFile != null ? profileFile.getFileId() : null)
                 .build();
     }
-
-
 }

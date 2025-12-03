@@ -80,9 +80,9 @@ public class MemberService {
     public MemberDto getMemberDtl(Long id) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
         File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
-        ;
+
         String profileUrl = (profileFile != null) ? profileFile.getPath() : null;
-        return MemberDto.fromEntity(member, profileUrl);
+        return MemberDto.fromEntity(member, profileFile);
     }
 
     public String generatePwd(Long id) {
@@ -95,19 +95,24 @@ public class MemberService {
         return newPwd;
     }
 
-    public Member updateMember(Long id, MemberDto memberDto, List<MultipartFile> profileImage) {
-        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+    public Member updateMember(Long id,
+                                        MemberDto memberDto,
+                                        List<MultipartFile> newFiles,
+                                        List<Long> removeFileIds) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+
         JobPosition pos = getJobPosition(memberDto.getJobPositionId());
         Department dpt = getDepartment(memberDto.getDepartmentId());
 
-        // 회원 수정
         member.update(memberDto, dpt, pos, passwordEncoder);
-        // 파일저장
-        if (profileImage != null) {
-            fileService.updateFiles(member.getId(), profileImage, TargetType.MEMBER);
-        }
+
+        // 파일 업데이트
+        fileService.updateFiles(member.getId(), newFiles, removeFileIds, TargetType.MEMBER);
+
         return member;
     }
+
 
     // ---------------------- private helper ----------------------
     private JobPosition getJobPosition(Long id) {

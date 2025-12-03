@@ -7,8 +7,6 @@ import lombok.*;
 @Entity
 @Table(name = "file")
 @Getter
-@Setter
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -38,17 +36,4 @@ public class File {
     @Enumerated(EnumType.STRING)
     @Column(name = "target_type", nullable = false)
     private TargetType targetType;
-
-
-//    public FileDto toDto() {
-//        return FileDto.builder()
-//                .path(this.path)
-//                .originalName(this.originalName)
-//                .savedName(this.savedName)
-//                .size(this.size)
-//                .targetId(this.targetId)
-//                .targetType(this.targetType)
-//                .build();
-//    }
-
 }
