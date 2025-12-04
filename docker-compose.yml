@@ -29,18 +29,14 @@ services:
     container_name: spring-backend
     restart: unless-stopped
     environment:
-<<<<<<< HEAD
       FILE_LOCATION: /app/uploads/production
-
-    volumes:
-      - /var/app/uploads:/app/uploads/production
-=======
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/base_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 1234
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
->>>>>>> ec389b4156d81ae0624718dfcd28b7b1a3bc40d0
+    volumes:
+      - /var/app/uploads:/app/uploads/production
     ports:
       - "8080:8080"
     depends_on:
