@@ -58,7 +58,7 @@ public class JwtFilter extends OncePerRequestFilter {
             List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
 
             // 3. 추출된 유저 정보로 Authentication 객체 생성. SecurityContext에 설정
-            //principal → loginId (사용자 ID) - “누구인가?”Spring Security에서 인증 객체의 주체(사용자) 를 뜻함.
+            //principal → loginId (사용자 ID) - "누구인가?"Spring Security에서 인증 객체의 주체(사용자) 를 뜻함.
             //credentials → null (이미 JWT로 인증이 끝난 상태라 비밀번호 불필요)
             //authorities → 권한
             if (memberId != null) {

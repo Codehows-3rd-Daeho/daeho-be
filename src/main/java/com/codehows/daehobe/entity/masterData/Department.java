@@ -17,6 +17,6 @@ public class Department extends BaseEntity {
     private Long id;
 
     // 부서명
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String name;
 }
