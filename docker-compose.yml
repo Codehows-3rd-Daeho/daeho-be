@@ -36,6 +36,11 @@ services:
       dockerfile: Dockerfile
     container_name: spring-backend
     restart: unless-stopped
+    environment:
+      FILE_LOCATION: /app/uploads/production
+
+    volumes:
+      - /var/app/uploads:/app/uploads/production
     ports:
       - "8080:8080"
     depends_on:
