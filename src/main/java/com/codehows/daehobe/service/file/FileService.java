@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileService {
 
-    @Value("${fileLocation}")
+    @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
 
