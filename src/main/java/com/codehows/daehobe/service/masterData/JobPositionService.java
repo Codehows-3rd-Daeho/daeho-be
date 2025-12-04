@@ -1,11 +1,13 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
+import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +30,24 @@ public class JobPositionService {
         return dtoList;
     }
 
-    public Long createPos(MasterDataDto masterDataDto) {
+    public JobPosition createPos(MasterDataDto masterDataDto) {
+        String positionName = masterDataDto.getName();
+
+        // 1. 중복 체크
+        if (jobPositionRepository.existsByName(positionName)) {
+            throw new IllegalArgumentException("이미 존재하는 직급입니다: " + positionName);
+        }
+
         JobPosition position = JobPosition.builder()
-                .name(masterDataDto.getName())
+                .name(positionName)
                 .build();
-        jobPositionRepository.save(position);
-        return position.getId();
+
+        try {
+            return jobPositionRepository.save(position);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void deletePos(Long id) {

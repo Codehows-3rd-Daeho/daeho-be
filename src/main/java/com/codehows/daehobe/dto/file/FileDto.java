@@ -19,6 +19,15 @@ public class FileDto {
     private TargetType targetType;
 
 
-
-
+    // DTO -> Entity 변환
+    public File toEntity() {
+        return File.builder()
+                .path(this.path)
+                .originalName(this.originalName)
+                .savedName(this.savedName)
+                .size(this.size)
+                .targetId(this.targetId)
+                .targetType(this.targetType)
+                .build();
+    }
 }

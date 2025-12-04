@@ -16,16 +16,16 @@ public class JwtService {
     // 서버와 클라이언트가 주고 받는 토근 ==> HTTP Header 내 Authorization 헤더값에 저장
     // 예) Authorization Bearer <토큰값>
     static final String PREFIX = "Bearer ";
-    //        static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;  // 86,400,000 시간 => 하루
-    static final long EXPIRATION_TIME = 24 * 60 * 1000;
+//        static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;  // 86,400,000 시간 => 하루
+   static final long EXPIRATION_TIME = 24 * 60 * 1000;
     // JWT 서명에 사용할 비밀키 (HS256 알고리즘 기반으로 랜덤 생성)
     static final Key SIGNING_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     // loginId(ID)를 받아서 JWT 생성
-    public String generateToken(String loginId, String role) {
+    public String generateToken(String memberId, String role) {
         return Jwts.builder()
                 // 토큰의 주제를 loginId 지정
-                .setSubject(loginId)
+                .setSubject(memberId)
                 // USER or ADMIN
                 .claim("role", role)
                 // 만료 시간 설정 (현재시간 + 유효시간)

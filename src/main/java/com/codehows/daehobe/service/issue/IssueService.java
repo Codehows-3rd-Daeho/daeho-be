@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
@@ -71,7 +72,7 @@ public class IssueService {
 
         //파일저장 서비스 호출
         if(multipartFiles != null) {
-            fileService.uploadFiles(saveIssue.getIssueId(),  multipartFiles);
+            fileService.uploadFiles(saveIssue.getIssueId(), multipartFiles, TargetType.ISSUE);
             System.out.println("파일 서비스 작동 확인================================");
         }
 
