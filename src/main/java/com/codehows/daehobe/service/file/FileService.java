@@ -4,6 +4,7 @@ import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.repository.file.FileRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,19 +16,20 @@ import java.util.stream.Collectors;
 
 
 @Service
+@RequiredArgsConstructor
 public class FileService {
 
     @Value("${fileLocation}")
     private String fileLocation;
-    private FileRepository fileRepository;
+    private final FileRepository fileRepository;
 
     //파일 업로드
 //    MultipartFile List를 받아 각 파일별로 originalName savedName path size targetType를 저장한다
 //    각 파일을 FileDto List에 담고 Entity로 변환 후 Repository에 저장한다.
-    public List<FileDto> uploadFiles( Long issueId,  List<MultipartFile> multipartFiles) {
+    public void uploadFiles( Long issueId,  List<MultipartFile> multipartFiles) {
 
         //FileDto 사용: 파일 저장 후 프론트나 다른 서비스 계층에서 파일 정보를 사용할 목적
-        List<FileDto> files = new ArrayList<>();
+        List<File> files = new ArrayList<>();
 
         for (MultipartFile file : multipartFiles) {
             //MultipartFile 인터페이스에서 제공하는 원본파일 이름을 가져온는 메서드
@@ -41,29 +43,23 @@ public class FileService {
             TargetType targetType = TargetType.ISSUE;
 
 
-            FileDto saveFile = FileDto.builder()
+            // 파일 엔티티 생성
+            File entity = File.builder()
                     .path(path)
                     .originalName(originalName)
                     .savedName(savedName)
                     .size(size)
                     .targetId(issueId)
-                    .targetType(targetType)
+                    .targetType(TargetType.ISSUE)
                     .build();
 
-            files.add(saveFile);
-
+            files.add(entity);
         }
 
-        //Dto -> Entity 변환 후 리스트 저장
-        List<File> finalFile = files.stream()//stream: 처음 연산(각 요소를 하나씩 처리 가능), map: 중간연산, collect: 최종 연산
-                .map(FileDto::toEntity) // DTO 내부 toEntity() 호출 === fileDto -> fileDto.toEntity()
-                .collect(Collectors.toList()); //변환된 File 객체들을 List<File>로 모음
+        // 한 번에 저장
+        fileRepository.saveAll(files);
 
-        fileRepository.saveAll(finalFile);
-
-        return files;
-
-
+        }
 
 
 
@@ -73,4 +69,4 @@ public class FileService {
 
 
 
-}
+

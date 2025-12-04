@@ -26,12 +26,8 @@ public abstract class BaseEntity {
     private LocalDateTime updatedAt;
 
     @CreatedBy
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private Member createdBy;
+    private Long createdBy;
 
     @LastModifiedBy
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "updated_by")
-    private Member updatedBy;
+    private Long updatedBy;
 }

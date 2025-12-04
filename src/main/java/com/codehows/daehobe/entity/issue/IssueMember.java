@@ -31,12 +31,5 @@ public class IssueMember extends BaseEntity {
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
-
-    public IssueMember(Issue issue, Member member) {
-        this.issueId = issue;
-        this.memberId = member;
-    }
-
-
 }
 

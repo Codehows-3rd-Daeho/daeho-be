@@ -33,41 +33,41 @@ public class InitialAdminSetup {
             final String ADMIN_LOGIN_ID = "admin";
             final String ADMIN_PASSWORD = "12341234";
 
+            final String YZOO_LOGIN_ID = "yzoo";
+
+
+
             // 1. 관리자 계정 존재 여부 확인
             if (memberRepository.findByLoginId(ADMIN_LOGIN_ID).isEmpty()) {
 
-                // 2. 필수 의존성 (Department, JobPosition) 생성 및 저장
-                // Department.builder()를 사용하여 엔티티 생성
-                Department defaultDept = departmentRepository.save(
-                        Department.builder()
-                                .name("관리자 부서")
-                                .build()
-                );
 
-                // JobPosition.builder()를 사용하여 엔티티 생성
-                JobPosition defaultPos = jobPositionRepository.save(
-                        JobPosition.builder()
-                                .name("시스템 관리자")
-                                .build()
-                );
 
                 // 3. Member 엔티티 생성 및 비밀번호 인코딩
                 String encodedPassword = passwordEncoder.encode(ADMIN_PASSWORD);
 
-                Member adminMember = Member.builder()
+                memberRepository.save(Member.builder()
                         .loginId(ADMIN_LOGIN_ID)
                         .password(encodedPassword)
                         .name("관리자")
-                        .department(defaultDept)
-                        .jobPosition(defaultPos)
+//                        .department(defaultDept)
+//                        .jobPosition(defaultPos)
                         .phone("010-0000-0000")
                         .email("admin@example.com")
                         .isEmployed(true)
                         .role(Role.ADMIN)
-                        .build();
+                        .build());
 
-                // 4. 저장
-                memberRepository.save(adminMember);
+                memberRepository.save(Member.builder()
+                        .loginId(YZOO_LOGIN_ID)
+                        .password(encodedPassword)
+                        .name("윤예주")
+//                        .department(1)
+//                        .jobPosition(1)  // 객체 연결
+                        .phone("010-1111-1111")
+                        .email("yyy@example.com")
+                        .isEmployed(true)
+                        .role(Role.ADMIN)
+                        .build());
 
                 System.out.println("--- 초기 관리자 계정 생성 완료 (ID: " + ADMIN_LOGIN_ID + ", PW: " + ADMIN_PASSWORD + ") ---");
             } else {

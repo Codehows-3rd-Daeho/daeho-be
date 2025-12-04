@@ -13,7 +13,7 @@ import lombok.*;
 public class JobPosition extends BaseEntity {
 
     @Id
-    @Column(name = "job_positon_id")
+    @Column(name = "job_position_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
