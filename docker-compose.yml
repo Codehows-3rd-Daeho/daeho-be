@@ -3,9 +3,10 @@ services:
     image: mysql:8.0
     container_name: mysql-db
     restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     environment:
       MYSQL_ROOT_PASSWORD: 1234
-      MYSQL_DATABASE: myappdb
+      MYSQL_DATABASE: base_db
       TZ: Asia/Seoul
     ports:
       - "3306:3306"
@@ -15,20 +16,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-u",
-          "root",
-          "-prootpassword",
-        ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p1234"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 40s # 초기화 시간 증가
 
   spring-backend:
     build:
@@ -37,10 +29,18 @@ services:
     container_name: spring-backend
     restart: unless-stopped
     environment:
+<<<<<<< HEAD
       FILE_LOCATION: /app/uploads/production
 
     volumes:
       - /var/app/uploads:/app/uploads/production
+=======
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/base_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+>>>>>>> ec389b4156d81ae0624718dfcd28b7b1a3bc40d0
     ports:
       - "8080:8080"
     depends_on:
