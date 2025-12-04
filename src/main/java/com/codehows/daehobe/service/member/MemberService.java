@@ -1,19 +1,32 @@
 package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.constant.Role;
+import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.masterData.PartMemberDto;
+import com.codehows.daehobe.dto.masterData.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
+import com.codehows.daehobe.dto.member.MemberListDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
+import com.codehows.daehobe.service.file.FileService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -23,10 +36,16 @@ public class MemberService {
     private final JobPositionRepository jobPositionRepository;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FileService fileService;
+    private final FileRepository fileRepository;
 
-    public Member createMember(@Valid MemberDto memberDto) {
-        JobPosition pos = jobPositionRepository.findById(memberDto.getJobPositionId()).orElseThrow(EntityNotFoundException::new);
-        Department dpt  =  departmentRepository.findById(memberDto.getDepartmentId()).orElseThrow(EntityNotFoundException::new);
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final int PASSWORD_LENGTH = 8;
+    private static final SecureRandom random = new SecureRandom();
+
+    public Member createMember(@Valid MemberDto memberDto, List<MultipartFile> profileImage) {
+        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
+        Department dpt = getDepartment(memberDto.getDepartmentId());
 
         // DTO → Entity 변환
         Member member = Member.builder()
@@ -41,7 +60,102 @@ public class MemberService {
                 .role(Role.USER)
                 .build();
 
-        // DB 저장
-        return memberRepository.save(member);
+        // 회원저장
+        memberRepository.save(member);
+
+        // 파일저장
+        if (profileImage != null) {
+            fileService.uploadFiles(member.getId(), profileImage, TargetType.MEMBER);
+        }
+
+        return member;
     }
+
+
+    public Page<MemberListDto> findAll(Pageable pageable) {
+        return memberRepository.findAll(pageable)
+                .map(MemberListDto::fromEntity);
+    }
+
+    public MemberDto getMemberDtl(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+        File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
+
+        String profileUrl = (profileFile != null) ? profileFile.getPath() : null;
+        return MemberDto.fromEntity(member, profileFile);
+    }
+
+    public String generatePwd(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+
+        // 임시 비밀번호 생성
+        String newPwd = generateTempPassword();
+        String encodedPassword = passwordEncoder.encode(newPwd);
+        member.updatePassword(encodedPassword);
+        return newPwd;
+    }
+
+    public Member updateMember(Long id,
+                                        MemberDto memberDto,
+                                        List<MultipartFile> newFiles,
+                                        List<Long> removeFileIds) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+
+        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
+        Department dpt = getDepartment(memberDto.getDepartmentId());
+
+        member.update(memberDto, dpt, pos, passwordEncoder);
+
+        // 파일 업데이트
+        fileService.updateFiles(member.getId(), newFiles, removeFileIds, TargetType.MEMBER);
+
+        return member;
+    }
+
+
+    // ---------------------- private helper ----------------------
+    private JobPosition getJobPosition(Long id) {
+        return id == null ? null :
+                jobPositionRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("직급이 존재하지 않습니다."));
+    }
+
+    private Department getDepartment(Long id) {
+        return id == null ? null :
+                departmentRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("부서가 존재하지 않습니다."));
+    }
+
+    // 8자 영숫자 임시 비밀번호 생성
+    private String generateTempPassword() {
+        return random.ints(PASSWORD_LENGTH, 0, CHARACTERS.length())
+                .mapToObj(CHARACTERS::charAt)
+                .map(Object::toString)
+                .collect(Collectors.joining());
+    }
+
+    //주관자 조회
+    //조회 후 Entity를 Dto로 변환하여 반환
+    public PartMemberDto findHostById(Long id) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Member not found with id: " + id));
+
+        return PartMemberDto.fromEntity(member);
+    }
+
+    /*
+    DB에서 Member 리스트를 가져옴
+    → 하나씩 DTO로 변환하고
+    → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
+     */
+    public List<PartMemberListDto> findAll() {
+        return memberRepository.findAll()
+                .stream()
+                .map(PartMemberListDto::fromEntity)
+                .collect(Collectors.toList());
+
+    }
+
+
 }

@@ -51,20 +51,20 @@ public class JwtFilter extends OncePerRequestFilter {
         if (jwtToken != null) {
             // 2. 꺼낸 토큰에서 유저 정보 추출
             Map<String, String> userInfo = jwtService.parseTokenWithRole(request);
-            String loginId = userInfo.get("loginId");
+            String memberId = userInfo.get("memberId");
             String role = userInfo.get("role");
 
             // role을 Spring Security 권한으로 변환
             List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
 
             // 3. 추출된 유저 정보로 Authentication 객체 생성. SecurityContext에 설정
-            //principal → loginId (사용자 ID) - “누구인가?”Spring Security에서 인증 객체의 주체(사용자) 를 뜻함.
+            //principal → loginId (사용자 ID) - "누구인가?"Spring Security에서 인증 객체의 주체(사용자) 를 뜻함.
             //credentials → null (이미 JWT로 인증이 끝난 상태라 비밀번호 불필요)
             //authorities → 권한
-            if (loginId != null) {
+            if (memberId != null) {
                 // SecurityContext에 인증 객체 저장 UsernamePasswordAuthenticationToken(Principal, Credentials, 권한목록)
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        loginId,
+                        memberId,
                         null, //JWT 인증 후에는 이미 인증이 끝난 상태라, 더 이상 비밀번호가 필요 없기 때문
                         authorities
                 );
@@ -74,9 +74,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 // 서버는 JWT를 검증하고 SecurityContext에 인증 정보를 세팅함으로써 @AuthenticationPrincipal 혹은 SecurityContextHolder로 사용자 정보 접근 가능
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                System.out.println("Authentication object created: " + authentication);
-                System.out.println("LoginId: " + loginId + ", Role: " + role);
-                System.out.println("SecurityContext set: " + SecurityContextHolder.getContext().getAuthentication());
+                System.out.println("MemberId: " + memberId + ", Role: " + role);
 
             }
         }

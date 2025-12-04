@@ -32,6 +32,10 @@ public class DepartmentController {
         try {
             Department dpt = departmentService.createDpt(masterDataDto);
             return ResponseEntity.ok(dpt);
+        } catch (IllegalArgumentException e) {
+            // 중복
+            return ResponseEntity.badRequest().body(e.getMessage());
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("부서 등록 중 오류 발생");

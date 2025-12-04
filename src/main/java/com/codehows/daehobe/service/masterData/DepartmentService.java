@@ -17,7 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DepartmentService {
     private final DepartmentRepository departmentRepository;
-    private final MemberRepository memberRepository;
 
     public List<MasterDataDto> findAll() {
         List<Department> dpts = departmentRepository.findAll();
@@ -29,15 +28,27 @@ public class DepartmentService {
     }
 
     public Department createDpt(MasterDataDto masterDataDto) {
+        String departmentName = masterDataDto.getName();
+
+        // 중복 체크
+        if (departmentRepository.existsByName(departmentName)) {
+            throw new IllegalArgumentException("이미 존재하는 부서입니다: " + departmentName);
+        }
+
         Department department = Department.builder()
-                .name(masterDataDto.getName())
+                .name(departmentName)
                 .build();
-        return departmentRepository.save(department);
+
+        try {
+            return departmentRepository.save(department);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void deleteDpt(Long id) {
         Department department = departmentRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        int memberCount = memberRepository.countByDepartmentId(department.getId());
+        // 로직 추가.
         departmentRepository.delete(department);
     }
 }

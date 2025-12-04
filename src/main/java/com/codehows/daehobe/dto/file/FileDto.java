@@ -30,6 +30,4 @@ public class FileDto {
                 .targetType(this.targetType)
                 .build();
     }
-
-
 }
