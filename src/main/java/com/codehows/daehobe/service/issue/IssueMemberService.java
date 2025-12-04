@@ -1,10 +1,9 @@
 package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
-import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
-import com.codehows.daehobe.repository.issue.PartMemberRepository;
+import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.*;
@@ -17,11 +16,11 @@ import java.util.List;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class PartMemberService {
+public class IssueMemberService {
 
     private final IssueRepository issueRepository;
     private final MemberRepository memberRepository;
-    private final PartMemberRepository partMemberRepository;
+    private final IssueMemberRepository partMemberRepository;
 
 
 
