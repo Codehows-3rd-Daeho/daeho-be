@@ -31,6 +31,5 @@ public class IssueMember extends BaseEntity {
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;
 
-
 }
 

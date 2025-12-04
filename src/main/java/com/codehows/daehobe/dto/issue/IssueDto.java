@@ -17,13 +17,14 @@ import java.util.List;
 public class IssueDto {
     private String title;
     private String content;
-    private Status status;
-    private Category categoryId;
+    private String status;
+    private String host;
+    private Long categoryId;
     private LocalDate startDate;
     private LocalDate endDate;
     private List<Long> departmentIds;
-    private List<Long> memberIds;
-    private boolean isDel = false;
+    private List<IssueMemberDto> members;
+    private Boolean isDel;
 
 
 
@@ -54,20 +55,4 @@ public class IssueDto {
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

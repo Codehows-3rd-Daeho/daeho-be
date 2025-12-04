@@ -14,5 +14,5 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
 
     int countByJobPositionId(Long id);
 
-    int countByDepartmentId(Long id);
+    boolean existsByLoginIdAndIdNot(String loginId, Long memberId);
 }

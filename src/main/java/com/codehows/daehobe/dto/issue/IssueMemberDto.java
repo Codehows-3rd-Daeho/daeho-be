@@ -18,16 +18,4 @@ public class IssueMemberDto {
     private boolean isHost;
     private boolean isPermitted;
     private boolean isRead;
-
-    //Entity -> Dto
-    public static IssueMemberDto fromEntity(IssueMember issueMember) {
-        return IssueMemberDto.builder()
-                .memberId(issueMember.getMemberId().getId())
-                .memberName(issueMember.getMemberId().getName())
-                .isHost(issueMember.isHost())
-                .isPermitted(issueMember.isPermitted())
-                .isRead(issueMember.isRead())
-                .build();
-    }
-
 }

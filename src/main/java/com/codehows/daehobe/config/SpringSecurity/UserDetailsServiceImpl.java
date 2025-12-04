@@ -40,7 +40,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             // User.withUsername() : Spring Security 제공 Builder
             // - username, password, role 정보를 담아 UserDetails 생성
             // - 이 객체를 AuthenticationManager가 인증할 때 사용
-            userDetails = User.withUsername(loginId)
+            userDetails = User.withUsername(String.valueOf(member.get().getId()))
                     .password(user.getPassword()) // DB에 저장된 암호화된 비밀번호
                     .roles(String.valueOf(user.getRole()))       // 권한 정보
                     .build();

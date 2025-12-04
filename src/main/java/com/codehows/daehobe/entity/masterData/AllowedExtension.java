@@ -5,20 +5,18 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "job_position")
+@Table(name = "allowed_extension")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class JobPosition extends BaseEntity {
+public class AllowedExtension extends BaseEntity {
 
     @Id
-    @Column(name = "job_position_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    @Column(name = "allowed_extension_id", nullable = false)
+    private Long id;
 
-    // 직급명
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
-
 }

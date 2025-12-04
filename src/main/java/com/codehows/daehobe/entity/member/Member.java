@@ -1,11 +1,13 @@
 package com.codehows.daehobe.entity.member;
 
 import com.codehows.daehobe.constant.Role;
+import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Entity
 @Table(name = "member")
@@ -49,12 +51,6 @@ public class Member extends BaseEntity {
     @Column(nullable = false)
     private String email;
 
-    // 프로필 이미지 url
-    private String profileUrl;
-
-    // 프로필 이미지 파일명
-    private String profileFilename;
-
     // 재직여부
     @Column(nullable = false)
     private Boolean isEmployed;
@@ -63,4 +59,22 @@ public class Member extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    public void update(MemberDto memberDto, Department dpt, JobPosition pos, PasswordEncoder passwordEncoder) {
+        this.loginId = memberDto.getLoginId();
+        this.name = memberDto.getName();
+        this.department = dpt;
+        this.jobPosition = pos;
+        this.phone = memberDto.getPhone();
+        this.email = memberDto.getEmail();
+        this.isEmployed = memberDto.getIsEmployed();
+
+        if (memberDto.getPassword() != null && !memberDto.getPassword().isBlank()) {
+            this.password = passwordEncoder.encode(memberDto.getPassword());
+        }
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

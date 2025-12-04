@@ -16,15 +16,16 @@ public class JwtService {
     // 서버와 클라이언트가 주고 받는 토근 ==> HTTP Header 내 Authorization 헤더값에 저장
     // 예) Authorization Bearer <토큰값>
     static final String PREFIX = "Bearer ";
-    static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;  // 86,400,000 시간 => 하루
+//        static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;  // 86,400,000 시간 => 하루
+   static final long EXPIRATION_TIME = 24 * 60 * 1000;
     // JWT 서명에 사용할 비밀키 (HS256 알고리즘 기반으로 랜덤 생성)
     static final Key SIGNING_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     // loginId(ID)를 받아서 JWT 생성
-    public String generateToken(String loginId, String role) {
+    public String generateToken(String memberId, String role) {
         return Jwts.builder()
                 // 토큰의 주제를 loginId 지정
-                .setSubject(loginId)
+                .setSubject(memberId)
                 // USER or ADMIN
                 .claim("role", role)
                 // 만료 시간 설정 (현재시간 + 유효시간)
@@ -36,26 +37,26 @@ public class JwtService {
     }
 
     //  요청의 Authorization 헤더에서 토큰을 가져온뒤 토큰을 확인하고 loginId(ID)를 반환
-    public Map<String,String> parseTokenWithRole(HttpServletRequest request) {
+    public Map<String, String> parseTokenWithRole(HttpServletRequest request) {
         // 요청 헤더에서 Authorization 헤더값을 가져옴   예) header = Bearer <토큰값>
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         // 헤더가 존재하고 "Bearer "로 시작하면
         if (header != null && header.startsWith(PREFIX)) {
-                // "Bearer " 접두어를 제거하고 순수 토큰만 남김
-                String token = header.replace(PREFIX, "");
-                var claims = Jwts.parserBuilder()
-                        .setSigningKey(SIGNING_KEY)
-                        .build()
-                        .parseClaimsJws(token)
-                        .getBody();
+            // "Bearer " 접두어를 제거하고 순수 토큰만 남김
+            String token = header.replace(PREFIX, "");
+            var claims = Jwts.parserBuilder()
+                    .setSigningKey(SIGNING_KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
 
-                String loginId = claims.getSubject();
-                String role = claims.get("role", String.class);
+            String memberId = claims.getSubject();
+            String role = claims.get("role", String.class);
 
             // 아이디가 존재하면 반환
-            if (loginId != null && role != null) {
+            if (memberId != null && role != null) {
                 return Map.of(
-                        "loginId", loginId,
+                        "memberId", memberId,
                         "role", role
                 );
             }
