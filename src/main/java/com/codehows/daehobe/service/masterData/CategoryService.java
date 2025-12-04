@@ -2,6 +2,7 @@ package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
 import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.repository.masterData.CategoryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,16 +32,29 @@ public class CategoryService {
         return dtoList;
     }
 
-    public Long createCategory(MasterDataDto masterDataDto) {
+    public Category createCategory(MasterDataDto masterDataDto) {
+        String categoryName = masterDataDto.getName();
+
+        // 중복 체크
+        if (categoryRepository.existsByName(categoryName)) {
+            throw new IllegalArgumentException("이미 존재하는 카테고리입니다: " + categoryName);
+        }
+
         Category category = Category.builder()
-                .name(masterDataDto.getName())
+                .name(categoryName)
                 .build();
-        categoryRepository.save(category);
-        return category.getId();
+
+        try {
+            return categoryRepository.save(category);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         categoryRepository.delete(category);
     }
+
+
 }
