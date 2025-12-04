@@ -42,12 +42,12 @@ public class IssueDto {
         return IssueDto.builder()
                 .title(issue.getTitle())
                 .content(issue.getContent())
-                .status(issue.getStatus())
-                .categoryId(issue.getCategoryId())
+                .status(String.valueOf(issue.getStatus()))
+//                .categoryId(issue.getCategoryId())
                 .startDate(issue.getStartDate())
                 .endDate(issue.getEndDate())
                 .departmentIds(departmentIds)
-                .memberIds(memberIds)
+//                .memberIds(memberIds)
                 .isDel(issue.isDel())
                 .build();
     }
