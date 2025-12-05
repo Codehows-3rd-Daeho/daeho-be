@@ -16,7 +16,7 @@ import java.util.List;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class PartMemberService {
+public class IssueMemberService {
 
     private final IssueRepository issueRepository;
     private final MemberRepository memberRepository;

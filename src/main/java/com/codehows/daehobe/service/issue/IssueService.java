@@ -67,7 +67,7 @@ public class IssueService {
 
 
         //부서
-        // 1. DTO에서 부서 이름 목록 (List<String>) 추출
+        // 1. DTO에서 부서 이름 목록 (List<Long>) 추출
         List<Long> departmentIds = issueDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
         if(departmentIds != null && !departmentIds.isEmpty()) {

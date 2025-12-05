@@ -16,11 +16,15 @@ public class PartMemberController {
 
     private final MemberService memberService;
 
+
+    //PartmemberController에서 멤버 컨트롤러로 이동
     @GetMapping("/list")
     public ResponseEntity<?> getPartMemberList() {
+
+        //user, 재직중
         System.out.println("참여자 컨트롤러 작동 확인");
         try {
-            List<PartMemberListDto> partMembers = memberService.findAll();
+            List<PartMemberListDto> partMembers = memberService.findByRoleAndIsEmployedTrue();
             return ResponseEntity.ok(partMembers);
         } catch (Exception e) {
             e.printStackTrace();
@@ -28,6 +32,7 @@ public class PartMemberController {
         }
     }
 
+    //프론트의 useAuthStore의 로그인 정보에 로그인id, 이름, 직급, role 포함으로 삭제
     @GetMapping("/{id}")
     public ResponseEntity<?> getHost(@PathVariable Long id) {
         try {
