@@ -38,7 +38,7 @@ public class IssueService {
     private final IssueMemberRepository issueMemberRepository;
     private final FileService fileService;
     private final IssueDepartmentService IssueDepartmentService;
-    private final PartMemberService issueMemberService;
+    private final IssueMemberService issueMemberService;
     private final CategoryService categoryService;
     private final FileRepository fileRepository;
     private final IssueDepartmentRepository issueDepartmentRepository;
