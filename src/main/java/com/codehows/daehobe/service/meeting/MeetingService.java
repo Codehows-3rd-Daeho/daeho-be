@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.meeting;
 
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.entity.masterData.Category;
@@ -64,7 +65,7 @@ public class MeetingService {
 
         //파일 저장
         if(multipartFiles != null) {
-            fileService.uploadFiles(saveMeeting.getMeetingId(),  multipartFiles);
+            fileService.uploadFiles(saveMeeting.getMeetingId(),  multipartFiles, TargetType.MEETING);
         }
 
         return saveMeeting;

@@ -149,13 +149,28 @@ public class MemberService {
     → 하나씩 DTO로 변환하고
     → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
      */
-    public List<PartMemberListDto> findAll() {
-        return memberRepository.findAll()
+//    public List<PartMemberListDto> findAll() {
+//        return memberRepository.findAll()
+//                .stream()
+//                .map(PartMemberListDto::fromEntity)
+//                .collect(Collectors.toList());
+//
+//    }
+
+    //user, 재직중
+    /*
+    DB에서 role이 "USER"이고 isEmployed가 true 인 Member 리스트를 가져옴
+    → 하나씩 DTO로 변환하고
+    → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
+     */
+    public List<PartMemberListDto> findByRoleAndIsEmployedTrue() {
+        return memberRepository.findByRoleAndIsEmployedTrue(Role.USER)
                 .stream()
                 .map(PartMemberListDto::fromEntity)
                 .collect(Collectors.toList());
 
     }
+
 
 
 }

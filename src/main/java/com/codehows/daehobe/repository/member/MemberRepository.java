@@ -1,4 +1,5 @@
 package com.codehows.daehobe.repository.member;
+import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.entity.member.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,4 +16,6 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     int countByJobPositionId(Long id);
 
     boolean existsByLoginIdAndIdNot(String loginId, Long memberId);
+
+    List<Member> findByRoleAndIsEmployedTrue(Role role);
 }
