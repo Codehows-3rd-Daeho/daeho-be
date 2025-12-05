@@ -4,6 +4,7 @@ import com.codehows.daehobe.entity.member.Member;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+// 참여자 목록 조회
 @Getter
 @AllArgsConstructor
 public class PartMemberListDto {

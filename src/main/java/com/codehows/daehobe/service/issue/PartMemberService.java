@@ -1,10 +1,9 @@
 package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
-import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
-import com.codehows.daehobe.repository.issue.PartMemberRepository;
+import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.*;
@@ -21,7 +20,7 @@ public class PartMemberService {
 
     private final IssueRepository issueRepository;
     private final MemberRepository memberRepository;
-    private final PartMemberRepository partMemberRepository;
+    private final IssueMemberRepository issueMemberRepository;
 
 
 
@@ -45,7 +44,7 @@ public class PartMemberService {
                         .build()
                 ).toList();
 
-        partMemberRepository.saveAll(issueMembers);
+        issueMemberRepository.saveAll(issueMembers);
 
         return issueMembers;
     }

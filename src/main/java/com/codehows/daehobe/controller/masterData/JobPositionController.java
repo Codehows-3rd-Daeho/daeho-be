@@ -3,10 +3,7 @@ package com.codehows.daehobe.controller.masterData;
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.service.masterData.JobPositionService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
