@@ -15,7 +15,7 @@ public class FileSettingController {
     private final FileSettingService fileSettingService;
 
     // 파일 용량
-    @GetMapping("/admin/file/size")
+    @GetMapping("/file/size")
     public ResponseEntity<?> getFileSize() {
         try {
             MasterDataDto dto = fileSettingService.getFileSize();
@@ -38,7 +38,7 @@ public class FileSettingController {
     }
 
     // 파일 확장자
-    @GetMapping("/admin/file/extension")
+    @GetMapping("/file/extension")
     public ResponseEntity<?> getExtensions() {
         try {
             List<MasterDataDto> dtoList = fileSettingService.getExtensions();

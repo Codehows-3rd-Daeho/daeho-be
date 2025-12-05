@@ -36,13 +36,13 @@ public class IssueDepartmentService {
 
 
         // 3. 이슈 부서 엔티티 생성 및 저장
-        List<IssueDepartment> newLinks = departments.stream()
+        List<IssueDepartment> issueDepartmentList = departments.stream()
                 .map(department -> new IssueDepartment(issue, department)) // IssueDepartment 객체 생성
                 .collect(Collectors.toList());
 
-        issueDepartmentRepository.saveAll(newLinks);
+        issueDepartmentRepository.saveAll(issueDepartmentList);
 
 
-        return newLinks;
+        return issueDepartmentList;
     }
 }
