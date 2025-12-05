@@ -15,6 +15,8 @@ import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
+import com.codehows.daehobe.service.masterData.DepartmentService;
+import com.codehows.daehobe.service.masterData.JobPositionService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,8 +35,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MemberService {
     private final MemberRepository memberRepository;
-    private final JobPositionRepository jobPositionRepository;
-    private final DepartmentRepository departmentRepository;
+    private final JobPositionService jobPositionService;
+    private final DepartmentService departmentService;
     private final PasswordEncoder passwordEncoder;
     private final FileService fileService;
     private final FileRepository fileRepository;
@@ -44,8 +46,8 @@ public class MemberService {
     private static final SecureRandom random = new SecureRandom();
 
     public Member createMember(@Valid MemberDto memberDto, List<MultipartFile> profileImage) {
-        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
-        Department dpt = getDepartment(memberDto.getDepartmentId());
+        JobPosition pos = jobPositionService.getJobPositionById(memberDto.getJobPositionId());
+        Department dpt = departmentService.getDepartmentById(memberDto.getDepartmentId());
 
         // DTO → Entity 변환
         Member member = Member.builder()
@@ -102,8 +104,8 @@ public class MemberService {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
 
-        JobPosition pos = getJobPosition(memberDto.getJobPositionId());
-        Department dpt = getDepartment(memberDto.getDepartmentId());
+        JobPosition pos = jobPositionService.getJobPositionById(memberDto.getJobPositionId());
+        Department dpt = departmentService.getDepartmentById(memberDto.getDepartmentId());
 
         member.update(memberDto, dpt, pos, passwordEncoder);
 
@@ -111,20 +113,6 @@ public class MemberService {
         fileService.updateFiles(member.getId(), newFiles, removeFileIds, TargetType.MEMBER);
 
         return member;
-    }
-
-
-    // ---------------------- private helper ----------------------
-    private JobPosition getJobPosition(Long id) {
-        return id == null ? null :
-                jobPositionRepository.findById(id)
-                        .orElseThrow(() -> new EntityNotFoundException("직급이 존재하지 않습니다."));
-    }
-
-    private Department getDepartment(Long id) {
-        return id == null ? null :
-                departmentRepository.findById(id)
-                        .orElseThrow(() -> new EntityNotFoundException("부서가 존재하지 않습니다."));
     }
 
     // 8자 영숫자 임시 비밀번호 생성
@@ -139,16 +127,12 @@ public class MemberService {
     //조회 후 Entity를 Dto로 변환하여 반환
     public PartMemberDto findHostById(Long id) {
         Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Member not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
 
         return PartMemberDto.fromEntity(member);
     }
 
-    /*
-    DB에서 Member 리스트를 가져옴
-    → 하나씩 DTO로 변환하고
-    → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
-     */
+    // 참여자 선택 모달의 회원 불러오기
     public List<PartMemberListDto> findAll() {
         return memberRepository.findAll()
                 .stream()

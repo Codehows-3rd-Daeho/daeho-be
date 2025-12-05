@@ -1,13 +1,11 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
-import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +18,12 @@ import java.util.List;
 public class JobPositionService {
     private final JobPositionRepository jobPositionRepository;
     private final MemberRepository memberRepository;
+
+    public JobPosition getJobPositionById(Long id) {
+        return id == null ? null :
+                jobPositionRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("직급이 존재하지 않습니다."));
+    }
 
     public List<MasterDataDto> findAll() {
         List<JobPosition> jobPositions = jobPositionRepository.findAll();

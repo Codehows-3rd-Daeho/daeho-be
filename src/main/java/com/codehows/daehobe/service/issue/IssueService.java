@@ -2,18 +2,31 @@ package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueDepartment;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.repository.file.FileRepository;
+import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
+import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
+import com.codehows.daehobe.repository.masterData.DepartmentRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.masterData.DepartmentService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,10 +35,14 @@ import java.util.List;
 public class IssueService {
 
     private final IssueRepository issueRepository;
+    private final IssueMemberRepository issueMemberRepository;
     private final FileService fileService;
     private final IssueDepartmentService IssueDepartmentService;
     private final PartMemberService issueMemberService;
-    final CategoryService categoryService;
+    private final CategoryService categoryService;
+    private final FileRepository fileRepository;
+    private final IssueDepartmentRepository issueDepartmentRepository;
+    private final MemberRepository memberRepository;
 
     public Issue createIssue(IssueDto issueDto , List<MultipartFile> multipartFiles) {
 
@@ -77,5 +94,38 @@ public class IssueService {
         }
 
         return saveIssue;
+    }
+
+    public IssueDtlDto getIssueDtl(Long id) {
+        // 이슈
+        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        // 주관자
+        IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
+        String hostWithPos = host.getMemberId().getName() + host.getMemberId().getJobPosition().getName();
+        // 이슈 파일
+        List<File> files = fileRepository.findByTargetIdAndTargetType(id,TargetType.ISSUE);
+        // 카테고리
+        Category category = categoryService.getCategoryById(issue.getCategoryId().getId());
+        // 부서들
+        List<IssueDepartment> dptList = issueDepartmentRepository.findByIssueId(issue);
+        List<String> departmentNames = new ArrayList<>();
+        for (IssueDepartment dpt : dptList) {
+            departmentNames.add(dpt.getDepartmentId().getName());
+        }
+
+        IssueDtlDto.builder()
+                .title(issue.getTitle())
+                .content(issue.getContent())
+                .status(String.valueOf(issue.getStatus()))
+                .host(hostWithPos)
+                .startDate(String.valueOf(issue.getStartDate()))
+                .endDate(String.valueOf(issue.getEndDate()))
+                .categoryName(category.getName())
+                .departmentName(departmentNames)
+                .createdAt(String.valueOf(issue.getCreatedAt()))
+                .updatedAt(String.valueOf(issue.getUpdatedAt()))
+                .build();
+
+        return new IssueDtlDto();
     }
 }
