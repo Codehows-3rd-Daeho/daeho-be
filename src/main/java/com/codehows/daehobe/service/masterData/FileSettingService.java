@@ -36,8 +36,8 @@ public class FileSettingService {
 
     @Transactional
     public void saveFileSize(MasterDataDto masterDataDto) {
-        Long newSize = Long.valueOf(masterDataDto.getName());
-        Long newSizeInBytes = newSize * BYTES_PER_MEGABYTE;
+        double newSizeMb = Double.parseDouble(masterDataDto.getName());
+        Long newSizeInBytes = Math.round(newSizeMb * BYTES_PER_MEGABYTE);
 
         // 기존 행 조회
         MaxFileSize existing = maxFileSizeRepository.findById(ROW_ID).orElse(null);

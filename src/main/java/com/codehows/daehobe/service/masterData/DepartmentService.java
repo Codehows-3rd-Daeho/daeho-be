@@ -18,6 +18,12 @@ import java.util.List;
 public class DepartmentService {
     private final DepartmentRepository departmentRepository;
 
+    public Department getDepartmentById(Long id) {
+        return id == null ? null :
+                departmentRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("부서가 존재하지 않습니다."));
+    }
+
     public List<MasterDataDto> findAll() {
         List<Department> dpts = departmentRepository.findAll();
         List<MasterDataDto> dtoList = new ArrayList<>();
