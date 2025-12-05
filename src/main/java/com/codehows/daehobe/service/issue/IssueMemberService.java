@@ -20,7 +20,7 @@ public class IssueMemberService {
 
     private final IssueRepository issueRepository;
     private final MemberRepository memberRepository;
-    private final IssueMemberRepository partMemberRepository;
+    private final IssueMemberRepository issueMemberRepository;
 
 
 
@@ -44,7 +44,7 @@ public class IssueMemberService {
                         .build()
                 ).toList();
 
-        partMemberRepository.saveAll(issueMembers);
+        issueMemberRepository.saveAll(issueMembers);
 
         return issueMembers;
     }

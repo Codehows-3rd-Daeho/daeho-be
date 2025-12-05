@@ -47,7 +47,7 @@ public class DummyDataLoader implements CommandLineRunner {
             if (memberRepository.findByLoginId(loginId).isEmpty()) {
                 Member member = Member.builder()
                         .loginId(loginId)
-                        .password(passwordEncoder.encode("1234"))
+                        .password(passwordEncoder.encode("12341234"))
                         .name("회원 " + i)
                         .department(defaultDept)
                         .jobPosition(defaultPos)

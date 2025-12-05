@@ -19,7 +19,8 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
     public Category getCategoryById(Long id) {
-        return categoryRepository.findById(id)
+        return id == null ? null :
+                categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
     }
 

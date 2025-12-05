@@ -1,6 +1,7 @@
 package com.codehows.daehobe.controller.member;
 
 import com.codehows.daehobe.dto.member.LoginDto;
+import com.codehows.daehobe.dto.member.LoginResponseDto;
 import com.codehows.daehobe.service.member.LoginService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +32,12 @@ public class LoginController {
             String errorMessage = bindingResult.getFieldError().getDefaultMessage(); // 첫 번째 에러 메시지
             return ResponseEntity.badRequest().body(errorMessage);
         }
-        String jwtToken = loginService.login(loginDto);
+        LoginResponseDto response = loginService.login(loginDto);
 
         // 응답 헤더(Authorication)에 Bearer <JWT TOKEN VALUE> 형태로 응답
         // 이후 클라이언트는 이 토큰을 가지고 다른 API 요청시 Authorization 헤더에 넣어 인증을 받게됨.
         return ResponseEntity.ok()
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwtToken)
-                .build();
+                .body(response);
     }
 
 }
