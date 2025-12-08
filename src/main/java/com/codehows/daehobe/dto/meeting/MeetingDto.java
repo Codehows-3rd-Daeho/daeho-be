@@ -30,7 +30,8 @@ public class MeetingDto {
     private Long issueId;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime startDate;
-    private LocalDate endDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+    private LocalDateTime endDate;
     private Long categoryId;
     private List<Long> departmentIds;
     private List<MeetingMemberDto> members;

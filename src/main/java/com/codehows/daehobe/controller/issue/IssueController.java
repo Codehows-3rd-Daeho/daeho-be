@@ -35,4 +35,10 @@ public class IssueController {
         IssueDtlDto issueDtlDto = issueService.getIssueDtl(id);
         return ResponseEntity.ok(issueDtlDto);
     }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getIssueList(){
+        List<IssueDto> issueDto = issueService.getIssue();
+        return ResponseEntity.ok(issueDto);
+    }
 }

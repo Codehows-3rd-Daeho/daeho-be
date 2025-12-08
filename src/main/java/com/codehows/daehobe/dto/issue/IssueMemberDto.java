@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.issue;
 
+import com.codehows.daehobe.entity.issue.IssueMember;
 import lombok.*;
 
 // 이슈 참여자 등록 dto
@@ -15,4 +16,17 @@ public class IssueMemberDto {
     private boolean isHost;
     private boolean isPermitted;
     private boolean isRead;
+
+    //회의에서 이슈 조회시 사용
+    public static IssueMemberDto fromEntity(IssueMember entity) {
+        return IssueMemberDto.builder()
+                .memberId(entity.getMemberId().getId())                 // Long
+                .memberName(entity.getMemberId().getName())             // String
+                .departmentName(entity.getMemberId().getDepartment().getName()) // String
+                .isHost(entity.isHost())
+                .isPermitted(entity.isPermitted())
+                .isRead(entity.isRead())
+                .build();
+    }
+
 }

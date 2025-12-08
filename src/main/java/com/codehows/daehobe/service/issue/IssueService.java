@@ -11,6 +11,7 @@ import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueMemberRepository;
@@ -28,6 +29,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -128,4 +131,56 @@ public class IssueService {
 
         return new IssueDtlDto();
     }
+
+    //이슈 조회
+    public List<IssueDto> getIssue() {
+        List<Issue> issues = issueRepository.findAllByIsDelFalse();
+
+        return issues.stream()
+                .map(issue -> convertToDto(issue)) // 변환 메서드 호출
+                .toList();
+    }
+
+    private IssueDto convertToDto(Issue issue) {
+
+        // host 찾기
+        IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
+
+        // 부서 찾기
+        List<IssueDepartment> departmentIds = issueDepartmentRepository.findByIssueId(issue);
+
+        // 멤버 목록
+        List<IssueMember> members = issueMemberRepository.findAllByIssueId(issue);
+
+        return IssueDto.builder()
+                .title(issue.getTitle())
+                .content(issue.getContent())
+                .status(issue.getStatus().name())
+                //주관자
+                .host(
+                        Optional.ofNullable(host)
+                                .map(IssueMember::getMemberId)
+                                .map(Member::getName)
+                                .orElse(null)
+                )
+                .categoryId(issue.getCategoryId().getId())
+                .startDate(issue.getStartDate())
+                .endDate(issue.getEndDate())
+                //부서
+                .departmentIds(
+                        departmentIds.stream()
+                                .map(d -> d.getDepartmentId().getId())
+                                .toList()
+                )
+                //이슈 참여자
+                .members(
+                        members.stream()
+                                .map(IssueMemberDto::fromEntity)
+                                .toList()
+                )
+                .isDel(issue.isDel())
+                .build();
+    }
+
+
 }

@@ -8,4 +8,8 @@ import java.util.List;
 
 public interface IssueMemberRepository extends JpaRepository<IssueMember,Long> {
     IssueMember findByIssueIdAndIsHost(Issue issue, boolean b);
+
+    // 이슈의 모든 멤버
+    List<IssueMember> findAllByIssueId(Issue issue);
+
 }
