@@ -1,6 +1,7 @@
 package com.codehows.daehobe.entity.file;
 
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,7 +11,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class File {
+public class File extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

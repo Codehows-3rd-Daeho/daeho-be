@@ -1,5 +1,6 @@
 package com.codehows.daehobe.controller.issue;
 
+import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.service.issue.IssueService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,9 @@ public class IssueController {
 
     }
 
-    @GetMapping
-    public List<IssueDto> getAllIssue(){return issueService.findAllNoDel();}
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getIssueDtl(@PathVariable Long id){
+        IssueDtlDto issueDtlDto = issueService.getIssueDtl(id);
+        return ResponseEntity.ok(issueDtlDto);
+    }
 }

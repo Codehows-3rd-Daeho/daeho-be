@@ -26,8 +26,6 @@ public class IssueDto {
     private List<IssueMemberDto> members;
     private Boolean isDel;
 
-
-
     //Entity -> Dto
     public static IssueDto fromEntity(Issue issue) {
 

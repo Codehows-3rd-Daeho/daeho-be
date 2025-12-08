@@ -2,6 +2,9 @@ package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.config.jwt.JwtService;
 import com.codehows.daehobe.dto.member.LoginDto;
+import com.codehows.daehobe.dto.member.LoginResponseDto;
+import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -9,12 +12,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class LoginService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final MemberRepository memberRepository;
 
     /**
      * 로그인 처리 후 JWT 발급
@@ -22,7 +28,7 @@ public class LoginService {
      * @param loginDto 로그인 요청 DTO
      * @return 발급된 JWT 토큰
      */
-    public String login(LoginDto loginDto) {
+    public LoginResponseDto login(LoginDto loginDto) {
 
         // 1. user의 id pw 정보를 기반으로 UsernamePasswordAuthenticationToken을 생성 (인증용 토큰)
         UsernamePasswordAuthenticationToken authToken =
@@ -45,8 +51,21 @@ public class LoginService {
                 .orElse(null);
 
         // 5. 최종 반환된 Authentication(인증된 유저 정보)를 기반으로 JWT TOKEN 발급
-        String jwtToken = jwtService.generateToken(authentication.getName(),role);
+        String jwtToken = "Bearer " + jwtService.generateToken(authentication.getName(),role);
 
-        return jwtToken;
+        Member member = memberRepository.findByLoginId(loginDto.getLoginId())
+                .orElseThrow(() -> new RuntimeException("회원 없음"));
+
+        return LoginResponseDto.builder()
+                .token(jwtToken)
+                .memberId(member.getId())
+                .name(member.getName())
+                .jobPosition(
+                        Optional.ofNullable(member.getJobPosition())
+                                .map(job -> job.getName())
+                                .orElse("") // null이면 빈 문자열로 대체
+                )
+                .role(String.valueOf(member.getRole()))
+                .build();
     }
 }
