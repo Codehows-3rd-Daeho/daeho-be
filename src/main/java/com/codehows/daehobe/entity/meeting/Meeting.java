@@ -5,6 +5,7 @@ import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.masterData.Category;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "meeitng")
@@ -41,9 +43,10 @@ public class Meeting extends BaseEntity {
     private Category categoryId;
 
     @Column(name = "start_date", nullable = false)
-    private LocalDate startDate;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
+    private LocalDateTime startDate;
 
-    @Column(name = "end_date")
+    @Column(name = "end_date", nullable = true)
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)

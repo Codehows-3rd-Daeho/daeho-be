@@ -26,23 +26,5 @@ public class IssueDto {
     private List<IssueMemberDto> members;
     private Boolean isDel;
 
-    //Entity -> Dto
-//    public static IssueDto fromEntity(Issue issue) {
-//
-//        return IssueDto.builder()
-//                .title(issue.getTitle())
-//                .content(issue.getContent())
-//                .status(issue.getStatus().toString())
-////                .categoryIds(issue.getCategoryId())
-//                .startDate(issue.getStartDate())
-//                .endDate(issue.getEndDate())
-////                .department(issue.getDepartment())
-////                .members(issue.getMembers())
-//                .isDel(issue.isDel())
-//                .build();
-//    }
-
-
-
 }
 
