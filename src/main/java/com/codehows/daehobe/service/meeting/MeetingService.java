@@ -50,7 +50,7 @@ public class MeetingService {
                 .startDate(meetingDto.getStartDate())
                 .endDate(meetingDto.getEndDate())
                 .categoryId(categoryId)
-                .isDel(meetingDto.getIsDel())
+                .isDel(meetingDto.isDel())
                 .build();
 
         meetingRepository.save(saveMeeting);
