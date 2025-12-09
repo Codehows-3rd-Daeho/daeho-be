@@ -101,7 +101,7 @@ public class IssueService {
 
     public IssueDtlDto getIssueDtl(Long id) {
         // 이슈
-        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        Issue issue = issueRepository.findByIssueId(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
         // 주관자
         IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
         String hostWithPos = host.getMemberId().getName() + host.getMemberId().getJobPosition().getName();
@@ -133,12 +133,21 @@ public class IssueService {
     }
 
     //이슈 조회
-    public List<IssueDto> getIssue() {
+    public List<IssueDto> getIssueInMeeting() {
         List<Issue> issues = issueRepository.findAllByIsDelFalse();
 
         return issues.stream()
                 .map(issue -> convertToDto(issue)) // 변환 메서드 호출
                 .toList();
+    }
+
+    //선택된 이슈 조회
+    public IssueDto getSelectedINM(Long id) {
+        Issue issue = issueRepository.findByIssueIdAndIsDelFalse(id)
+                .orElseThrow(() -> new RuntimeException("삭제되지 않은 이슈가 존재하지 않습니다."));
+
+
+        return convertToDto(issue);
     }
 
     private IssueDto convertToDto(Issue issue) {
@@ -153,19 +162,20 @@ public class IssueService {
         List<IssueMember> members = issueMemberRepository.findAllByIssueId(issue);
 
         return IssueDto.builder()
+                .id(issue.getIssueId())//회의에서 이슈 get할때 필요
                 .title(issue.getTitle())
-                .content(issue.getContent())
+//                .content(issue.getContent())
                 .status(issue.getStatus().name())
-                //주관자
-                .host(
-                        Optional.ofNullable(host)
-                                .map(IssueMember::getMemberId)
-                                .map(Member::getName)
-                                .orElse(null)
-                )
+//                //주관자
+//                .host(
+//                        Optional.ofNullable(host)
+//                                .map(IssueMember::getMemberId)
+//                                .map(Member::getName)
+//                                .orElse(null)
+//                )
                 .categoryId(issue.getCategoryId().getId())
-                .startDate(issue.getStartDate())
-                .endDate(issue.getEndDate())
+//                .startDate(issue.getStartDate())
+//                .endDate(issue.getEndDate())
                 //부서
                 .departmentIds(
                         departmentIds.stream()

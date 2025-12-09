@@ -37,14 +37,16 @@ public class MeetingService {
         Category categoryId = categoryService.getCategoryById(meetingDto.getCategoryId());
 
         //2. Dto에서 issueId를 가져와 실제 엔티티 조회
-        Issue issueId = issueRepository.getIssueByIssueId(meetingDto.getIssueId());
+        Issue issue = issueRepository.findById(meetingDto.getIssueId())
+                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+
 
         //entity에 dto로 받은 값 넣기(builder 사용)
         Meeting saveMeeting = Meeting.builder()
                 .title(meetingDto.getTitle())
                 .content(meetingDto.getContent())
                 .status(Status.valueOf(meetingDto.getStatus()))
-                .issueId(issueId)
+                .issueId(issue)
                 .startDate(meetingDto.getStartDate())
                 .endDate(meetingDto.getEndDate())
                 .categoryId(categoryId)

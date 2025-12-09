@@ -37,8 +37,14 @@ public class IssueController {
     }
 
     @GetMapping("/list")
-    public ResponseEntity<?> getIssueList(){
-        List<IssueDto> issueDto = issueService.getIssue();
+    public ResponseEntity<?> getIssueInMeeting(){
+        List<IssueDto> issueDto = issueService.getIssueInMeeting();
+        return ResponseEntity.ok(issueDto);
+    }
+
+    @GetMapping("/list/{id}")
+    public ResponseEntity<?> getSelectedINM(@PathVariable Long id){
+        IssueDto issueDto = issueService.getSelectedINM(id);
         return ResponseEntity.ok(issueDto);
     }
 }

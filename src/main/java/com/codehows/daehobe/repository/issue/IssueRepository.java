@@ -7,9 +7,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueRepository extends JpaRepository<Issue,Long> {
-    Optional<Issue> findById(Long id);
+    Optional<Issue> findByIssueId(Long issueId);
 
-    Issue getIssueByIssueId(Long issueId);
 
     List<Issue> findAllByIsDelFalse();
+
+    Optional<Issue> findByIssueIdAndIsDelFalse(Long issueId);
+
+
 }
