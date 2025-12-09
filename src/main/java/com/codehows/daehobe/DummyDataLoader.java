@@ -1,90 +1,72 @@
-//package com.codehows.daehobe;
-//
-//
-//import com.codehows.daehobe.constant.Status;
-//import com.codehows.daehobe.entity.issue.Issue;
-//import com.codehows.daehobe.entity.issue.IssueDepartment;
-//import com.codehows.daehobe.entity.issue.IssueMember;
-//import com.codehows.daehobe.entity.masterData.Department;
-//import com.codehows.daehobe.entity.member.Member;
-//import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
-//import com.codehows.daehobe.repository.issue.IssueMemberRepository;
-//import com.codehows.daehobe.repository.issue.IssueRepository;
-//import com.codehows.daehobe.repository.masterData.DepartmentRepository;
-//import com.codehows.daehobe.repository.member.MemberRepository;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.context.annotation.Bean;
-//import org.springframework.context.annotation.Configuration;
-//
-//import java.time.LocalDate;
-//import java.util.Optional;
-//
-//@Configuration
-//public class DummyDataLoader {
-//
-//    @Bean
-//    public CommandLineRunner loadDummyData(
-//            IssueRepository issueRepository,
-//            IssueDepartmentRepository issueDepartmentRepository,
-//            IssueMemberRepository issueMemberRepository,
-//            MemberRepository memberRepository,
-//            DepartmentRepository departmentRepository
-//    ) {
-//        return args -> {
-//
-//            // 🔒 이미 생성된 더미(또는 아무 Issue)가 있으면 스킵
-//            if (issueRepository.count() > 0) {
-//                System.out.println("📌 DummyDataLoader: Issue already exists. Skip loading.");
-//                return;
-//            }
-//
-//            // 🔍 특정 제목으로 체크하는 방식도 가능
-//            Optional<Issue> exist = issueRepository.findByTitle("서버 성능 개선 작업");
-//            if (exist.isPresent()) {
-//                System.out.println("📌 DummyDataLoader: Dummy issue already exists. Skip.");
-//                return;
-//            }
-//
-//            System.out.println("📌 DummyDataLoader: Creating issue dummy...");
-//
-//            // 🔹 Member ID = 2
-//            Member member = memberRepository.findById(2L)
-//                    .orElseThrow(() -> new RuntimeException("Member 2 not found"));
-//
-//            // 🔹 Department ID = 1
-//            Department department = departmentRepository.findById(1L)
-//                    .orElseThrow(() -> new RuntimeException("Department 1 not found"));
-//
-//            // 🔹 Issue 생성
-//            Issue issue = Issue.builder()
-//                    .title("서버 성능 개선 작업")
-//                    .content("서버 응답 속도 개선을 위한 최적화 작업 진행")
-//                    .status(Status.IN_PROGRESS)
-//                    .categoryId(1L,)
-//                    .startDate(LocalDate.of(2025, 11, 28))
-//                    .endDate(LocalDate.of(2025, 12, 5))
-//                    .isDel(false)
-//                    .build();
-//
-//            issueRepository.save(issue);
-//
-//            // 🔹 Issue - Department 매핑
-//            IssueDepartment issueDept = IssueDepartment.builder()
-//                    .issueId(issue)
-//                    .departmentId(department)
-//                    .build();
-//
-//            issueDepartmentRepository.save(issueDept);
-//
-//            // 🔹 Issue - Member 매핑
-//            IssueMember issueMember = IssueMember.builder()
-//                    .issueId(issue)
-//                    .memberId(member)
-//                    .build();
-//
-//            issueMemberRepository.save(issueMember);
-//
-//            System.out.println("🎉 DummyDataLoader: Issue dummy created successfully!");
-//        };
-//    }
-//}
+package com.codehows.daehobe;
+
+import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.issue.IssueRepository;
+import com.codehows.daehobe.repository.masterData.CategoryRepository;
+import com.codehows.daehobe.repository.masterData.DepartmentRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+
+@Component("dummyDataLoaderV2")
+@RequiredArgsConstructor
+public class DummyDataLoader implements CommandLineRunner {
+
+    private final IssueRepository issueRepository;
+    private final CategoryRepository categoryRepository;
+    private final DepartmentRepository departmentRepository;
+    private final MemberRepository memberRepository;
+
+    @Override
+    public void run(String... args) {
+
+        // 🔥 이미 issue 가 존재하면 더미 생성 안 함
+        if (issueRepository.count() > 0) return;
+
+        // ----------------------------------------
+        // 🔽 이미 DB에 존재하는 데이터 사용
+        // ----------------------------------------
+
+        Category category = categoryRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("카테고리 1번 없음"));
+
+        Department dept1 = departmentRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("부서 1번 없음"));
+
+        Department dept2 = departmentRepository.findById(2L)
+                .orElseThrow(() -> new RuntimeException("부서 2번 없음"));
+
+        Member member1 = memberRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("멤버 1번 없음"));
+
+        Member member2 = memberRepository.findById(2L)
+                .orElseThrow(() -> new RuntimeException("멤버 2번 없음"));
+
+        // ----------------------------------------
+        // 🔥 더미 Issue 생성
+        // ----------------------------------------
+        Issue issue = Issue.builder()
+                .title("더미 이슈 제목")
+                .content("더미 이슈 내용입니다.")
+                .status(Status.IN_PROGRESS)
+                .categoryId(category)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .endDate(LocalDate.of(2025, 12, 9))
+                .isDel(false)
+                .build();
+
+        issueRepository.save(issue);
+
+
+        issueRepository.save(issue);
+
+        System.out.println("🔥 더미 Issue 생성 완료");
+    }
+}

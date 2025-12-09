@@ -25,32 +25,5 @@ public class IssueDto {
     private List<Long> departmentIds;
     private List<IssueMemberDto> members;
     private Boolean isDel;
-
-    //Entity -> Dto
-    public static IssueDto fromEntity(Issue issue) {
-
-        List<Long> departmentIds = issue.getIssueDepartments().stream()
-                .map(id -> id.getDepartmentId().getId())
-                .toList();
-
-        List<Long> memberIds = issue.getIssueMembers().stream()
-                .map(id -> id.getMemberId().getId())
-                .toList();
-
-        return IssueDto.builder()
-                .title(issue.getTitle())
-                .content(issue.getContent())
-                .status(String.valueOf(issue.getStatus()))
-//                .categoryId(issue.getCategoryId())
-                .startDate(issue.getStartDate())
-                .endDate(issue.getEndDate())
-                .departmentIds(departmentIds)
-//                .memberIds(memberIds)
-                .isDel(issue.isDel())
-                .build();
-    }
-
-
-
 }
 
