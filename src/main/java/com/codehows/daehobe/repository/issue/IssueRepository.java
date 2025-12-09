@@ -30,6 +30,7 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
     @Query("""
     SELECT i FROM Issue i
     WHERE i.status = 'IN_PROGRESS'
+        AND i.isDel = false 
     ORDER BY i.endDate ASC
 """)
     List<Issue> findInProgress();
@@ -39,12 +40,13 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
     SELECT i FROM Issue i
     WHERE i.status = 'IN_PROGRESS'
       AND i.endDate < CURRENT_DATE
+      AND i.isDel = false 
     ORDER BY i.endDate ASC
 """)
     List<Issue> findDelayed();
 
     // 완료 (최근 7일)
-    @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :sevenDaysAgo ORDER BY i.endDate DESC")
+    @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :sevenDaysAgo AND i.isDel = false ORDER BY i.endDate DESC")
     List<Issue> findRecentCompleted(@Param("sevenDaysAgo") LocalDate sevenDaysAgo);
 
 
