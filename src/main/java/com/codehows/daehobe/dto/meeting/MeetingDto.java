@@ -35,5 +35,5 @@ public class MeetingDto {
     private Long categoryId;
     private List<Long> departmentIds;
     private List<MeetingMemberDto> members;
-    private boolean isDel;
+    private Boolean  isDel;
 }
