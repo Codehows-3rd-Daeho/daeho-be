@@ -17,7 +17,7 @@ public class JwtService {
     // 예) Authorization Bearer <토큰값>
     static final String PREFIX = "Bearer ";
 //        static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;  // 86,400,000 시간 => 하루
-   static final long EXPIRATION_TIME = 24 * 60 * 1000;
+   static final long EXPIRATION_TIME = 2 * 60 * 60 * 1000; // 2시간
     // JWT 서명에 사용할 비밀키 (HS256 알고리즘 기반으로 랜덤 생성)
     static final Key SIGNING_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 

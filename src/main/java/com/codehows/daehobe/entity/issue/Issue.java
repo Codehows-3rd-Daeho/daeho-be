@@ -1,10 +1,15 @@
 package com.codehows.daehobe.entity.issue;
 
+import com.codehows.daehobe.dto.issue.IssueDto;
+import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.masterData.JobPosition;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 
@@ -43,6 +48,19 @@ public class Issue extends BaseEntity {
 
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
+
+    public void update(IssueDto issueDto, Category cate) {
+        this.title = issueDto.getTitle();
+        this.content = issueDto.getContent();
+        this.categoryId = cate;
+        this.startDate = issueDto.getStartDate();
+        this.endDate = issueDto.getEndDate();
+        this.status = Status.valueOf(issueDto.getStatus());
+    }
+
+    public void delete(){
+        this.isDel = true;
+    }
 
 
 }

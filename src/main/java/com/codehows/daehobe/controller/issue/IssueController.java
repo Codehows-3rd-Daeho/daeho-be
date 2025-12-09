@@ -2,13 +2,20 @@ package com.codehows.daehobe.controller.issue;
 
 import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
+import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.service.issue.IssueService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/issue")
@@ -20,8 +27,8 @@ public class IssueController {
     //<T>: 보낼 데이터
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
-            @RequestPart("data") IssueDto issueDto ,
-            @RequestPart(value = "file", required = false)List<MultipartFile> multipartFiles){
+            @RequestPart("data") IssueDto issueDto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
         System.out.println("==============이슈 등록 시작");
         issueService.createIssue(issueDto, multipartFiles);
@@ -31,8 +38,58 @@ public class IssueController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getIssueDtl(@PathVariable Long id){
-        IssueDtlDto issueDtlDto = issueService.getIssueDtl(id);
-        return ResponseEntity.ok(issueDtlDto);
+    public ResponseEntity<?> getIssueDtl(@PathVariable Long id, Authentication authentication) {
+        // 요청한 회원의 id
+        try {
+            Long memberId = Long.valueOf(authentication.getName());
+            IssueDtlDto issueDtlDto = issueService.getIssueDtl(id, memberId);
+            return ResponseEntity.ok(issueDtlDto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    //참여자 확인 미확인 업데이트
+    @PutMapping("/{id}/readStatus")
+    public ResponseEntity<?> updateReadStatus(@PathVariable Long id, Authentication authentication) {
+        try {
+            Long memberId = Long.valueOf(authentication.getName());
+            issueService.updateReadStatus(id, memberId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // 이슈 수정
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateIssue(
+            @PathVariable Long id,
+            @RequestPart("data") IssueDto issueDto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
+            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
+    ) {
+        try {
+            List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
+            List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
+            issueService.updateIssue(id, issueDto, newFiles, removeFileIds);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 수정 중 오류 발생");
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteIssue(@PathVariable Long id) {
+        try {
+            issueService.deleteIssue(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 삭제 중 오류 발생");
+        }
     }
 }

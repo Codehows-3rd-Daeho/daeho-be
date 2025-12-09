@@ -30,7 +30,7 @@ public class FileService {
     private final FileRepository fileRepository;
 
     // 파일 업로드
-    public void uploadFiles(Long targetId, List<MultipartFile> multipartFiles, TargetType targetType) {
+    public List<File> uploadFiles(Long targetId, List<MultipartFile> multipartFiles, TargetType targetType) {
         List<File> files = new ArrayList<>();
 
         for (MultipartFile multipartFile : multipartFiles) {
@@ -61,7 +61,7 @@ public class FileService {
             files.add(file);
         }
 
-        fileRepository.saveAll(files);
+        return fileRepository.saveAll(files);
     }
 
     /**
@@ -92,7 +92,7 @@ public class FileService {
     }
 
     // 실제 파일 삭제 + DB 삭제
-    private void deleteFiles(List<File> files) {
+    public void deleteFiles(List<File> files) {
         for (File file : files) {
             java.io.File f = new java.io.File(fileLocation, file.getSavedName());
             if (f.exists()) f.delete();
