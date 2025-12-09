@@ -32,18 +32,7 @@ public class PartMemberController {
         }
     }
 
-    //프론트의 useAuthStore의 로그인 정보에 로그인id, 이름, 직급, role 포함으로 삭제
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getHost(@PathVariable Long id) {
-        try {
-            PartMemberDto partMember = memberService.findHostById(id);
-            System.out.println("주관자 컨트롤러 작동 확인");
-            return ResponseEntity.ok(partMember);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("주관자 조회 중 오류 발생");
-        }
-    }
+    //주관자 조회 삭제
 
 
 }
