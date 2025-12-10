@@ -12,6 +12,8 @@ import java.util.List;
 @Builder
 @ToString
 public class IssueDto {
+
+    private Long id;//회의 등록시 사용
     private String title;
     private String content;
     private String status;
@@ -22,5 +24,6 @@ public class IssueDto {
     private List<Long> departmentIds;
     private List<IssueMemberDto> members;
     private Boolean isDel;
+
 }
 

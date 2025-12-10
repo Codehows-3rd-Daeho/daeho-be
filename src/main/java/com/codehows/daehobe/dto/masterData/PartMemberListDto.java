@@ -19,8 +19,8 @@ public class PartMemberListDto {
         return new PartMemberListDto(
                 member.getId(),
                 member.getName(),
-                member.getDepartment().getName(),
-                member.getJobPosition().getName() // Lazy라도 트랜잭션 내 safe
+                member.getDepartment()==null ? null : member.getDepartment().getName(),
+                member.getJobPosition()==null ? null : member.getJobPosition().getName() // Lazy라도 트랜잭션 내 safe
         );
     }
 

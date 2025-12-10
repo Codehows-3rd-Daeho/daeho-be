@@ -12,6 +12,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueRepository extends JpaRepository<Issue,Long> {
+    Optional<Issue> findByIssueId(Long issueId);
+
+
+    List<Issue> findAllByIsDelFalse();
+
+    Optional<Issue> findByIssueIdAndIsDelFalse(Long issueId);
     Optional<Issue> findById(Long id);
 
     // 이슈 리스트 조회용

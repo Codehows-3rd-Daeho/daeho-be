@@ -21,14 +21,16 @@ public class IssueMemberDto {
     @JsonProperty("isRead")
     private boolean read;
 
-    public static IssueMemberDto fromEntity(IssueMember issueMember) {
-        return new IssueMemberDto(
-                issueMember.getMemberId().getId(),
-                issueMember.getMemberId().getName()+" "+issueMember.getMemberId().getJobPosition().getName(),
-                issueMember.getMemberId().getDepartment().getName(),
-                issueMember.isHost(),
-                issueMember.isPermitted(),
-                issueMember.isRead()
-        );
+    //회의에서 이슈 조회시 사용
+    public static IssueMemberDto fromEntity(IssueMember entity) {
+        return IssueMemberDto.builder()
+                .memberId(entity.getMemberId().getId())                 // Long
+                .memberName(entity.getMemberId().getName())             // String
+                .departmentName(entity.getMemberId().getDepartment().getName()) // String
+                .isHost(entity.isHost())
+                .isPermitted(entity.isPermitted())
+                .isRead(entity.isRead())
+                .build();
     }
+
 }

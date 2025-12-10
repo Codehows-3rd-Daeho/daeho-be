@@ -133,4 +133,16 @@ public class IssueController {
             return ResponseEntity.status(500).body("이슈 삭제 중 오류 발생");
         }
     }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getIssueInMeeting(){
+        List<IssueDto> issueDto = issueService.getIssueInMeeting();
+        return ResponseEntity.ok(issueDto);
+    }
+
+    @GetMapping("/list/{id}")
+    public ResponseEntity<?> getSelectedINM(@PathVariable Long id){
+        IssueDto issueDto = issueService.getSelectedINM(id);
+        return ResponseEntity.ok(issueDto);
+    }
 }

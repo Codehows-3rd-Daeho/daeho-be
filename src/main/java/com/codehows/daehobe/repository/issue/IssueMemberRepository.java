@@ -10,6 +10,10 @@ import java.util.Optional;
 
 public interface IssueMemberRepository extends JpaRepository<IssueMember,Long> {
     IssueMember findByIssueIdAndIsHost(Issue issue, boolean b);
+
+    // 이슈의 모든 멤버
+    List<IssueMember> findAllByIssueId(Issue issue);
+
     Optional<IssueMember> findByIssueIdAndMemberId(Issue issue, Member member);
 
     List<IssueMember> findByIssueId(Issue issue);

@@ -10,6 +10,7 @@ import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
+import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
@@ -31,6 +32,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -103,7 +106,7 @@ public class IssueService {
 
     public IssueDtlDto getIssueDtl(Long id, Long memberId) {
         // 이슈
-        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        Issue issue = issueRepository.findByIssueId(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
         // 주관자
         IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
         String hostWithPos = (host != null)
@@ -152,6 +155,64 @@ public class IssueService {
 
     }
 
+    //이슈 조회
+    public List<IssueDto> getIssueInMeeting() {
+        List<Issue> issues = issueRepository.findAllByIsDelFalse();
+
+        return issues.stream()
+                .map(issue -> convertToDto(issue)) // 변환 메서드 호출
+                .toList();
+    }
+
+    //선택된 이슈 조회
+    public IssueDto getSelectedINM(Long id) {
+        Issue issue = issueRepository.findByIssueIdAndIsDelFalse(id)
+                .orElseThrow(() -> new RuntimeException("삭제되지 않은 이슈가 존재하지 않습니다."));
+
+
+        return convertToDto(issue);
+    }
+
+    private IssueDto convertToDto(Issue issue) {
+
+        // host 찾기
+        IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
+
+        // 부서 찾기
+        List<IssueDepartment> departmentIds = issueDepartmentRepository.findByIssueId(issue);
+
+        // 멤버 목록
+        List<IssueMember> members = issueMemberRepository.findAllByIssueId(issue);
+
+        return IssueDto.builder()
+                .id(issue.getIssueId())//회의에서 이슈 get할때 필요
+                .title(issue.getTitle())
+//                .content(issue.getContent())
+                .status(issue.getStatus().name())
+//                //주관자
+//                .host(
+//                        Optional.ofNullable(host)
+//                                .map(IssueMember::getMemberId)
+//                                .map(Member::getName)
+//                                .orElse(null)
+//                )
+                .categoryId(issue.getCategoryId().getId())
+//                .startDate(issue.getStartDate())
+//                .endDate(issue.getEndDate())
+                //부서
+                .departmentIds(
+                        departmentIds.stream()
+                                .map(d -> d.getDepartmentId().getId())
+                                .toList()
+                )
+                //이슈 참여자
+                .members(
+                        members.stream()
+                                .map(IssueMemberDto::fromEntity)
+                                .toList()
+                )
+                .isDel(issue.isDel())
+                .build();
     public void updateReadStatus(Long id, Long memberId) {
         Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
         Issue issue = issueRepository.findById(id).orElseThrow(EntityNotFoundException::new);
