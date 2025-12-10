@@ -1,5 +1,7 @@
 package com.codehows.daehobe.dto.issue;
 
+import com.codehows.daehobe.entity.issue.IssueMember;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 // 이슈 참여자 등록 dto
@@ -12,7 +14,21 @@ public class IssueMemberDto {
     private Long memberId;
     private String memberName;
     private String departmentName;
-    private boolean isHost;
-    private boolean isPermitted;
-    private boolean isRead;
+    @JsonProperty("isHost")
+    private boolean host;
+    @JsonProperty("isPermitted")
+    private boolean permitted;
+    @JsonProperty("isRead")
+    private boolean read;
+
+    public static IssueMemberDto fromEntity(IssueMember issueMember) {
+        return new IssueMemberDto(
+                issueMember.getMemberId().getId(),
+                issueMember.getMemberId().getName()+" "+issueMember.getMemberId().getJobPosition().getName(),
+                issueMember.getMemberId().getDepartment().getName(),
+                issueMember.isHost(),
+                issueMember.isPermitted(),
+                issueMember.isRead()
+        );
+    }
 }
