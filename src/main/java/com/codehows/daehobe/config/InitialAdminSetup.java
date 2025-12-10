@@ -41,7 +41,6 @@ public class InitialAdminSetup {
             if (memberRepository.findByLoginId(ADMIN_LOGIN_ID).isEmpty()) {
 
 
-
                 // 3. Member 엔티티 생성 및 비밀번호 인코딩
                 String encodedPassword = passwordEncoder.encode(ADMIN_PASSWORD);
 

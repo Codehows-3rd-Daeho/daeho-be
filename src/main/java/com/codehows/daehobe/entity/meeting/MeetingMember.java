@@ -19,23 +19,27 @@ import lombok.NoArgsConstructor;
 @Builder
 public class MeetingMember extends BaseEntity {
 
-        @Id
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "meeting_id", nullable = false)
-        private Meeting meetingId;
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meeting_id", nullable = false)
+    private Meeting meetingId;
 
-        @Id
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "member_id", nullable = false)
-        private Member memberId;
+    @Id
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member memberId;
 
-        @Column(name = "is_host", nullable = false)
-        private boolean isHost;
+    @Column(name = "is_host", nullable = false)
+    private boolean isHost;
 
-        @Column(name = "is_permitted", nullable = false)
-        private boolean isPermitted;
+    @Column(name = "is_permitted", nullable = false)
+    private boolean isPermitted;
 
-        @Column(name = "is_read", nullable = false)
-        private boolean isRead = false;
-        
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
+
+    public void updateIsRead(boolean isRead) {
+        this.isRead = isRead;
+    }
+
 }

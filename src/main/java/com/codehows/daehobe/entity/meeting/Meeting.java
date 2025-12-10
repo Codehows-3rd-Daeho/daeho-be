@@ -60,4 +60,19 @@ public class Meeting extends BaseEntity {
 
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
+
+    public void deleteMeeting(){
+        this.isDel = true;
+    }
+
+    public void saveMeetingMinutes(File file) {
+        this.fileId = file;
+        this.status = Status.COMPLETED;
+        this.endDate = LocalDate.now();
+    }
+
+    public void deleteMeetingMinutes() {
+        this.fileId = null;
+    }
+
 }

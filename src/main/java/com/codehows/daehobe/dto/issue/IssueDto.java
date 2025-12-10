@@ -1,11 +1,5 @@
 package com.codehows.daehobe.dto.issue;
 
-import com.codehows.daehobe.entity.issue.IssueMember;
-import com.codehows.daehobe.entity.masterData.Category;
-import com.codehows.daehobe.constant.Status;
-import com.codehows.daehobe.entity.issue.Issue;
-import com.codehows.daehobe.entity.masterData.Department;
-import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import lombok.*;
 
 import java.time.LocalDate;
