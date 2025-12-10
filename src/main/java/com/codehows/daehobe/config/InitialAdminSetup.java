@@ -41,7 +41,6 @@ public class InitialAdminSetup {
             if (memberRepository.findByLoginId(ADMIN_LOGIN_ID).isEmpty()) {
 
 
-
                 // 3. Member 엔티티 생성 및 비밀번호 인코딩
                 String encodedPassword = passwordEncoder.encode(ADMIN_PASSWORD);
 
@@ -66,7 +65,7 @@ public class InitialAdminSetup {
                         .phone("010-1111-1111")
                         .email("yyy@example.com")
                         .isEmployed(true)
-                        .role(Role.ADMIN)
+                        .role(Role.USER)
                         .build());
 
                 System.out.println("--- 초기 관리자 계정 생성 완료 (ID: " + ADMIN_LOGIN_ID + ", PW: " + ADMIN_PASSWORD + ") ---");

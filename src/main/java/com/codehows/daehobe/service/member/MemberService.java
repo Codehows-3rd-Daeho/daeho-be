@@ -123,14 +123,7 @@ public class MemberService {
                 .collect(Collectors.joining());
     }
 
-    //주관자 조회
-    //조회 후 Entity를 Dto로 변환하여 반환
-    public PartMemberDto findHostById(Long id) {
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
-
-        return PartMemberDto.fromEntity(member);
-    }
+    //주관자 조회 삭제
 
     /*
     DB에서 Member 리스트를 가져옴
