@@ -15,12 +15,12 @@ public class IssueMember extends BaseEntity {
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id", nullable = false)
-    private Issue issueId;
+    private Issue issue;
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member memberId;
+    private Member member;
 
     @Column(name = "is_host", nullable = false)
     private boolean isHost;

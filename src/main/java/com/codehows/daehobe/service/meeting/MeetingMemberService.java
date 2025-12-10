@@ -34,8 +34,8 @@ public class MeetingMemberService {
                 .orElseThrow(() -> new EntityNotFoundException("해당 ID의 이슈를 찾을 수 없습니다: " + meetingId));
         List<MeetingMember> meetingMembers = meetingMemberDtos.stream()
                         .map(dto -> MeetingMember.builder()
-                                .meetingId(meeting)
-                                .memberId(memberRepository.findById(dto.getMemberId())
+                                .meeting(meeting)
+                                .member(memberRepository.findById(dto.getId())
                                         .orElseThrow(() -> new EntityNotFoundException("member not found")))
                                 .isHost(dto.isHost())
                                 .isPermitted(dto.isPermitted())

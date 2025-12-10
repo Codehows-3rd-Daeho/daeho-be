@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface IssueDepartmentRepository extends JpaRepository<IssueDepartment,Long> {
-    List<IssueDepartment> findByIssueId(Issue issue);
+    List<IssueDepartment> findByIssue(Issue issue);
 
-    void deleteByIssueId(Issue issue);
+    void deleteByIssue(Issue issue);
 }
