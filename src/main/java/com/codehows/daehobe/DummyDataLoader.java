@@ -35,19 +35,19 @@ public class DummyDataLoader implements CommandLineRunner {
         // ----------------------------------------
 
         Category category = categoryRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("카테고리 1번 없음"));
+                .orElse(null);
 
         Department dept1 = departmentRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("부서 1번 없음"));
+                .orElse(null);
 
         Department dept2 = departmentRepository.findById(2L)
-                .orElseThrow(() -> new RuntimeException("부서 2번 없음"));
+                .orElse(null);
 
         Member member1 = memberRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("멤버 1번 없음"));
+                .orElse(null);
 
         Member member2 = memberRepository.findById(2L)
-                .orElseThrow(() -> new RuntimeException("멤버 2번 없음"));
+                .orElse(null);
 
         // ----------------------------------------
         // 🔥 더미 Issue 생성
