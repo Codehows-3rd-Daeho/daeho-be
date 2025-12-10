@@ -1,10 +1,15 @@
 package com.codehows.daehobe.entity.issue;
 
+import com.codehows.daehobe.dto.issue.IssueDto;
+import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.masterData.JobPosition;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -53,6 +58,18 @@ public class Issue extends BaseEntity {
     // 참여자 매핑 필드
     @OneToMany(mappedBy = "issueId", fetch = FetchType.LAZY)
     private List<IssueMember> issueMembers = new ArrayList<>();
+    public void update(IssueDto issueDto, Category cate) {
+        this.title = issueDto.getTitle();
+        this.content = issueDto.getContent();
+        this.categoryId = cate;
+        this.startDate = issueDto.getStartDate();
+        this.endDate = issueDto.getEndDate();
+        this.status = Status.valueOf(issueDto.getStatus());
+    }
+
+    public void delete(){
+        this.isDel = true;
+    }
 
 
 }

@@ -2,25 +2,22 @@ package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
-import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
-import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
-import com.codehows.daehobe.entity.masterData.Department;
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
 import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
-import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
-import com.codehows.daehobe.service.masterData.DepartmentService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -49,7 +47,9 @@ public class IssueService {
     private final IssueDepartmentRepository issueDepartmentRepository;
     private final MemberRepository memberRepository;
 
-    public Issue createIssue(IssueDto issueDto , List<MultipartFile> multipartFiles) {
+    public static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
+
+    public Issue createIssue(IssueDto issueDto, List<MultipartFile> multipartFiles) {
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
         Category categoryId = categoryService.getCategoryById(issueDto.getCategoryId());
@@ -75,7 +75,7 @@ public class IssueService {
         // 1. DTO에서 부서 이름 목록 (List<Long>) 추출
         List<Long> departmentIds = issueDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
-        if(departmentIds != null && !departmentIds.isEmpty()) {
+        if (departmentIds != null && !departmentIds.isEmpty()) {
             IssueDepartmentService.saveDepartment(saveIssue.getIssueId(), departmentIds);
             System.out.println("부서 서비스 작동 확인==================================");
         }
@@ -85,7 +85,7 @@ public class IssueService {
         // 1. DTO에서 참여자 이름 목록 (List<String>) 추출
         List<IssueMemberDto> issueMemberDtos = issueDto.getMembers();
         //2. 참여자 저장 서비스 호출
-        System.out.println("issueMemberDtos ================================"+ issueMemberDtos);
+        System.out.println("issueMemberDtos ================================" + issueMemberDtos);
         if (issueMemberDtos != null && !issueMemberDtos.isEmpty()) {
             issueMemberService.saveIssueMember(saveIssue.getIssueId(), issueMemberDtos);
             System.out.println("참여자 서비스 작동 확인================================");
@@ -93,7 +93,7 @@ public class IssueService {
 
 
         //파일저장 서비스 호출
-        if(multipartFiles != null) {
+        if (multipartFiles != null) {
             fileService.uploadFiles(saveIssue.getIssueId(), multipartFiles, TargetType.ISSUE);
             System.out.println("파일 서비스 작동 확인================================");
         }
@@ -101,37 +101,97 @@ public class IssueService {
         return saveIssue;
     }
 
-    public IssueDtlDto getIssueDtl(Long id) {
+    public IssueDtlDto getIssueDtl(Long id, Long memberId) {
         // 이슈
         Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
         // 주관자
         IssueMember host = issueMemberRepository.findByIssueIdAndIsHost(issue, true);
-        String hostWithPos = host.getMemberId().getName() + host.getMemberId().getJobPosition().getName();
+        String hostWithPos = (host != null)
+                ? host.getMemberId().getName() + " " + host.getMemberId().getJobPosition().getName()
+                : null;
         // 이슈 파일
-        List<File> files = fileRepository.findByTargetIdAndTargetType(id,TargetType.ISSUE);
+        List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.ISSUE)
+                .stream()
+                .map(FileDto::fromEntity)
+                .toList();
         // 카테고리
-        Category category = categoryService.getCategoryById(issue.getCategoryId().getId());
+        String category = issue.getCategoryId().getName();
         // 부서들
-        List<IssueDepartment> dptList = issueDepartmentRepository.findByIssueId(issue);
-        List<String> departmentNames = new ArrayList<>();
-        for (IssueDepartment dpt : dptList) {
-            departmentNames.add(dpt.getDepartmentId().getName());
-        }
+        List<String> departmentNames = issueDepartmentRepository.findByIssueId(issue)
+                .stream()
+                .map(dpt -> dpt.getDepartmentId().getName())
+                .toList();
 
-        IssueDtlDto.builder()
+        // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
+        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
+        IssueMember issueMember = issueMemberRepository.findByIssueIdAndMemberId(issue, member).orElse(null);
+        boolean isEditPermitted = issueMember != null && issueMember.isPermitted(); //이 사용자에게 수정 권한이 있을 때만 true
+
+        // 참여자
+        List<IssueMemberDto> participantList = issueMemberRepository.findByIssueId(issue)
+                .stream()
+                .map(IssueMemberDto::fromEntity)
+                .toList();
+
+        return IssueDtlDto.builder()
                 .title(issue.getTitle())
                 .content(issue.getContent())
-                .status(String.valueOf(issue.getStatus()))
+                .fileList(fileDtoList)
+                .status(issue.getStatus().toString())
                 .host(hostWithPos)
                 .startDate(String.valueOf(issue.getStartDate()))
                 .endDate(String.valueOf(issue.getEndDate()))
-                .categoryName(category.getName())
+                .categoryName(category)
                 .departmentName(departmentNames)
-                .createdAt(String.valueOf(issue.getCreatedAt()))
-                .updatedAt(String.valueOf(issue.getUpdatedAt()))
+                .createdAt(issue.getCreatedAt().format(dateFormatter))
+                .updatedAt(issue.getUpdatedAt().format(dateFormatter))
+                .isDel(issue.isDel())
+                .isEditPermitted(isEditPermitted)
+                .participantList(participantList)
                 .build();
 
-        return new IssueDtlDto();
+    }
+
+    public void updateReadStatus(Long id, Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
+        Issue issue = issueRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        IssueMember issueMember = issueMemberRepository.findByIssueIdAndMemberId(issue, member).orElseThrow(EntityNotFoundException::new);
+        if (issueMember.isRead()) {
+            return;
+        }
+        issueMember.updateIsRead(true);
+    }
+
+
+    public Issue updateIssue(Long id, IssueDto issueDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
+        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        Category category = categoryService.getCategoryById(issueDto.getCategoryId());
+        issue.update(issueDto, category);
+
+        // 이슈 부서 엔티티 삭제 후 추가
+        issueDepartmentRepository.deleteByIssueId(issue);
+        List<Long> departmentIds = issueDto.getDepartmentIds();
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            IssueDepartmentService.saveDepartment(id, departmentIds);
+        }
+
+        // 이슈 참여자 엔티티 삭제 후 추가
+        issueMemberRepository.deleteByIssueId(issue);
+        List<IssueMemberDto> issueMemberDtos = issueDto.getMembers();
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()) {
+            issueMemberService.saveIssueMember(id, issueMemberDtos);
+        }
+
+        // 파일 업데이트
+        if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
+            fileService.updateFiles(id, newFiles, removeFileIds, TargetType.ISSUE);
+        }
+        return issue;
+    }
+
+    public void deleteIssue(Long id) {
+        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        issue.delete();
     }
 
     // 이슈 전체 조회(삭제X)
