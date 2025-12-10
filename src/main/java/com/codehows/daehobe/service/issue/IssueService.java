@@ -8,6 +8,7 @@ import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.masterData.Department;
@@ -213,6 +214,8 @@ public class IssueService {
                 )
                 .isDel(issue.isDel())
                 .build();
+    }
+
     public void updateReadStatus(Long id, Long memberId) {
         Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
         Issue issue = issueRepository.findById(id).orElseThrow(EntityNotFoundException::new);

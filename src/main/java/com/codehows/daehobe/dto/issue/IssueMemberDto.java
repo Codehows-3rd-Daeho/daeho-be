@@ -27,9 +27,9 @@ public class IssueMemberDto {
                 .memberId(entity.getMemberId().getId())                 // Long
                 .memberName(entity.getMemberId().getName())             // String
                 .departmentName(entity.getMemberId().getDepartment().getName()) // String
-                .isHost(entity.isHost())
-                .isPermitted(entity.isPermitted())
-                .isRead(entity.isRead())
+                .host(entity.isHost())
+                .permitted(entity.isPermitted())
+                .read(entity.isRead())
                 .build();
     }
 

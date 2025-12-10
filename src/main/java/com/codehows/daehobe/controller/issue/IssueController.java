@@ -134,7 +134,7 @@ public class IssueController {
         }
     }
 
-    @GetMapping("/list")
+    @GetMapping("/list/v2")
     public ResponseEntity<?> getIssueInMeeting(){
         List<IssueDto> issueDto = issueService.getIssueInMeeting();
         return ResponseEntity.ok(issueDto);

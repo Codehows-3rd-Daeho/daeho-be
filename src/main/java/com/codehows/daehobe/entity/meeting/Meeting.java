@@ -12,7 +12,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "meeting")
@@ -68,7 +70,7 @@ public class Meeting extends BaseEntity {
     public void saveMeetingMinutes(File file) {
         this.fileId = file;
         this.status = Status.COMPLETED;
-        this.endDate = LocalDate.now();
+        this.endDate = LocalDateTime.now();
     }
 
     public void deleteMeetingMinutes() {
