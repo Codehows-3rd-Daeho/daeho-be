@@ -1,27 +1,15 @@
 package com.codehows.daehobe.controller.issue;
 
-import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
-import com.codehows.daehobe.dto.issue.IssueListDto;
-import com.codehows.daehobe.dto.member.MemberListDto;
-import com.codehows.daehobe.dto.issue.IssueMemberDto;
-import com.codehows.daehobe.dto.member.MemberDto;
+import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.service.issue.IssueService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/issue")
@@ -33,58 +21,58 @@ public class IssueController {
     //<T>: 보낼 데이터
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
-            @RequestPart("data") IssueDto issueDto,
+            @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
         System.out.println("==============이슈 등록 시작");
-        issueService.createIssue(issueDto, multipartFiles);
+        issueService.createIssue(issueFormDto, multipartFiles);
 
         return ResponseEntity.ok().build();
 
     }
-
-    @GetMapping("/kanban")
-    public ResponseEntity<?> getKanbanData() {
-
-        var inProgress = issueService.getInProgress();       // 진행중 전체
-        var delayed = issueService.getDelayed();             // 미결 전체
-        var completed = issueService.getCompleted();         // 최근 7일 완료 전체
-
-        return ResponseEntity.ok(
-                new KanbanResponse(inProgress, delayed, completed)
-        );
-    }
-
-    // 내부 응답 DTO
-    record KanbanResponse(
-            List<IssueListDto> inProgress,
-            List<IssueListDto> delayed,
-            List<IssueListDto> completed
-    ){}
-
-    // 리스트 전체조회()
-    @GetMapping("/list")
-    public ResponseEntity<?> getIssues(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<IssueListDto> dtoList = issueService.findAll(pageable);
-            return ResponseEntity.ok(dtoList);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
-        }
-    }
+//
+//    @GetMapping("/kanban")
+//    public ResponseEntity<?> getKanbanData() {
+//
+//        var inProgress = issueService.getInProgress();       // 진행중 전체
+//        var delayed = issueService.getDelayed();             // 미결 전체
+//        var completed = issueService.getCompleted();         // 최근 7일 완료 전체
+//
+//        return ResponseEntity.ok(
+//                new KanbanResponse(inProgress, delayed, completed)
+//        );
+//    }
+//
+//    // 내부 응답 DTO
+//    record KanbanResponse(
+//            List<IssueListDto> inProgress,
+//            List<IssueListDto> delayed,
+//            List<IssueListDto> completed
+//    ){}
+//
+//    // 리스트 전체조회()
+//    @GetMapping("/list")
+//    public ResponseEntity<?> getIssues(
+//            @RequestParam(defaultValue = "0") int page,
+//            @RequestParam(defaultValue = "10") int size
+//    ) {
+//        try {
+//            Pageable pageable = PageRequest.of(page, size);
+//            Page<IssueListDto> dtoList = issueService.findAll(pageable);
+//            return ResponseEntity.ok(dtoList);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
+//        }
+//    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getIssueDtl(@PathVariable Long id, Authentication authentication) {
         // 요청한 회원의 id
         try {
             Long memberId = Long.valueOf(authentication.getName());
-            IssueDtlDto issueDtlDto = issueService.getIssueDtl(id, memberId);
-            return ResponseEntity.ok(issueDtlDto);
+            IssueDto issueDto = issueService.getIssueDtl(id, memberId);
+            return ResponseEntity.ok(issueDto);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
@@ -108,14 +96,14 @@ public class IssueController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateIssue(
             @PathVariable Long id,
-            @RequestPart("data") IssueDto issueDto,
+            @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
             @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
     ) {
         try {
             List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
             List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
-            issueService.updateIssue(id, issueDto, newFiles, removeFileIds);
+            issueService.updateIssue(id, issueFormDto, newFiles, removeFileIds);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -136,13 +124,13 @@ public class IssueController {
 
     @GetMapping("/list/v2")
     public ResponseEntity<?> getIssueInMeeting(){
-        List<IssueDto> issueDto = issueService.getIssueInMeeting();
-        return ResponseEntity.ok(issueDto);
+        List<IssueFormDto> issueFormDto = issueService.getIssueInMeeting();
+        return ResponseEntity.ok(issueFormDto);
     }
 
     @GetMapping("/list/{id}")
     public ResponseEntity<?> getSelectedINM(@PathVariable Long id){
-        IssueDto issueDto = issueService.getSelectedINM(id);
-        return ResponseEntity.ok(issueDto);
+        IssueFormDto issueFormDto = issueService.getSelectedINM(id);
+        return ResponseEntity.ok(issueFormDto);
     }
 }

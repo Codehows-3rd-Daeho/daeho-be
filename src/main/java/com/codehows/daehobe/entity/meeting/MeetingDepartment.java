@@ -36,11 +36,11 @@ public class MeetingDepartment extends BaseEntity {
         @Id
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "meeting_id", nullable = false)
-        private Meeting meetingId;
+        private Meeting meeting;
 
         @Id
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "department_id", nullable = false)
-        private Department departmentId;
+        private Department department;
 }
 

@@ -1,19 +1,13 @@
 package com.codehows.daehobe.entity.issue;
 
-import com.codehows.daehobe.dto.issue.IssueDto;
-import com.codehows.daehobe.dto.member.MemberDto;
+import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.constant.Status;
-import com.codehows.daehobe.entity.masterData.Department;
-import com.codehows.daehobe.entity.masterData.JobPosition;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "issue")
@@ -26,7 +20,7 @@ public class Issue extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "issue_id")
-    private Long issueId; // PK
+    private Long id; // PK
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -36,7 +30,7 @@ public class Issue extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private Category categoryId;
+    private Category category;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -51,20 +45,13 @@ public class Issue extends BaseEntity {
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
 
-    // 부서 매핑 필드
-    @OneToMany(mappedBy = "issueId", fetch = FetchType.LAZY)
-    private List<IssueDepartment> issueDepartments = new ArrayList<>();
-
-    // 참여자 매핑 필드
-    @OneToMany(mappedBy = "issueId", fetch = FetchType.LAZY)
-    private List<IssueMember> issueMembers = new ArrayList<>();
-    public void update(IssueDto issueDto, Category cate) {
-        this.title = issueDto.getTitle();
-        this.content = issueDto.getContent();
-        this.categoryId = cate;
-        this.startDate = issueDto.getStartDate();
-        this.endDate = issueDto.getEndDate();
-        this.status = Status.valueOf(issueDto.getStatus());
+    public void update(IssueFormDto issueFormDto, Category cate) {
+        this.title = issueFormDto.getTitle();
+        this.content = issueFormDto.getContent();
+        this.category = cate;
+        this.startDate = issueFormDto.getStartDate();
+        this.endDate = issueFormDto.getEndDate();
+        this.status = Status.valueOf(issueFormDto.getStatus());
     }
 
     public void delete(){

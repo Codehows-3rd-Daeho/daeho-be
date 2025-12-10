@@ -12,13 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueRepository extends JpaRepository<Issue,Long> {
-    Optional<Issue> findByIssueId(Long issueId);
-
+    Optional<Issue> findById(Long id);
 
     List<Issue> findAllByIsDelFalse();
 
-    Optional<Issue> findByIssueIdAndIsDelFalse(Long issueId);
-    Optional<Issue> findById(Long id);
+    Optional<Issue> findByIdAndIsDelFalse(Long id);
 
     // 이슈 리스트 조회용
     // 진행중 우선 가져오고 이후는 id순서

@@ -1,7 +1,7 @@
 package com.codehows.daehobe.controller.meeting;
 
 import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
-import com.codehows.daehobe.dto.meeting.MeetingDto;
+import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +20,11 @@ public class MeetingController {
 
     @PostMapping("/create")
     public ResponseEntity<?> createMeeting(
-            @RequestPart("data") MeetingDto meetingDto,
+            @RequestPart("data") MeetingFormDto meetingFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
         System.out.println("==============이슈 등록 시작");
-        meetingService.createMeeting(meetingDto, multipartFiles);
+        meetingService.createMeeting(meetingFormDto, multipartFiles);
 
         return ResponseEntity.ok().build();
 

@@ -12,6 +12,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Builder
 public class MeetingDepartmentId implements Serializable {
-    private Long meetingId;
-    private Long departmentId;
+    private Long meeting;
+    private Long department;
 }

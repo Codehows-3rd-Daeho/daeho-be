@@ -27,11 +27,11 @@ public class Meeting extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "meeting_id")
-    private Long meetingId; // PK
+    private Long id; // PK
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id")
-    private Issue issueId;
+    private Issue issue;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -41,7 +41,7 @@ public class Meeting extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private Category categoryId;
+    private Category category;
 
     @Column(name = "start_date", nullable = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
@@ -58,7 +58,7 @@ public class Meeting extends BaseEntity {
     // 회의록 id
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "file_id")
-    private File fileId;
+    private File file;
 
     @Column(name = "is_del", nullable = false)
     private boolean isDel = false;
@@ -68,13 +68,13 @@ public class Meeting extends BaseEntity {
     }
 
     public void saveMeetingMinutes(File file) {
-        this.fileId = file;
+        this.file = file;
         this.status = Status.COMPLETED;
         this.endDate = LocalDateTime.now();
     }
 
     public void deleteMeetingMinutes() {
-        this.fileId = null;
+        this.file = null;
     }
 
 }

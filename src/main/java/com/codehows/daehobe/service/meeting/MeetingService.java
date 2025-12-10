@@ -4,7 +4,7 @@ import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
-import com.codehows.daehobe.dto.meeting.MeetingDto;
+import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.entity.file.File;
@@ -47,51 +47,51 @@ public class MeetingService {
     private final MemberRepository memberRepository;
     private final FileRepository fileRepository;
 
-    public Meeting createMeeting(MeetingDto meetingDto, List<MultipartFile> multipartFiles) {
+    public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
 
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
-        Category categoryId = categoryService.getCategoryById(meetingDto.getCategoryId());
+        Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
         //2. Dto에서 issueId를 가져와 실제 엔티티 조회
-        Issue issue = issueRepository.findById(meetingDto.getIssueId())
+        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
                 .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
 
 
         //entity에 dto로 받은 값 넣기(builder 사용)
         Meeting saveMeeting = Meeting.builder()
-                .title(meetingDto.getTitle())
-                .content(meetingDto.getContent())
-                .status(Status.valueOf(meetingDto.getStatus()))
-                .issueId(issue)
-                .startDate(meetingDto.getStartDate())
-                .endDate(meetingDto.getEndDate())
-                .categoryId(categoryId)
-                .isDel(meetingDto.getIsDel())
+                .title(meetingFormDto.getTitle())
+                .content(meetingFormDto.getContent())
+                .status(Status.valueOf(meetingFormDto.getStatus()))
+                .issue(issue)
+                .startDate(meetingFormDto.getStartDate())
+                .endDate(meetingFormDto.getEndDate())
+                .category(categoryId)
+                .isDel(meetingFormDto.getIsDel())
                 .build();
 
         meetingRepository.save(saveMeeting);
 
         //회의 부서
         // 1. DTO에서 부서 이름 목록 (List<Long>) 추출
-        List<Long> departmentIds = meetingDto.getDepartmentIds();
+        List<Long> departmentIds = meetingFormDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
         if (departmentIds != null && !departmentIds.isEmpty()) {
-            meetingDepartmentService.saveDepartment(saveMeeting.getMeetingId(), departmentIds);
+            meetingDepartmentService.saveDepartment(saveMeeting.getId(), departmentIds);
         }
 
         //회의 참여자
         //  1. DTO에서 참여자 이름 목록 (List<String>) 추출
-        List<MeetingMemberDto> issueMemberDtos = meetingDto.getMembers();
+        List<MeetingMemberDto> issueMemberDtos = meetingFormDto.getMembers();
         //2. 참여자 저장 서비스 호출
         if (issueMemberDtos != null && !issueMemberDtos.isEmpty()) {
-            meetingMemberService.saveMeetingMember(saveMeeting.getMeetingId(), issueMemberDtos);
+            meetingMemberService.saveMeetingMember(saveMeeting.getId(), issueMemberDtos);
 
         }
 
         //파일 저장
         if (multipartFiles != null) {
-            fileService.uploadFiles(saveMeeting.getMeetingId(), multipartFiles, TargetType.MEETING);
+            fileService.uploadFiles(saveMeeting.getId(), multipartFiles, TargetType.MEETING);
         }
 
         return saveMeeting;
@@ -101,12 +101,12 @@ public class MeetingService {
         // 회의
         Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
         // 주관자
-        MeetingMember host = meetingMemberRepository.findByMeetingIdAndIsHost(meeting, true);
+        MeetingMember host = meetingMemberRepository.findByMeetingAndIsHost(meeting, true);
         String hostWithPos = (host != null)
-                ? host.getMemberId().getName() + " " + host.getMemberId().getJobPosition().getName()
+                ? host.getMember().getName() + " " + host.getMember().getJobPosition().getName()
                 : null;
         // 회의록
-        File minutesFile = meeting.getFileId();
+        File minutesFile = meeting.getFile();
         Long minutesFileId = (minutesFile != null) ? minutesFile.getFileId() : null;
         // 회의 파일
         List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.MEETING)
@@ -116,16 +116,16 @@ public class MeetingService {
                 .toList();
 
         // 관련 이슈
-        Issue issue = meeting.getIssueId();
-        Long issueId = (issue != null) ? issue.getIssueId() : null; // 이슈 id
+        Issue issue = meeting.getIssue();
+        Long issueId = (issue != null) ? issue.getId() : null; // 이슈 id
         String issueTitle = (issue != null) ? issue.getTitle() : null; // 이슈 제목
 
         // 카테고리
-        String categoryName = meeting.getCategoryId().getName();
+        String categoryName = meeting.getCategory().getName();
         // 부서들
-        List<String> departmentNames = meetingDepartmentRepository.findByMeetingId(meeting)
+        List<String> departmentNames = meetingDepartmentRepository.findByMeeting(meeting)
                 .stream()
-                .map(dpt -> dpt.getDepartmentId().getName())
+                .map(dpt -> dpt.getDepartment().getName())
                 .toList();
 
         // 회의록
@@ -133,11 +133,11 @@ public class MeetingService {
 
         // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
         Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
-        MeetingMember meetingMember = meetingMemberRepository.findByMeetingIdAndMemberId(meeting, member).orElse(null);
+        MeetingMember meetingMember = meetingMemberRepository.findByMeetingAndMember(meeting, member).orElse(null);
         boolean isEditPermitted = meetingMember != null && meetingMember.isPermitted(); //이 사용자에게 수정 권한이 있을 때만 true
 
         // 참여자
-        List<MeetingMemberDto> participantList = meetingMemberRepository.findByMeetingId(meeting)
+        List<MeetingMemberDto> participantList = meetingMemberRepository.findByMeeting(meeting)
                 .stream()
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
@@ -166,7 +166,7 @@ public class MeetingService {
     public void updateReadStatus(Long id, Long memberId) {
         Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
         Meeting meeting = meetingRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        MeetingMember meetingMember = meetingMemberRepository.findByMeetingIdAndMemberId(meeting, member).orElseThrow(EntityNotFoundException::new);
+        MeetingMember meetingMember = meetingMemberRepository.findByMeetingAndMember(meeting, member).orElseThrow(EntityNotFoundException::new);
         if (meetingMember.isRead()) {
             return;
         }
