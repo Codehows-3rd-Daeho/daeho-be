@@ -5,6 +5,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueDtlDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
+import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
@@ -20,9 +21,14 @@ import com.codehows.daehobe.service.masterData.CategoryService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -187,4 +193,39 @@ public class IssueService {
         Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
         issue.delete();
     }
+
+    // 이슈 전체 조회(삭제X)
+    public Page<IssueListDto> findAll(Pageable pageable) {
+        return issueRepository.findAllWithStatusSort(pageable)
+            .map(IssueListDto::fromEntity);
+    }
+
+    // 칸반 조회
+    // 진행중
+    public List<IssueListDto> getInProgress() {
+        return issueRepository.findInProgress()
+                .stream()
+                .map(IssueListDto::fromEntity)
+                .toList();
+    }
+
+    // 미결
+    public List<IssueListDto> getDelayed() {
+        return issueRepository.findDelayed()
+                .stream()
+                .map(IssueListDto::fromEntity)
+                .toList();
+    }
+
+    // 완료(최근 7일)
+    public List<IssueListDto> getCompleted() {
+        LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
+
+        return issueRepository.findRecentCompleted(sevenDaysAgo)
+                .stream()
+                .map(IssueListDto::fromEntity)
+                .toList();
+    }
+
+
 }
