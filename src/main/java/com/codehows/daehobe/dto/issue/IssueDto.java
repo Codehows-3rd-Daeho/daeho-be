@@ -36,6 +36,7 @@ public class IssueDto {
 
     @JsonProperty("isDel")
     private boolean del;
+
     @JsonProperty("isEditPermitted")
     private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
