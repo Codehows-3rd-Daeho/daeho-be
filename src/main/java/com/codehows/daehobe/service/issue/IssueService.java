@@ -98,7 +98,10 @@ public class IssueService {
         // 주관자
         IssueMember host = issueMemberRepository.findByIssueAndIsHost(issue, true);
         String hostName = (host != null) ? host.getMember().getName() : null;
-        String hostJPName = (host != null) ? host.getMember().getJobPosition().getName() : null;
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null)
+                ? host.getMember().getJobPosition().getName()
+                : null;
+
         // 이슈 파일
         List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.ISSUE)
                 .stream()
