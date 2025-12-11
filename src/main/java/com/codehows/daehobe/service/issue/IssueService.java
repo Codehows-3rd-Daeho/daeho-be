@@ -5,6 +5,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
+import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
@@ -21,9 +22,12 @@ import com.codehows.daehobe.service.masterData.CategoryService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -135,7 +139,7 @@ public class IssueService {
                 .departmentName(departmentNames)
                 .createdAt(issue.getCreatedAt().format(dateFormatter))
                 .updatedAt(issue.getUpdatedAt().format(dateFormatter))
-                .isDel(issue.isDel())
+                .del(issue.isDel())
                 .isEditPermitted(isEditPermitted)
                 .participantList(participantList)
                 .build();
@@ -244,38 +248,71 @@ public class IssueService {
         issue.delete();
     }
 
-//    // 이슈 전체 조회(삭제X)
-//    public Page<IssueListDto> findAll(Pageable pageable) {
-//        return issueRepository.findAllWithStatusSort(pageable)
-//            .map(IssueListDto::fromEntity);
-//    }
-//
-//    // 칸반 조회
-//    // 진행중
-//    public List<IssueListDto> getInProgress() {
-//        return issueRepository.findInProgress()
-//                .stream()
-//                .map(IssueListDto::fromEntity)
-//                .toList();
-//    }
-//
-//    // 미결
-//    public List<IssueListDto> getDelayed() {
-//        return issueRepository.findDelayed()
-//                .stream()
-//                .map(IssueListDto::fromEntity)
-//                .toList();
-//    }
-//
-//    // 완료(최근 7일)
-//    public List<IssueListDto> getCompleted() {
-//        LocalDate sevenDaysAgo = LocalDate.now().minusDays(7);
-//
-//        return issueRepository.findRecentCompleted(sevenDaysAgo)
-//                .stream()
-//                .map(IssueListDto::fromEntity)
-//                .toList();
-//    }
-//
+
+
+    public String getHostName(Issue issue) {
+
+        return issueMemberRepository.findAllByIssue(issue).stream()
+                            .filter(IssueMember::isHost)
+                            .findFirst()
+                            .map(h -> h.getMember().getName())
+                            .orElse(null);
+    }
+
+    public List<String> getDepartmentName(Issue issue) {
+        return issueDepartmentRepository.findByIssue(issue).stream()
+                .map(d -> d.getDepartment().getName())
+                .toList();
+    }
+
+    // 이슈 전체 조회(삭제X)
+    public Page<IssueListDto> findAll(Pageable pageable) {
+        Page<Issue> issues = issueRepository.findByIsDelFalse(pageable);
+
+        return issues.map(issue -> {
+            String hostName = getHostName(issue);
+            List<String> departmentName = getDepartmentName(issue);
+            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        });
+    }
+
+
+    // 칸반 조회
+    // 진행중
+    public List<IssueListDto> getInProgress() {
+        List<Issue> issues = issueRepository.findInProgress();
+
+        return issues.stream().map(issue -> {
+            String hostName = getHostName(issue);
+            List<String> departmentName = getDepartmentName(issue);
+            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        }).toList();
+
+    }
+
+    // 미결
+    public List<IssueListDto> getDelayed() {
+        List<Issue> issues = issueRepository.findDelayed();
+
+        return issues.stream().map(issue -> {
+            String hostName = getHostName(issue);
+            List<String> departmentName = getDepartmentName(issue);
+            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        }).toList();
+    }
+
+    // 완료(최근 7일)
+    public List<IssueListDto> getCompleted() {
+        LocalDate setDate = LocalDate.now().minusDays(7);
+
+        List<Issue> issues = issueRepository.findRecentCompleted(setDate);
+
+        return issues.stream().map(issue -> {
+            String hostName = getHostName(issue);
+            List<String> departmentName = getDepartmentName(issue);
+            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        }).toList();
+    }
+
 
 }

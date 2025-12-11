@@ -3,7 +3,7 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
+import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.repository.issue.IssueRepository;
@@ -97,7 +97,7 @@ public class MeetingService {
         return saveMeeting;
     }
 
-    public MeetingDtlDto getMeetingDtl(Long id, Long memberId) {
+    public MeetingDto getMeetingDtl(Long id, Long memberId) {
         // 회의
         Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
         // 주관자
@@ -142,7 +142,7 @@ public class MeetingService {
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        return MeetingDtlDto.builder()
+        return MeetingDto.builder()
                 .title(meeting.getTitle())
                 .content(meeting.getContent())
                 .fileList(fileDtoList)
