@@ -52,8 +52,16 @@ public class MeetingService {
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
         //2. Dto에서 issueId를 가져와 실제 엔티티 조회
-        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
-                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+//        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
+//                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+
+
+        Long issueId = meetingFormDto.getIssueId();
+        Issue issue = null;//이슈 없을 시 null값 사용
+        if (issueId != 0) {
+            issue = issueRepository.findById(issueId)
+                    .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+        }
 
 
         //entity에 dto로 받은 값 넣기(builder 사용)
