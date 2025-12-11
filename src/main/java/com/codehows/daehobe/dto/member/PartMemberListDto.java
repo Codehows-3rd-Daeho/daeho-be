@@ -1,4 +1,4 @@
-package com.codehows.daehobe.dto.masterData;
+package com.codehows.daehobe.dto.member;
 
 import com.codehows.daehobe.entity.member.Member;
 import lombok.AllArgsConstructor;

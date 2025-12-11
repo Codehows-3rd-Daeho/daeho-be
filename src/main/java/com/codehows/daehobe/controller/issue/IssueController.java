@@ -126,13 +126,13 @@ public class IssueController {
         }
     }
 
-    @GetMapping("/list/v2")
+    @GetMapping("/related")
     public ResponseEntity<?> getIssueInMeeting(){
         List<IssueFormDto> issueFormDto = issueService.getIssueInMeeting();
         return ResponseEntity.ok(issueFormDto);
     }
 
-    @GetMapping("/list/{id}")
+    @GetMapping("/related/{id}")
     public ResponseEntity<?> getSelectedINM(@PathVariable Long id){
         IssueFormDto issueFormDto = issueService.getSelectedINM(id);
         return ResponseEntity.ok(issueFormDto);

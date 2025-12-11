@@ -2,8 +2,7 @@ package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.constant.TargetType;
-import com.codehows.daehobe.dto.masterData.PartMemberDto;
-import com.codehows.daehobe.dto.masterData.PartMemberListDto;
+import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
 import com.codehows.daehobe.entity.file.File;
@@ -11,8 +10,6 @@ import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.file.FileRepository;
-import com.codehows.daehobe.repository.masterData.DepartmentRepository;
-import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.DepartmentService;

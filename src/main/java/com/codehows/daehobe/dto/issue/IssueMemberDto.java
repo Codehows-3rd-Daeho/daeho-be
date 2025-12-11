@@ -26,8 +26,16 @@ public class IssueMemberDto {
         return IssueMemberDto.builder()
                 .id(entity.getMember().getId())
                 .name(entity.getMember().getName())
-                .departmentName(entity.getMember().getDepartment().getName())
-                .jobPositionName(entity.getMember().getJobPosition().getName())
+                .departmentName(
+                        entity.getMember().getDepartment() == null
+                                ? null
+                                : entity.getMember().getDepartment().getName()
+                )
+                .jobPositionName(
+                        entity.getMember().getJobPosition() == null
+                                ? null
+                                : entity.getMember().getJobPosition().getName()
+                )
                 .host(entity.isHost())
                 .permitted(entity.isPermitted())
                 .read(entity.isRead())
