@@ -1,4 +1,4 @@
-package com.codehows.daehobe.controller.masterData;
+package com.codehows.daehobe.controller.member;
 
 import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.service.member.MemberService;
