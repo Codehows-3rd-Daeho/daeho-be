@@ -246,23 +246,6 @@ public class IssueService {
         issue.delete();
     }
 
-
-
-    public String getHostName(Issue issue) {
-
-        return issueMemberRepository.findAllByIssue(issue).stream()
-                            .filter(IssueMember::isHost)
-                            .findFirst()
-                            .map(h -> h.getMember().getName())
-                            .orElse(null);
-    }
-
-    public List<String> getDepartmentName(Issue issue) {
-        return issueDepartmentRepository.findByIssue(issue).stream()
-                .map(d -> d.getDepartment().getName())
-                .toList();
-    }
-
     // 이슈 전체 조회(삭제X)
     public Page<IssueListDto> findAll(Pageable pageable) {
         Page<Issue> issues = issueRepository.findByIsDelFalse(pageable);
@@ -270,7 +253,7 @@ public class IssueService {
         return issues.map(issue -> {
             String hostName = getHostName(issue);
             List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName,hostName);
+            return IssueListDto.fromEntity(issue, departmentName, hostName);
         });
     }
 
@@ -283,7 +266,7 @@ public class IssueService {
         return issues.stream().map(issue -> {
             String hostName = getHostName(issue);
             List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName,hostName);
+            return IssueListDto.fromEntity(issue, departmentName, hostName);
         }).toList();
 
     }
@@ -295,7 +278,7 @@ public class IssueService {
         return issues.stream().map(issue -> {
             String hostName = getHostName(issue);
             List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName,hostName);
+            return IssueListDto.fromEntity(issue, departmentName, hostName);
         }).toList();
     }
 
@@ -308,8 +291,27 @@ public class IssueService {
         return issues.stream().map(issue -> {
             String hostName = getHostName(issue);
             List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName,hostName);
+            return IssueListDto.fromEntity(issue, departmentName, hostName);
         }).toList();
+    }
+
+    // ============================================================================================
+    // 공통 로직
+    // 이슈 > 주관자 찾기
+    public String getHostName(Issue issue) {
+
+        return issueMemberRepository.findAllByIssue(issue).stream()
+                .filter(IssueMember::isHost)
+                .findFirst()
+                .map(h -> h.getMember().getName())
+                .orElse(null);
+    }
+
+    // 이슈 > 부서 찾기
+    public List<String> getDepartmentName(Issue issue) {
+        return issueDepartmentRepository.findByIssue(issue).stream()
+                .map(d -> d.getDepartment().getName())
+                .toList();
     }
 
 
