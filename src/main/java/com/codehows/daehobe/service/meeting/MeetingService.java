@@ -3,6 +3,8 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.dto.issue.IssueFormDto;
+import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
@@ -19,10 +21,13 @@ import com.codehows.daehobe.repository.meeting.MeetingMemberRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
+import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,6 +51,7 @@ public class MeetingService {
     private final MeetingDepartmentRepository meetingDepartmentRepository;
     private final MemberRepository memberRepository;
     private final FileRepository fileRepository;
+    private final IssueService issueService;
 
     public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
 
@@ -198,5 +204,24 @@ public class MeetingService {
         fileService.deleteFiles(List.of(file));
         meeting.deleteMeetingMinutes();
     }
+
+    // 미팅 조회
+    public Page<IssueListDto> findAll(Pageable pageable) {
+        Page<Issue> issues = issueRepository.findByIsDelFalse(pageable);
+
+        return issues.map(issue -> {
+            String hostName = getHostName(issue);
+            List<String> departmentName = getDepartmentName(issue);
+            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        });
+    }
+
+
+    // ====================================================================================
+    // 공통
+
+    //
+
+
 
 }
