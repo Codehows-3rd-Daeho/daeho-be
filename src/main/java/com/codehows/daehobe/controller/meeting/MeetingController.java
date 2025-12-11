@@ -1,6 +1,6 @@
 package com.codehows.daehobe.controller.meeting;
 
-import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
+import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +35,8 @@ public class MeetingController {
     public ResponseEntity<?> getMeetingDtl(@PathVariable Long id, Authentication authentication) {
         try {
             Long memberId = Long.valueOf(authentication.getName());
-            MeetingDtlDto meetingDtlDto = meetingService.getMeetingDtl(id, memberId);
-            return ResponseEntity.ok(meetingDtlDto);
+            MeetingDto meetingDto = meetingService.getMeetingDtl(id, memberId);
+            return ResponseEntity.ok(meetingDto);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();

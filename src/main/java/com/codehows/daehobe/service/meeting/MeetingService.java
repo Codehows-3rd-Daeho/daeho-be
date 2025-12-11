@@ -3,7 +3,7 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
+import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.repository.issue.IssueRepository;
@@ -28,8 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Objects;
-
-import static com.codehows.daehobe.service.issue.IssueService.dateFormatter;
 
 @Service
 @Transactional
@@ -97,14 +95,16 @@ public class MeetingService {
         return saveMeeting;
     }
 
-    public MeetingDtlDto getMeetingDtl(Long id, Long memberId) {
+    public MeetingDto getMeetingDtl(Long id, Long memberId) {
         // 회의
         Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
         // 주관자
         MeetingMember host = meetingMemberRepository.findByMeetingAndIsHost(meeting, true);
-        String hostWithPos = (host != null)
-                ? host.getMember().getName() + " " + host.getMember().getJobPosition().getName()
+        String hostName = (host != null) ? host.getMember().getName() : null;
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null)
+                ? host.getMember().getJobPosition().getName()
                 : null;
+
         // 회의록
         File minutesFile = meeting.getFile();
         Long minutesFileId = (minutesFile != null) ? minutesFile.getFileId() : null;
@@ -142,23 +142,24 @@ public class MeetingService {
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        return MeetingDtlDto.builder()
+        return MeetingDto.builder()
                 .title(meeting.getTitle())
                 .content(meeting.getContent())
                 .fileList(fileDtoList)
                 .status(meeting.getStatus().toString())
-                .host(hostWithPos)
+                .hostName(hostName)
+                .hostJPName(hostJPName)
                 .issueId(issueId)
                 .issueTitle(issueTitle)
-                .startDate(String.valueOf(meeting.getStartDate()))
-                .endDate(String.valueOf(meeting.getEndDate()))
+                .startDate(meeting.getStartDate())
+                .endDate(meeting.getEndDate())
                 .categoryName(categoryName)
                 .departmentName(departmentNames)
                 .meetingMinutes(meetingMinutes)
-                .createdAt(meeting.getCreatedAt().format(dateFormatter))
-                .updatedAt(meeting.getUpdatedAt().format(dateFormatter))
-                .isDel(meeting.isDel())
-                .isEditPermitted(isEditPermitted)
+                .createdAt(meeting.getCreatedAt())
+                .updatedAt(meeting.getUpdatedAt())
+                .del(meeting.isDel())
+                .editPermitted(isEditPermitted)
                 .participantList(participantList)
                 .build();
     }

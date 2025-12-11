@@ -42,8 +42,6 @@ public class IssueService {
     private final IssueDepartmentRepository issueDepartmentRepository;
     private final MemberRepository memberRepository;
 
-    public static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm");
-
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles) {
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
@@ -95,9 +93,8 @@ public class IssueService {
         Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
         // 주관자
         IssueMember host = issueMemberRepository.findByIssueAndIsHost(issue, true);
-        String hostWithPos = (host != null)
-                ? host.getMember().getName() + " " + host.getMember().getJobPosition().getName()
-                : null;
+        String hostName = (host != null) ? host.getMember().getName() : null;
+        String hostJPName = (host != null) ? host.getMember().getJobPosition().getName() : null;
         // 이슈 파일
         List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.ISSUE)
                 .stream()
@@ -128,15 +125,16 @@ public class IssueService {
                 .content(issue.getContent())
                 .fileList(fileDtoList)
                 .status(issue.getStatus().toString())
-                .hostName(hostWithPos)
+                .hostName(hostName)
+                .hostJPName(hostJPName)
                 .startDate(String.valueOf(issue.getStartDate()))
                 .endDate(String.valueOf(issue.getEndDate()))
                 .categoryName(category)
                 .departmentName(departmentNames)
-                .createdAt(issue.getCreatedAt().format(dateFormatter))
-                .updatedAt(issue.getUpdatedAt().format(dateFormatter))
-                .isDel(issue.isDel())
-                .isEditPermitted(isEditPermitted)
+                .createdAt(issue.getCreatedAt())
+                .updatedAt(issue.getUpdatedAt())
+                .del(issue.isDel())
+                .editPermitted(isEditPermitted)
                 .participantList(participantList)
                 .build();
 
