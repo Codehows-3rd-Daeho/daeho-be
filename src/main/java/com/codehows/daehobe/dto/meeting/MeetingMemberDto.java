@@ -20,15 +20,23 @@ public class MeetingMemberDto {
     @JsonProperty("isRead")
     private boolean read;
 
-    public static MeetingMemberDto fromEntity(MeetingMember meetingMember) {
-        return new MeetingMemberDto(
-                meetingMember.getMember().getId(),
-                meetingMember.getMember().getName(),
-                meetingMember.getMember().getJobPosition().getName(),
-                meetingMember.getMember().getDepartment().getName(),
-                meetingMember.isHost(),
-                meetingMember.isPermitted(),
-                meetingMember.isRead()
-        );
+    public static MeetingMemberDto fromEntity(MeetingMember entity) {
+        return MeetingMemberDto.builder()
+                .id(entity.getMember().getId())
+                .name(entity.getMember().getName())
+                .departmentName(
+                        entity.getMember().getDepartment() == null
+                                ? null
+                                : entity.getMember().getDepartment().getName()
+                )
+                .jobPositionName(
+                        entity.getMember().getJobPosition() == null
+                                ? null
+                                : entity.getMember().getJobPosition().getName()
+                )
+                .host(entity.isHost())
+                .permitted(entity.isPermitted())
+                .read(entity.isRead())
+                .build();
     }
 }

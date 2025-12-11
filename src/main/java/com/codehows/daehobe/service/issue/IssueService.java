@@ -135,8 +135,8 @@ public class IssueService {
                 .departmentName(departmentNames)
                 .createdAt(issue.getCreatedAt().format(dateFormatter))
                 .updatedAt(issue.getUpdatedAt().format(dateFormatter))
-                .isDel(issue.isDel())
-                .isEditPermitted(isEditPermitted)
+                .del(issue.isDel())
+                .editPermitted(isEditPermitted)
                 .participantList(participantList)
                 .build();
 

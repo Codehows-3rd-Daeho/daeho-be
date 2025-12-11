@@ -35,10 +35,10 @@ public class IssueDto {
     private String updatedAt;
 
     @JsonProperty("isDel")
-    private boolean isDel;
+    private boolean del;
 
     @JsonProperty("isEditPermitted")
-    private boolean isEditPermitted; // 요청자가 수정, 삭제 권한자인지
+    private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
     private List<IssueMemberDto> participantList; // 참여자
 

@@ -1,7 +1,6 @@
 package com.codehows.daehobe.controller.masterData;
 
-import com.codehows.daehobe.dto.masterData.PartMemberDto;
-import com.codehows.daehobe.dto.masterData.PartMemberListDto;
+import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +16,6 @@ public class PartMemberController {
     private final MemberService memberService;
 
 
-    //PartmemberController에서 멤버 컨트롤러로 이동
     @GetMapping("/list")
     public ResponseEntity<?> getPartMemberList() {
 

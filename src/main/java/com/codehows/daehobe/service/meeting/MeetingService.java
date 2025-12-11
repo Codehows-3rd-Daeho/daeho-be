@@ -3,7 +3,7 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
+import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.repository.issue.IssueRepository;
@@ -54,8 +54,16 @@ public class MeetingService {
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
         //2. Dto에서 issueId를 가져와 실제 엔티티 조회
-        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
-                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+//        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
+//                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+
+
+        Long issueId = meetingFormDto.getIssueId();
+        Issue issue = null;//이슈 없을 시 null값 사용
+        if (issueId != 0) {
+            issue = issueRepository.findById(issueId)
+                    .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+        }
 
 
         //entity에 dto로 받은 값 넣기(builder 사용)
@@ -97,7 +105,7 @@ public class MeetingService {
         return saveMeeting;
     }
 
-    public MeetingDtlDto getMeetingDtl(Long id, Long memberId) {
+    public MeetingDto getMeetingDtl(Long id, Long memberId) {
         // 회의
         Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
         // 주관자
@@ -142,7 +150,7 @@ public class MeetingService {
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        return MeetingDtlDto.builder()
+        return MeetingDto.builder()
                 .title(meeting.getTitle())
                 .content(meeting.getContent())
                 .fileList(fileDtoList)

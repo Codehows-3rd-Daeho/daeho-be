@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MeetingDtlDto {
+public class MeetingDto {
     // 왼쪽
     private String title;
     private String content;
