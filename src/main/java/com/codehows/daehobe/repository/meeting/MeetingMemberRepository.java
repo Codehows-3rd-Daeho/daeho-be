@@ -1,5 +1,6 @@
 package com.codehows.daehobe.repository.meeting;
 
+import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
@@ -15,4 +16,6 @@ public interface MeetingMemberRepository extends JpaRepository<MeetingMember, Lo
     List<MeetingMember> findByMeeting(Meeting meeting);
 
     Optional<MeetingMember> findByMeetingAndMember(Meeting meeting, Member member);
+
+    List<MeetingMember> findAllByMeeting(Meeting meeting);
 }

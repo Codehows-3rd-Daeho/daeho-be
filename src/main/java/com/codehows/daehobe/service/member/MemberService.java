@@ -5,6 +5,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
+import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
@@ -148,6 +149,23 @@ public class MemberService {
                 .collect(Collectors.toList());
 
     }
+
+    //============================================================================================================
+    // 공통
+
+    // memberId 찾기
+    public Member findMemberById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("멤버를 확인할 수 없습니다."));
+    }
+
+    // memberName 찾기
+    public String findMemberNameById(Long id) {
+        return findMemberById(id).getName();
+    }
+
+
+
 
 
 }
