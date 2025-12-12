@@ -12,13 +12,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueRepository extends JpaRepository<Issue,Long> {
-    Optional<Issue> findByIssueId(Long issueId);
 
+    Optional<Issue> findById(Long id);
 
     List<Issue> findAllByIsDelFalse();
 
-    Optional<Issue> findByIssueIdAndIsDelFalse(Long issueId);
-    Optional<Issue> findById(Long id);
+    Optional<Issue> findByIdAndIsDelFalse(Long id);
+
+    Page<Issue> findByIsDelFalse(Pageable pageable);
+
 
     // 이슈 리스트 조회용
     // 진행중 우선 가져오고 이후는 id순서
@@ -52,9 +54,6 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
     List<Issue> findDelayed();
 
     // 완료 (최근 7일)
-    @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :sevenDaysAgo AND i.isDel = false ORDER BY i.endDate DESC")
-    List<Issue> findRecentCompleted(@Param("sevenDaysAgo") LocalDate sevenDaysAgo);
-
-
-
+    @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :setDate AND i.isDel = false ORDER BY i.endDate DESC")
+    List<Issue> findRecentCompleted(@Param("setDate") LocalDate setDate);
 }

@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class MeetingMemberId {
-    private Long memberId;
-    private Long meetingId;
+    private Long member;
+    private Long meeting;
 }

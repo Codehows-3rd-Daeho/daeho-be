@@ -20,11 +20,11 @@ public class SetNotification extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "set_notification_id")
-    private Long setNotificationId; // PK
+    private Long id; // PK
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id")
-    private Issue issueId;
+    private Issue issue;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -34,5 +34,5 @@ public class SetNotification extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
-    private Category categoryId;
+    private Category category;
 }

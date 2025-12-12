@@ -1,9 +1,14 @@
 package com.codehows.daehobe.controller.meeting;
 
-import com.codehows.daehobe.dto.meeting.MeetingDtlDto;
+import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
+import com.codehows.daehobe.dto.meeting.MeetingFormDto;
+import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,11 +25,11 @@ public class MeetingController {
 
     @PostMapping("/create")
     public ResponseEntity<?> createMeeting(
-            @RequestPart("data") MeetingDto meetingDto,
+            @RequestPart("data") MeetingFormDto meetingFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
         System.out.println("==============이슈 등록 시작");
-        meetingService.createMeeting(meetingDto, multipartFiles);
+        meetingService.createMeeting(meetingFormDto, multipartFiles);
 
         return ResponseEntity.ok().build();
 
@@ -35,8 +40,8 @@ public class MeetingController {
     public ResponseEntity<?> getMeetingDtl(@PathVariable Long id, Authentication authentication) {
         try {
             Long memberId = Long.valueOf(authentication.getName());
-            MeetingDtlDto meetingDtlDto = meetingService.getMeetingDtl(id, memberId);
-            return ResponseEntity.ok(meetingDtlDto);
+            MeetingDto meetingDto = meetingService.getMeetingDtl(id, memberId);
+            return ResponseEntity.ok(meetingDto);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
@@ -87,6 +92,21 @@ public class MeetingController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getMeetings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<MeetingListDto> dtoList = meetingService.findAll(pageable);
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
         }
     }
 

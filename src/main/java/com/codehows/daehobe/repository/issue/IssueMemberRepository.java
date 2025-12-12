@@ -9,14 +9,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueMemberRepository extends JpaRepository<IssueMember,Long> {
-    IssueMember findByIssueIdAndIsHost(Issue issue, boolean b);
+    IssueMember findByIssueAndIsHost(Issue issue, boolean b);
 
     // 이슈의 모든 멤버
-    List<IssueMember> findAllByIssueId(Issue issue);
+    List<IssueMember> findAllByIssue(Issue issue);
 
-    Optional<IssueMember> findByIssueIdAndMemberId(Issue issue, Member member);
+    Optional<IssueMember> findByIssueAndMember(Issue issue, Member member);
 
-    List<IssueMember> findByIssueId(Issue issue);
+    List<IssueMember> findByIssue(Issue issue);
 
-    void deleteByIssueId(Issue issue);
+    void deleteByIssue(Issue issue);
 }
