@@ -36,7 +36,7 @@ public class MeetingMember extends BaseEntity {
     private boolean isPermitted;
 
     @Column(name = "is_read", nullable = false)
-    private boolean isRead = false;
+    private boolean isRead;
 
     public void updateIsRead(boolean isRead) {
         this.isRead = isRead;

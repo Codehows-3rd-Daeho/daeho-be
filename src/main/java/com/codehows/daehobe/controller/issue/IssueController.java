@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,8 +22,6 @@ import java.util.List;
 public class IssueController {
     private final IssueService issueService;
 
-    //ResponseEntity: HTTP 상태 코드, 헤더 등을 함께 설정 가능하게 하는 wrapper(다른 객체나 값을 감싸는 객체)
-    //<T>: 보낼 데이터
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
             @RequestPart("data") IssueFormDto issueFormDto,
@@ -52,7 +51,8 @@ public class IssueController {
             List<IssueListDto> inProgress,
             List<IssueListDto> delayed,
             List<IssueListDto> completed
-    ){}
+    ) {
+    }
 
     // 리스트 전체조회()
     @GetMapping("/list")
@@ -61,7 +61,7 @@ public class IssueController {
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
             Page<IssueListDto> dtoList = issueService.findAll(pageable);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
@@ -127,13 +127,13 @@ public class IssueController {
     }
 
     @GetMapping("/related")
-    public ResponseEntity<?> getIssueInMeeting(){
+    public ResponseEntity<?> getIssueInMeeting() {
         List<IssueFormDto> issueFormDto = issueService.getIssueInMeeting();
         return ResponseEntity.ok(issueFormDto);
     }
 
     @GetMapping("/related/{id}")
-    public ResponseEntity<?> getSelectedINM(@PathVariable Long id){
+    public ResponseEntity<?> getSelectedINM(@PathVariable Long id) {
         IssueFormDto issueFormDto = issueService.getSelectedINM(id);
         return ResponseEntity.ok(issueFormDto);
     }

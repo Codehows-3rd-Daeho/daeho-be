@@ -1,5 +1,8 @@
 package com.codehows.daehobe.dto.issue;
 
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueDepartment;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -22,6 +25,30 @@ public class IssueFormDto {
     private List<Long> departmentIds;
     private List<IssueMemberDto> members;
     private Boolean isDel;
+
+    public static IssueFormDto fromEntity(
+            Issue issue,
+            List<IssueDepartment> departments,
+            List<IssueMember> members
+    ) {
+        return IssueFormDto.builder()
+                .id(issue.getId())
+                .title(issue.getTitle())
+                .status(issue.getStatus().name())
+                .categoryId(issue.getCategory().getId())
+                .departmentIds(
+                        departments.stream()
+                                .map(d -> d.getDepartment().getId())
+                                .toList()
+                )
+                .members(
+                        members.stream()
+                                .map(IssueMemberDto::fromEntity)
+                                .toList()
+                )
+                .isDel(issue.isDel())
+                .build();
+    }
 
 }
 

@@ -61,7 +61,7 @@ public class Meeting extends BaseEntity {
     private File file;
 
     @Column(name = "is_del", nullable = false)
-    private boolean isDel = false;
+    private boolean isDel;
 
     public void deleteMeeting(){
         this.isDel = true;

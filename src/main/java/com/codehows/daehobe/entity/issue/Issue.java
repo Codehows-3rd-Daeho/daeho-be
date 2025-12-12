@@ -43,7 +43,7 @@ public class Issue extends BaseEntity {
     private Status status;
 
     @Column(name = "is_del", nullable = false)
-    private boolean isDel = false;
+    private boolean isDel;
 
     public void update(IssueFormDto issueFormDto, Category cate) {
         this.title = issueFormDto.getTitle();

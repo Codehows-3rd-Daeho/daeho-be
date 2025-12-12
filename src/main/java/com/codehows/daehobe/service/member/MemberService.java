@@ -24,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -71,7 +72,6 @@ public class MemberService {
         return member;
     }
 
-
     public Page<MemberListDto> findAll(Pageable pageable) {
         return memberRepository.findAll(pageable)
                 .map(MemberListDto::fromEntity);
@@ -96,9 +96,9 @@ public class MemberService {
     }
 
     public Member updateMember(Long id,
-                                        MemberDto memberDto,
-                                        List<MultipartFile> newFiles,
-                                        List<Long> removeFileIds) {
+            MemberDto memberDto,
+            List<MultipartFile> newFiles,
+            List<Long> removeFileIds) {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
 
@@ -121,51 +121,16 @@ public class MemberService {
                 .collect(Collectors.joining());
     }
 
-    //주관자 조회 삭제
-
-    /*
-    DB에서 Member 리스트를 가져옴
-    → 하나씩 DTO로 변환하고
-    → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
-     */
-//    public List<PartMemberListDto> findAll() {
-//        return memberRepository.findAll()
-//                .stream()
-//                .map(PartMemberListDto::fromEntity)
-//                .collect(Collectors.toList());
-//
-//    }
-
-    //user, 재직중
-    /*
-    DB에서 role이 "USER"이고 isEmployed가 true 인 Member 리스트를 가져옴
-    → 하나씩 DTO로 변환하고
-    → 변환된 DTO들을 한 번에 리스트로 담아서 반환하는 코드
-     */
+    // role이 "USER"이고 isEmployed가 true 인 Member 리스트
     public List<PartMemberListDto> findByRoleAndIsEmployedTrue() {
         return memberRepository.findByRoleAndIsEmployedTrue(Role.USER)
                 .stream()
                 .map(PartMemberListDto::fromEntity)
                 .collect(Collectors.toList());
-
     }
 
-    //============================================================================================================
-    // 공통
-
-    // memberId 찾기
-    public Member findMemberById(Long id) {
-        return memberRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("멤버를 확인할 수 없습니다."));
+    // 아이디로 멤버 찾기
+    public Member getMemberById(Long memberId) {
+        return memberRepository.findById(memberId).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
     }
-
-    // memberName 찾기
-    public String findMemberNameById(Long id) {
-        return findMemberById(id).getName();
-    }
-
-
-
-
-
 }
