@@ -37,8 +37,4 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # 포트 노출
 EXPOSE 8080
 
-# 환경변수 설정
-ENV JAVA_OPTS="-Xms512m -Xmx1024m"
-
-# 애플리케이션 실행
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
