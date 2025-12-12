@@ -100,9 +100,21 @@ public class FileService {
         fileRepository.deleteAll(files);
     }
 
+    // 파일id로 파일 찾기
+    public File getFileById(Long fileId) {
+        return fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("파일이 존재하지 않습니다."));
+    }
     // 이슈 파일 찾기
     public List<FileDto> getIssueFiles(Long issueId) {
         return fileRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE)
+                .stream()
+                .map(FileDto::fromEntity)
+                .toList();
+    }
+
+    // 회의 파일 찾기
+    public List<FileDto> getMeetingFiles(Long meetingId) {
+        return fileRepository.findByTargetIdAndTargetType(meetingId, TargetType.MEETING)
                 .stream()
                 .map(FileDto::fromEntity)
                 .toList();

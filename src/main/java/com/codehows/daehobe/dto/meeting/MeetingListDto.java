@@ -26,13 +26,14 @@ public class MeetingListDto {
     private String categoryName;         //  카테고리명
     private List<String> departmentName; //  참여 부서명 리스트
     private String hostName;             //  주관자 이름
+    private String hostJPName;          // 주관자 직급
 
     @JsonProperty("isDel")
     private boolean del;               // 삭제 여부
 
 
     // 주관자 부서명 빠진버전
-    public static MeetingListDto fromEntity(Meeting meeting, List<String> departmentName, String hostName) {
+    public static MeetingListDto fromEntity(Meeting meeting, List<String> departmentName, String hostName, String hostJPName) {
 
         return MeetingListDto.builder()
                 .id(meeting.getId())
@@ -44,6 +45,7 @@ public class MeetingListDto {
                 .del(meeting.isDel())
                 .departmentName(departmentName)
                 .hostName(hostName)
+                .hostJPName(hostJPName)
                 .build();
     }
 
