@@ -133,4 +133,8 @@ public class MemberService {
     public Member getMemberById(Long memberId) {
         return memberRepository.findById(memberId).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
     }
+
+    public String getMemberNameById(Long id) {
+        return getMemberById(id).getName();
+    }
 }

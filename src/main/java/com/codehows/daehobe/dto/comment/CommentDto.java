@@ -21,7 +21,7 @@ public class CommentDto {
     private String writerName;
 
     // 본문
-    private String comment;
+    private String content;
 
     // 생성시간
     private LocalDateTime createdAt;
@@ -36,7 +36,7 @@ public class CommentDto {
         return CommentDto.builder()
                 .id(comment.getId())
                 .writerName(writerName)
-                .comment(comment.getContent())
+                .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
                 .del(comment.isDel())
