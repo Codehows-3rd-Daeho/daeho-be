@@ -3,14 +3,10 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.issue.IssueFormDto;
-import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
-import com.codehows.daehobe.entity.issue.IssueMember;
-import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.masterData.Category;
@@ -21,10 +17,10 @@ import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.meeting.MeetingDepartmentRepository;
 import com.codehows.daehobe.repository.meeting.MeetingMemberRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
-import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.member.MemberService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -46,31 +42,18 @@ public class MeetingService {
     private final FileService fileService;
     private final MeetingDepartmentService meetingDepartmentService;
     private final MeetingMemberService meetingMemberService;
-    private final IssueRepository issueRepository;
-    private final MeetingMemberRepository meetingMemberRepository;
-    private final MeetingDepartmentRepository meetingDepartmentRepository;
-    private final MemberRepository memberRepository;
-    private final FileRepository fileRepository;
-
+    private final IssueService issueService;
+    private final MemberService memberService;
 
     public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
 
-
-        // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
-
-        //2. Dto에서 issueId를 가져와 실제 엔티티 조회
-//        Issue issue = issueRepository.findById(meetingFormDto.getIssueId())
-//                .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
-
 
         Long issueId = meetingFormDto.getIssueId();
         Issue issue = null;//이슈 없을 시 null값 사용
         if (issueId != 0) {
-            issue = issueRepository.findById(issueId)
-                    .orElseThrow(() -> new RuntimeException("해당 이슈가 존재하지 않습니다."));
+            issue = issueService.getIssueById(issueId);
         }
-
 
         //entity에 dto로 받은 값 넣기(builder 사용)
         Meeting saveMeeting = Meeting.builder()
@@ -113,77 +96,54 @@ public class MeetingService {
 
     public MeetingDto getMeetingDtl(Long id, Long memberId) {
         // 회의
-        Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
+        Meeting meeting = getMeetingById(id);
+        // 해당 회의의 모든 참여자
+        List<MeetingMember> meetingMembers = meetingMemberService.getMembers(meeting);
         // 주관자
-        MeetingMember host = meetingMemberRepository.findByMeetingAndIsHost(meeting, true);
-        String hostName = (host != null) ? host.getMember().getName() : null;
-        String hostJPName = (host != null && host.getMember().getJobPosition() != null)
-                ? host.getMember().getJobPosition().getName()
-                : null;
+        MeetingMember host = meetingMembers.stream()
+                .filter(MeetingMember::isHost)
+                .findFirst()
+                .orElse(null);
 
         // 회의록
         File minutesFile = meeting.getFile();
         Long minutesFileId = (minutesFile != null) ? minutesFile.getFileId() : null;
-        // 회의 파일
-        List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.MEETING)
-                .stream()
+        // 회의록 파일 제외한 회의 파일 리스트
+        List<FileDto> allFiles = fileService.getMeetingFiles(id);
+        List<FileDto> fileList = allFiles.stream()
                 .filter(f -> !Objects.equals(f.getFileId(), minutesFileId))
-                .map(FileDto::fromEntity)
-                .toList();
-
-        // 관련 이슈
-        Issue issue = meeting.getIssue();
-        Long issueId = (issue != null) ? issue.getId() : null; // 이슈 id
-        String issueTitle = (issue != null) ? issue.getTitle() : null; // 이슈 제목
-
-        // 카테고리
-        String categoryName = meeting.getCategory().getName();
-        // 부서들
-        List<String> departmentNames = meetingDepartmentRepository.findByMeeting(meeting)
-                .stream()
-                .map(dpt -> dpt.getDepartment().getName())
                 .toList();
 
         // 회의록
         FileDto meetingMinutes = (minutesFile != null) ? FileDto.fromEntity(minutesFile) : null;
 
-        // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
-        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
-        MeetingMember meetingMember = meetingMemberRepository.findByMeetingAndMember(meeting, member).orElse(null);
-        boolean isEditPermitted = meetingMember != null && meetingMember.isPermitted(); //이 사용자에게 수정 권한이 있을 때만 true
+        // 부서들
+        List<String> departmentNames = meetingDepartmentService.getDepartmentName(meeting);
 
+        // 요청자의 수정 권한 여부
+        boolean isEditPermitted = meetingMembers.stream()
+                .filter(mm -> mm.getMember().getId().equals(memberId))
+                .anyMatch(MeetingMember::isPermitted);
         // 참여자
-        List<MeetingMemberDto> participantList = meetingMemberRepository.findByMeeting(meeting)
-                .stream()
+        List<MeetingMemberDto> participantList = meetingMembers.stream()
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        return MeetingDto.builder()
-                .title(meeting.getTitle())
-                .content(meeting.getContent())
-                .fileList(fileDtoList)
-                .status(meeting.getStatus().toString())
-                .hostName(hostName)
-                .hostJPName(hostJPName)
-                .issueId(issueId)
-                .issueTitle(issueTitle)
-                .startDate(meeting.getStartDate())
-                .endDate(meeting.getEndDate())
-                .categoryName(categoryName)
-                .departmentName(departmentNames)
-                .meetingMinutes(meetingMinutes)
-                .createdAt(meeting.getCreatedAt())
-                .updatedAt(meeting.getUpdatedAt())
-                .del(meeting.isDel())
-                .editPermitted(isEditPermitted)
-                .participantList(participantList)
-                .build();
+        return MeetingDto.fromEntity(
+                meeting,
+                host,
+                departmentNames,
+                fileList,
+                meetingMinutes,
+                isEditPermitted,
+                participantList
+        );
     }
 
     public void updateReadStatus(Long id, Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
-        Meeting meeting = meetingRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        MeetingMember meetingMember = meetingMemberRepository.findByMeetingAndMember(meeting, member).orElseThrow(EntityNotFoundException::new);
+        Member member = memberService.getMemberById(memberId);
+        Meeting meeting = getMeetingById(id);
+        MeetingMember meetingMember = meetingMemberService.getMember(meeting, member);
         if (meetingMember.isRead()) {
             return;
         }
@@ -192,12 +152,12 @@ public class MeetingService {
 
 
     public void deleteMeeting(Long id) {
-        Meeting meeting = meetingRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
+        Meeting meeting = getMeetingById(id);
         meeting.deleteMeeting();
     }
 
     public void saveMeetingMinutes(Long id, List<MultipartFile> multipartFiles) {
-        Meeting meeting = meetingRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        Meeting meeting = getMeetingById(id);
         // 회의록 저장
         List<File> file = fileService.uploadFiles(id, multipartFiles, TargetType.MEETING);
 
@@ -210,8 +170,8 @@ public class MeetingService {
     }
 
     public void deleteMeetingMinutes(Long meetingId, Long fileId) {
-        Meeting meeting = meetingRepository.findById(meetingId).orElseThrow(EntityNotFoundException::new);
-        File file = fileRepository.findById(fileId).orElseThrow(EntityNotFoundException::new);
+        Meeting meeting = getMeetingById(meetingId);
+        File file = fileService.getFileById(fileId);
         fileService.deleteFiles(List.of(file));
         meeting.deleteMeetingMinutes();
     }
@@ -221,10 +181,19 @@ public class MeetingService {
         Page<Meeting> issues = meetingRepository.findByIsDelFalse(pageable);
 
         return issues.map(meeting -> {
-            String hostName = meetingMemberService.getHostName(meeting);
+            MeetingMember host = meetingMemberService.getHost(meeting);
+            String hostName = (host != null) ? host.getMember().getName() : null; // 주관자 이름
+            String hostJPName = (host != null && host.getMember().getJobPosition() != null) // 주관자 직급
+                    ? host.getMember().getJobPosition().getName()
+                    : null;
             List<String> departmentName = meetingDepartmentService.getDepartmentName(meeting);
-            return MeetingListDto.fromEntity(meeting, departmentName,hostName);
+            return MeetingListDto.fromEntity(meeting, departmentName, hostName, hostJPName);
         });
+    }
+
+    // meetingId로 이슈 조회
+    public Meeting getMeetingById(Long meetingId) {
+        return meetingRepository.findById(meetingId).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
     }
 
 }
