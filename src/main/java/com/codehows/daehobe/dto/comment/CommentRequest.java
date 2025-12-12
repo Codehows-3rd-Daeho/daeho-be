@@ -1,13 +1,11 @@
 package com.codehows.daehobe.dto.comment;
 
 import com.codehows.daehobe.constant.TargetType;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @Getter
-@Builder
-@ToString
+@NoArgsConstructor
+@AllArgsConstructor
 public class CommentRequest {
     private Long targetId;
     private TargetType targetType;

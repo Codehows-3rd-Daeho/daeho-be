@@ -13,4 +13,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     Page<Comment> findByIsDelFalse(Pageable pageable);
 
     Page<Comment> findByTargetIdAndTargetType(Long targetId, TargetType targetType, boolean isDel, Pageable pageable);
+
+
 }
