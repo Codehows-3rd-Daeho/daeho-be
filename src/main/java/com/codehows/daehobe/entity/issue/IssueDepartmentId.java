@@ -9,6 +9,6 @@ import java.io.Serializable;
 @AllArgsConstructor
 @Builder
 public class IssueDepartmentId implements Serializable {
-    private Long issueId;
-    private Long departmentId;
+    private Long issue;
+    private Long department;
 }

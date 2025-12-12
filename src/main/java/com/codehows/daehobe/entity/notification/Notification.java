@@ -20,30 +20,30 @@ public class Notification extends BaseEntity {
     private Long meetingId; // PK
 
     @Column(nullable = false)
-    private boolean issueCreated = false;
+    private boolean issueCreated;
 
     @Column(nullable = false)
-    private boolean issueUpdated = false;
+    private boolean issueUpdated;
 
     @Column(nullable = false)
-    private boolean issueStatus = false;
+    private boolean issueStatus;
 
     @Column(nullable = false)
-    private boolean meetingCreated = false;
+    private boolean meetingCreated;
 
     @Column(nullable = false)
-    private boolean meetingUpdated = false;
+    private boolean meetingUpdated;
 
     @Column(nullable = false)
-    private boolean meetingStatus = false;
+    private boolean meetingStatus;
 
     @Column(nullable = false)
-    private boolean commentCreated = false;
+    private boolean commentCreated;
 
     @Column(nullable = false)
-    private boolean commentUpdated = false;
+    private boolean commentUpdated;
 
     @Column(nullable = false)
-    private boolean commentMention = false;
+    private boolean commentMention;
 
 }

@@ -12,19 +12,15 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class IssueDepartment  extends BaseEntity {
+public class IssueDepartment extends BaseEntity {
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id", nullable = false)
-    private Issue issueId;
-
+    private Issue issue;
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id", nullable = false)
-    private Department departmentId;
-
-
-
+    private Department department;
 }

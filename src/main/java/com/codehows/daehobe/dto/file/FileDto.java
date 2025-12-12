@@ -1,12 +1,14 @@
 package com.codehows.daehobe.dto.file;
 
 import com.codehows.daehobe.entity.file.File;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import static com.codehows.daehobe.service.issue.IssueService.dateFormatter;
+import java.time.LocalDateTime;
+
 
 @Getter
 @NoArgsConstructor
@@ -17,7 +19,8 @@ public class FileDto {
     private String path;
     private String originalName;
     private String size;
-    private String createdAt;
+    @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
+    private LocalDateTime createdAt;
 
     //Entity -> Dto
     public static FileDto fromEntity(File file) {
@@ -26,7 +29,7 @@ public class FileDto {
                 .path(file.getPath())
                 .originalName(file.getOriginalName())
                 .size(formatSize(file.getSize()))
-                .createdAt(file.getCreatedAt().format(dateFormatter))
+                .createdAt(file.getCreatedAt())
                 .build();
     }
 

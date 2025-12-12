@@ -1,5 +1,7 @@
 package com.codehows.daehobe.service.meeting;
 
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingDepartment;
@@ -39,6 +41,23 @@ public class MeetingDepartmentService {
 
         meetingDepartmentRepository.saveAll(meetingDepartmentList);
         return meetingDepartmentList;
+    }
+
+    // 미팅 > 부서 찾기
+    public List<String> getDepartmentName(Meeting meeting) {
+        return meetingDepartmentRepository.findByMeeting(meeting).stream()
+                .map(d -> d.getDepartment().getName())
+                .toList();
+    }
+
+    // 이슈로 부서 엔티티 찾기
+    public List<MeetingDepartment> getDepartMent(Meeting meeting){
+        return meetingDepartmentRepository.findByMeeting(meeting);
+    }
+
+    // 이슈 부서 삭제
+    public void deleteMeetingDepartment(Meeting meeting) {
+        meetingDepartmentRepository.deleteByMeeting(meeting);
     }
 
 }

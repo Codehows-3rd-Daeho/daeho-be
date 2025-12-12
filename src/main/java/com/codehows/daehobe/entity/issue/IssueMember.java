@@ -15,12 +15,12 @@ public class IssueMember extends BaseEntity {
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "issue_id", nullable = false)
-    private Issue issueId;
+    private Issue issue;
 
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member memberId;
+    private Member member;
 
     @Column(name = "is_host", nullable = false)
     private boolean isHost;
@@ -29,7 +29,7 @@ public class IssueMember extends BaseEntity {
     private boolean isPermitted;
 
     @Column(name = "is_read", nullable = false)
-    private boolean isRead = false;
+    private boolean isRead;
 
     public void updateIsRead(boolean isRead){
         this.isRead = isRead;

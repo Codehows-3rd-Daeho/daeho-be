@@ -9,10 +9,10 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-//직관적으로 isHost 값을 바로 접근 가능(IssueDto에서 사용)
 public class IssueMemberDto {
-    private Long memberId;
-    private String memberName;
+    private Long id;
+    private String name;
+    private String jobPositionName;
     private String departmentName;
     @JsonProperty("isHost")
     private boolean host;
@@ -21,16 +21,24 @@ public class IssueMemberDto {
     @JsonProperty("isRead")
     private boolean read;
 
-    //회의에서 이슈 조회시 사용
+    // 회의에서 이슈 조회시 사용
     public static IssueMemberDto fromEntity(IssueMember entity) {
         return IssueMemberDto.builder()
-                .memberId(entity.getMemberId().getId())                 // Long
-                .memberName(entity.getMemberId().getName())             // String
-                .departmentName(entity.getMemberId().getDepartment().getName()) // String
+                .id(entity.getMember().getId())
+                .name(entity.getMember().getName())
+                .departmentName(
+                        entity.getMember().getDepartment() == null
+                                ? null
+                                : entity.getMember().getDepartment().getName()
+                )
+                .jobPositionName(
+                        entity.getMember().getJobPosition() == null
+                                ? null
+                                : entity.getMember().getJobPosition().getName()
+                )
                 .host(entity.isHost())
                 .permitted(entity.isPermitted())
                 .read(entity.isRead())
                 .build();
     }
-
 }
