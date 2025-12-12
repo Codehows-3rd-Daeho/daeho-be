@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface IssueRepository extends JpaRepository<Issue,Long> {
+
     Optional<Issue> findById(Long id);
 
     List<Issue> findAllByIsDelFalse();
@@ -55,7 +56,4 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
     // 완료 (최근 7일)
     @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :setDate AND i.isDel = false ORDER BY i.endDate DESC")
     List<Issue> findRecentCompleted(@Param("setDate") LocalDate setDate);
-
-
-
 }

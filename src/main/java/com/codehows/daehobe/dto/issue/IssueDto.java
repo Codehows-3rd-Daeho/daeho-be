@@ -1,6 +1,8 @@
 package com.codehows.daehobe.dto.issue;
 
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -41,5 +43,38 @@ public class IssueDto {
     private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
     private List<IssueMemberDto> participantList; // 참여자
+
+    public static IssueDto fromEntity(
+            Issue issue,
+            IssueMember host,
+            List<String> departmentNames,
+            List<FileDto> fileList,
+            boolean isEditPermitted,
+            List<IssueMemberDto> participantList
+    ) {
+
+        String hostName = host != null ? host.getMember().getName() : null;
+        String hostJPName = host != null && host.getMember().getJobPosition() != null
+                ? host.getMember().getJobPosition().getName()
+                : null;
+
+        return IssueDto.builder()
+                .title(issue.getTitle())
+                .content(issue.getContent())
+                .fileList(fileList)
+                .status(issue.getStatus().toString())
+                .hostName(hostName)
+                .hostJPName(hostJPName)
+                .startDate(issue.getStartDate().toString())
+                .endDate(issue.getEndDate().toString())
+                .categoryName(issue.getCategory().getName())
+                .departmentName(departmentNames)
+                .createdAt(issue.getCreatedAt())
+                .updatedAt(issue.getUpdatedAt())
+                .del(issue.isDel())
+                .editPermitted(isEditPermitted)
+                .participantList(participantList)
+                .build();
+    }
 
 }

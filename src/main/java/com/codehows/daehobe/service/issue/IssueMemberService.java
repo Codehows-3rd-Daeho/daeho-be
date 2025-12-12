@@ -3,6 +3,7 @@ package com.codehows.daehobe.service.issue;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
@@ -22,7 +23,7 @@ public class IssueMemberService {
     private final MemberRepository memberRepository;
     private final IssueMemberRepository issueMemberRepository;
 
-    public List<IssueMember> saveIssueMember(Long issueId, List<IssueMemberDto> issueMemberDtos){
+    public List<IssueMember> saveIssueMember(Long issueId, List<IssueMemberDto> issueMemberDtos) {
 
         //1. 이슈 조회 issueId
         Issue issue = issueRepository.findById(issueId)
@@ -43,4 +44,26 @@ public class IssueMemberService {
         return issueMembers;
     }
 
+    // 이슈로 참여자 리스트 조회
+    public List<IssueMember> getMembers(Issue issue) {
+        return issueMemberRepository.findByIssue(issue);
+    }
+
+    // 이슈로 주관자 조회
+    public IssueMember getHost(Issue issue) {
+        return issueMemberRepository.findAllByIssue(issue).stream()
+                .filter(IssueMember::isHost)
+                .findFirst()
+                .orElse(null);
+    }
+
+    // 이슈, 멤버로 참여자 엔티티 찾기
+    public IssueMember getMember(Issue issue, Member member){
+        return issueMemberRepository.findByIssueAndMember(issue, member).orElseThrow(EntityNotFoundException::new);
+    }
+
+    // 이슈와 관련된 참여자 삭제
+    public void deleteIssueMember(Issue issue) {
+        issueMemberRepository.deleteByIssue(issue);
+    }
 }

@@ -12,13 +12,10 @@ import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.repository.file.FileRepository;
-import com.codehows.daehobe.repository.issue.IssueDepartmentRepository;
-import com.codehows.daehobe.repository.issue.IssueMemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
-import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.member.MemberService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -37,14 +33,11 @@ import java.util.List;
 public class IssueService {
 
     private final IssueRepository issueRepository;
-    private final IssueMemberRepository issueMemberRepository;
     private final FileService fileService;
-    private final IssueDepartmentService IssueDepartmentService;
+    private final IssueDepartmentService issueDepartmentService;
     private final IssueMemberService issueMemberService;
     private final CategoryService categoryService;
-    private final FileRepository fileRepository;
-    private final IssueDepartmentRepository issueDepartmentRepository;
-    private final MemberRepository memberRepository;
+    private final MemberService memberService;
 
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles) {
 
@@ -71,7 +64,7 @@ public class IssueService {
         List<Long> departmentIds = issueFormDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
         if (departmentIds != null && !departmentIds.isEmpty()) {
-            IssueDepartmentService.saveDepartment(saveIssue.getId(), departmentIds);
+            issueDepartmentService.saveDepartment(saveIssue.getId(), departmentIds);
         }
 
 
@@ -95,52 +88,37 @@ public class IssueService {
     public IssueDto getIssueDtl(Long id, Long memberId) {
         // 이슈
         Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        // 해당 이슈의 모든 참여자
+        List<IssueMember> issueMembers = issueMemberService.getMembers(issue);
         // 주관자
-        IssueMember host = issueMemberRepository.findByIssueAndIsHost(issue, true);
-        String hostName = (host != null) ? host.getMember().getName() : null;
-        String hostJPName = (host != null) ? host.getMember().getJobPosition().getName() : null;
+        IssueMember host = issueMembers.stream()
+                .filter(IssueMember::isHost)
+                .findFirst()
+                .orElse(null);
+
         // 이슈 파일
-        List<FileDto> fileDtoList = fileRepository.findByTargetIdAndTargetType(id, TargetType.ISSUE)
-                .stream()
-                .map(FileDto::fromEntity)
-                .toList();
-        // 카테고리
-        String category = issue.getCategory().getName();
+        List<FileDto> fileDtoList = fileService.getIssueFiles(id);
         // 부서들
-        List<String> departmentNames = issueDepartmentRepository.findByIssue(issue)
-                .stream()
-                .map(dpt -> dpt.getDepartment().getName())
-                .toList();
+        List<String> departmentNames = issueDepartmentService.getDepartmentName(issue);
 
         // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
-        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
-        IssueMember issueMember = issueMemberRepository.findByIssueAndMember(issue, member).orElse(null);
-        boolean isEditPermitted = issueMember != null && issueMember.isPermitted(); //이 사용자에게 수정 권한이 있을 때만 true
+        boolean isEditPermitted = issueMembers.stream()
+                .filter(im -> im.getMember().getId().equals(memberId))
+                .anyMatch(IssueMember::isPermitted);
 
         // 참여자
-        List<IssueMemberDto> participantList = issueMemberRepository.findByIssue(issue)
-                .stream()
+        List<IssueMemberDto> participantList = issueMembers.stream()
                 .map(IssueMemberDto::fromEntity)
                 .toList();
 
-
-        return IssueDto.builder()
-                .title(issue.getTitle())
-                .content(issue.getContent())
-                .fileList(fileDtoList)
-                .status(issue.getStatus().toString())
-                .hostName(hostName)
-                .hostJPName(hostJPName)
-                .startDate(String.valueOf(issue.getStartDate()))
-                .endDate(String.valueOf(issue.getEndDate()))
-                .categoryName(category)
-                .departmentName(departmentNames)
-                .createdAt(issue.getCreatedAt())
-                .updatedAt(issue.getUpdatedAt())
-                .del(issue.isDel())
-                .editPermitted(isEditPermitted)
-                .participantList(participantList)
-                .build();
+        return IssueDto.fromEntity(
+                issue,
+                host,
+                departmentNames,
+                fileDtoList,
+                isEditPermitted,
+                participantList
+        );
 
     }
 
@@ -163,51 +141,18 @@ public class IssueService {
     }
 
     private IssueFormDto convertToDto(Issue issue) {
-
-        // host 찾기
-        IssueMember host = issueMemberRepository.findByIssueAndIsHost(issue, true);
-
         // 부서 찾기
-        List<IssueDepartment> departmentIds = issueDepartmentRepository.findByIssue(issue);
+        List<IssueDepartment> departmentIds = issueDepartmentService.getDepartMent(issue);
 
         // 멤버 목록
-        List<IssueMember> members = issueMemberRepository.findAllByIssue(issue);
-
-        return IssueFormDto.builder()
-                .id(issue.getId())//회의에서 이슈 get할때 필요
-                .title(issue.getTitle())
-//                .content(issue.getContent())
-                .status(issue.getStatus().name())
-//                //주관자
-//                .host(
-//                        Optional.ofNullable(host)
-//                                .map(IssueMember::getMemberId)
-//                                .map(Member::getName)
-//                                .orElse(null)
-//                )
-                .categoryId(issue.getCategory().getId())
-//                .startDate(issue.getStartDate())
-//                .endDate(issue.getEndDate())
-                //부서
-                .departmentIds(
-                        departmentIds.stream()
-                                .map(d -> d.getDepartment().getId())
-                                .toList()
-                )
-                //이슈 참여자
-                .members(
-                        members.stream()
-                                .map(IssueMemberDto::fromEntity)
-                                .toList()
-                )
-                .isDel(issue.isDel())
-                .build();
+        List<IssueMember> members = issueMemberService.getMembers(issue);
+        return IssueFormDto.fromEntity(issue, departmentIds, members);
     }
 
     public void updateReadStatus(Long id, Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow(EntityNotFoundException::new);
+        Member member = memberService.getMemberById(memberId);
         Issue issue = issueRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        IssueMember issueMember = issueMemberRepository.findByIssueAndMember(issue, member).orElseThrow(EntityNotFoundException::new);
+        IssueMember issueMember = issueMemberService.getMember(issue, member);
         if (issueMember.isRead()) {
             return;
         }
@@ -221,14 +166,14 @@ public class IssueService {
         issue.update(issueFormDto, category);
 
         // 이슈 부서 엔티티 삭제 후 추가
-        issueDepartmentRepository.deleteByIssue(issue);
+        issueDepartmentService.deleteIssueDepartment(issue);
         List<Long> departmentIds = issueFormDto.getDepartmentIds();
         if (departmentIds != null && !departmentIds.isEmpty()) {
-            IssueDepartmentService.saveDepartment(id, departmentIds);
+            issueDepartmentService.saveDepartment(id, departmentIds);
         }
 
         // 이슈 참여자 엔티티 삭제 후 추가
-        issueMemberRepository.deleteByIssue(issue);
+        issueMemberService.deleteIssueMember(issue);
         List<IssueMemberDto> issueMemberDtos = issueFormDto.getMembers();
         if (issueMemberDtos != null && !issueMemberDtos.isEmpty()) {
             issueMemberService.saveIssueMember(id, issueMemberDtos);
@@ -248,71 +193,44 @@ public class IssueService {
 
     // 이슈 전체 조회(삭제X)
     public Page<IssueListDto> findAll(Pageable pageable) {
-        Page<Issue> issues = issueRepository.findByIsDelFalse(pageable);
-
-        return issues.map(issue -> {
-            String hostName = getHostName(issue);
-            List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName, hostName);
-        });
+        return issueRepository.findByIsDelFalse(pageable)
+                .map(this::toIssueListDto);
     }
 
-
-    // 칸반 조회
-    // 진행중
+    // 칸반 조회 - 진행중
     public List<IssueListDto> getInProgress() {
-        List<Issue> issues = issueRepository.findInProgress();
-
-        return issues.stream().map(issue -> {
-            String hostName = getHostName(issue);
-            List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName, hostName);
-        }).toList();
-
+        return issueRepository.findInProgress()
+                .stream()
+                .map(this::toIssueListDto)
+                .toList();
     }
 
     // 미결
     public List<IssueListDto> getDelayed() {
-        List<Issue> issues = issueRepository.findDelayed();
-
-        return issues.stream().map(issue -> {
-            String hostName = getHostName(issue);
-            List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName, hostName);
-        }).toList();
+        return issueRepository.findDelayed()
+                .stream()
+                .map(this::toIssueListDto)
+                .toList();
     }
 
     // 완료(최근 7일)
     public List<IssueListDto> getCompleted() {
         LocalDate setDate = LocalDate.now().minusDays(7);
-
-        List<Issue> issues = issueRepository.findRecentCompleted(setDate);
-
-        return issues.stream().map(issue -> {
-            String hostName = getHostName(issue);
-            List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName, hostName);
-        }).toList();
-    }
-
-    // ============================================================================================
-    // 공통 로직
-    // 이슈 > 주관자 찾기
-    public String getHostName(Issue issue) {
-
-        return issueMemberRepository.findAllByIssue(issue).stream()
-                .filter(IssueMember::isHost)
-                .findFirst()
-                .map(h -> h.getMember().getName())
-                .orElse(null);
-    }
-
-    // 이슈 > 부서 찾기
-    public List<String> getDepartmentName(Issue issue) {
-        return issueDepartmentRepository.findByIssue(issue).stream()
-                .map(d -> d.getDepartment().getName())
+        return issueRepository.findRecentCompleted(setDate)
+                .stream()
+                .map(this::toIssueListDto)
                 .toList();
     }
 
+    // 리스트 공통부분
+    private IssueListDto toIssueListDto(Issue issue) {
+        IssueMember host = issueMemberService.getHost(issue);
+        String hostName = (host != null) ? host.getMember().getName() : null; // 주관자 이름
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null) // 주관자 직급
+                ? host.getMember().getJobPosition().getName()
+                : null;
+        List<String> departmentName = issueDepartmentService.getDepartmentName(issue);
+        return IssueListDto.fromEntity(issue, departmentName, hostName, hostJPName);
+    }
 
 }
