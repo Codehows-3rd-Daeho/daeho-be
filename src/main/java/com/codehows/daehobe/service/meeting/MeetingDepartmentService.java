@@ -41,4 +41,11 @@ public class MeetingDepartmentService {
         return meetingDepartmentList;
     }
 
+    // 미팅 > 부서 찾기
+    public List<String> getDepartmentName(Meeting meeting) {
+        return meetingDepartmentRepository.findByMeeting(meeting).stream()
+                .map(d -> d.getDepartment().getName())
+                .toList();
+    }
+
 }

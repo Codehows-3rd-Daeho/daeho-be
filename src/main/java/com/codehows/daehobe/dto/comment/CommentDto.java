@@ -1,13 +1,24 @@
 package com.codehows.daehobe.dto.comment;
 
+import com.codehows.daehobe.entity.comment.Comment;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class CommentDto {
     // 댓글 id
     private Long id;
 
     // 작성자
-    private String writer;
+    private String writerName;
 
     // 본문
     private String comment;
@@ -17,4 +28,18 @@ public class CommentDto {
 
     // 수정시간
     private LocalDateTime updatedAt;
+
+    @JsonProperty("isDel")
+    private Boolean del;
+
+    public static CommentDto fromComment(Comment comment, String writerName) {
+        return CommentDto.builder()
+                .id(comment.getId())
+                .writerName(writerName)
+                .comment(comment.getContent())
+                .createdAt(comment.getCreatedAt())
+                .updatedAt(comment.getUpdatedAt())
+                .del(comment.isDel())
+                .build();
+    }
 }

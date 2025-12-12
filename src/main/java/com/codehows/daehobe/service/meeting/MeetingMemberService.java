@@ -48,4 +48,14 @@ public class MeetingMemberService {
 
         return meetingMembers;
     }
+
+    // 미팅 > 주관자 찾기
+    public String getHostName(Meeting meeting) {
+
+        return meetingMemberRepository.findAllByMeeting(meeting).stream()
+                .filter(MeetingMember::isHost)
+                .findFirst()
+                .map(h -> h.getMember().getName())
+                .orElse(null);
+    }
 }

@@ -7,7 +7,9 @@ import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
+import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
@@ -49,7 +51,7 @@ public class MeetingService {
     private final MeetingDepartmentRepository meetingDepartmentRepository;
     private final MemberRepository memberRepository;
     private final FileRepository fileRepository;
-    private final IssueService issueService;
+
 
     public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
 
@@ -215,22 +217,14 @@ public class MeetingService {
     }
 
     // 미팅 조회
-    public Page<IssueListDto> findAll(Pageable pageable) {
-        Page<Issue> issues = issueRepository.findByIsDelFalse(pageable);
+    public Page<MeetingListDto> findAll(Pageable pageable) {
+        Page<Meeting> issues = meetingRepository.findByIsDelFalse(pageable);
 
-        return issues.map(issue -> {
-            String hostName = getHostName(issue);
-            List<String> departmentName = getDepartmentName(issue);
-            return IssueListDto.fromEntity(issue, departmentName,hostName);
+        return issues.map(meeting -> {
+            String hostName = meetingMemberService.getHostName(meeting);
+            List<String> departmentName = meetingDepartmentService.getDepartmentName(meeting);
+            return MeetingListDto.fromEntity(meeting, departmentName,hostName);
         });
     }
-
-
-    // ====================================================================================
-    // 공통
-
-    //
-
-
 
 }
