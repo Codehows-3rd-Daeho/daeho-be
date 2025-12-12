@@ -84,7 +84,7 @@ public class IssueService {
 
     public IssueDto getIssueDtl(Long id, Long memberId) {
         // 이슈
-        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        Issue issue = getIssueById(id);
         // 해당 이슈의 모든 참여자
         List<IssueMember> issueMembers = issueMemberService.getMembers(issue);
         // 주관자
@@ -146,7 +146,7 @@ public class IssueService {
 
     public void updateReadStatus(Long id, Long memberId) {
         Member member = memberService.getMemberById(memberId);
-        Issue issue = issueRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        Issue issue = getIssueById(id);
         IssueMember issueMember = issueMemberService.getMember(issue, member);
         if (issueMember.isRead()) {
             return;
@@ -155,8 +155,8 @@ public class IssueService {
     }
 
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
-            List<Long> removeFileIds) {
-        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+                             List<Long> removeFileIds) {
+        Issue issue = getIssueById(id);
         Category category = categoryService.getCategoryById(issueFormDto.getCategoryId());
         issue.update(issueFormDto, category);
 
@@ -182,7 +182,7 @@ public class IssueService {
     }
 
     public void deleteIssue(Long id) {
-        Issue issue = issueRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+        Issue issue = getIssueById(id);
         issue.delete();
     }
 
@@ -226,6 +226,11 @@ public class IssueService {
                 : null;
         List<String> departmentName = issueDepartmentService.getDepartmentName(issue);
         return IssueListDto.fromEntity(issue, departmentName, hostName, hostJPName);
+    }
+
+    // issueId로 이슈 조회
+    public Issue getIssueById(Long issueId) {
+        return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
     }
 
 }

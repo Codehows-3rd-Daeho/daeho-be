@@ -27,7 +27,6 @@ public class IssueController {
             @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        System.out.println("==============이슈 등록 시작");
         issueService.createIssue(issueFormDto, multipartFiles);
 
         return ResponseEntity.ok().build();

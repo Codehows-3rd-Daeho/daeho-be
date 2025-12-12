@@ -1,6 +1,9 @@
 package com.codehows.daehobe.dto.meeting;
 
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.meeting.Meeting;
+import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -47,4 +50,44 @@ public class MeetingDto {
     private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
     private List<MeetingMemberDto> participantList; // 참여자
+
+    public static MeetingDto fromEntity(
+            Meeting meeting,
+            MeetingMember host,
+            List<String> departmentNames,
+            List<FileDto> fileList,
+            FileDto meetingMinutes,
+            boolean isEditPermitted,
+            List<MeetingMemberDto> participantList
+    ) {
+        // 관련 이슈
+        Issue issue = meeting.getIssue();
+
+        String hostName = host != null ? host.getMember().getName() : null;
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null)
+                ? host.getMember().getJobPosition().getName()
+                : null;
+
+        return MeetingDto.builder()
+                .title(meeting.getTitle())
+                .content(meeting.getContent())
+                .fileList(fileList)
+                .status(meeting.getStatus().toString())
+                .hostName(hostName)
+                .hostJPName(hostJPName)
+                .issueId(issue != null ? issue.getId() : null)
+                .issueTitle(issue != null ? issue.getTitle() : null)
+                .startDate(meeting.getStartDate())
+                .endDate(meeting.getEndDate())
+                .categoryName(meeting.getCategory().getName())
+                .departmentName(departmentNames)
+                .meetingMinutes(meetingMinutes)
+                .createdAt(meeting.getCreatedAt())
+                .updatedAt(meeting.getUpdatedAt())
+                .del(meeting.isDel())
+                .editPermitted(isEditPermitted)
+                .participantList(participantList)
+                .build();
+    }
+
 }
