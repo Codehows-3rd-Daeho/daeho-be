@@ -17,12 +17,12 @@ public class STTController {
 
     private final STTService sttService;
 
-    @PostMapping("/create")
-    public ResponseEntity<?> createMeeting(@PathVariable Long meetingId,
+    @PostMapping("/meeting/{id}")
+    public ResponseEntity<?> createMeeting(@PathVariable Long id,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        System.out.println("==============이슈 등록 시작");
-        sttService.uploadSTT(meetingId, multipartFiles);
+        System.out.println("==============stt 등록 시작");
+        sttService.uploadSTT(id, multipartFiles);
 
         return ResponseEntity.ok().build();
 

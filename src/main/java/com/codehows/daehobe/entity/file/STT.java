@@ -8,6 +8,7 @@ import lombok.*;
 @Entity
 @Table(name = "stt")
 @Getter
+@Setter
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,10 +23,10 @@ public class STT extends BaseEntity {
     @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = true)
     private String summary;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id", nullable = false)
-    private Meeting meetingId;
+    private Meeting meeting;
 }
