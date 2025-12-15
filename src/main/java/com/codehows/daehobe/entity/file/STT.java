@@ -18,12 +18,12 @@ public class STT extends BaseEntity {
     @Id
     @Column(name = "stt_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
-    @Column(columnDefinition = "TEXT", nullable = true)
+    @Column(columnDefinition = "TEXT")
     private String summary;
 
     @ManyToOne(fetch = FetchType.LAZY)

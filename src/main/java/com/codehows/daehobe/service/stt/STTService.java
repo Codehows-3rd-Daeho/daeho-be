@@ -8,6 +8,7 @@ import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.meeting.MeetingService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -27,13 +28,11 @@ public class STTService {
 
     private final WebClient webClient;
     private final FileService fileService;
-    private final STTRepository sttRepository;
     private final MeetingService meetingService;
+    private final STTRepository sttRepository;
 
-    //저장
-    //한 파일 저장
-    //
 
+    //3. 저장
     public List<STTDto> uploadSTT(Long id, List<MultipartFile> files){
         Meeting meeting = meetingService.getMeetingById(id);
 
@@ -55,7 +54,7 @@ public class STTService {
         return savedSTTs;
     }
 
-    //Daglo api 호출
+    //2. 응답 상태 확인
     private DagloSTTResponseDto callDaglo(MultipartFile file) {
 
 
@@ -151,4 +150,23 @@ public class STTService {
     }
 
 
+    //조회
+
+    public List<STTDto> getSTTById(Long meetingId) {
+
+        Meeting meeting = meetingService.getMeetingById(meetingId);
+
+        //1. meeting id로 존재 확인
+        if ( meeting == null) {
+            System.out.println("해당 회의가 존재하지 않습니다.");
+            return List.of(); // 빈 리스트 반환
+        };
+
+        List<STT> stts = sttRepository.findByMeetingId(meetingId);
+
+        // 엔티티 -> DTO
+        return stts.stream()
+                .map(STTDto::fromEntity)
+                .toList();
+    }
 }

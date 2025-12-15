@@ -1,6 +1,5 @@
 package com.codehows.daehobe.repository.meeting;
 
-import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

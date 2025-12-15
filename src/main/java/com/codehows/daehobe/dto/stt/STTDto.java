@@ -1,6 +1,5 @@
 package com.codehows.daehobe.dto.stt;
 
-import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.entity.file.STT;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
