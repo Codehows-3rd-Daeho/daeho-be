@@ -2,6 +2,7 @@ package com.codehows.daehobe.entity.comment;
 
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,6 +27,11 @@ public class Comment extends BaseEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private TargetType targetType;
+
+    // 작성자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
 
     // 본문
     @Column(nullable = false, columnDefinition = "TEXT")

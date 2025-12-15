@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 public class CommentController {
 
     private final CommentService commentService;
-    private final MemberService memberService;
 
     // issue 댓글
     @GetMapping("/issue/{id}/comments")
@@ -43,12 +42,9 @@ public class CommentController {
     public ResponseEntity<?> createIssueComment(@RequestBody CommentRequest dto, @PathVariable Long id, Authentication authentication) {
         Long memberId = Long.valueOf(authentication.getName());
 
-        Comment saved = commentService.createIssueComment(id, dto, memberId);
+        CommentDto saved = commentService.createIssueComment(id, dto, memberId);
 
-        // 이름 조회
-        String writerName = memberService.getMemberNameById(memberId);
-
-        return ResponseEntity.ok(CommentDto.fromComment(saved, writerName));
+        return ResponseEntity.ok(saved);
     }
 
     ;
@@ -78,6 +74,6 @@ public class CommentController {
 
         CommentDto comment = commentService.createMeetingComment(id, dto, Long.valueOf(memberId));
 
-        return ResponseEntity.ok(CommentDto.fromComment(comment, memberId));
+        return ResponseEntity.ok(comment);
     }
 }

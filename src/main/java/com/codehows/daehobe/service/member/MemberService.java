@@ -2,6 +2,7 @@ package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.comment.MentionMemberDto;
 import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
@@ -134,7 +135,17 @@ public class MemberService {
         return memberRepository.findById(memberId).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
     }
 
-    public String getMemberNameById(Long id) {
-        return getMemberById(id).getName();
+    // 멘션 멤버조회
+    public List<MentionMemberDto> searchForMention(String keyword) {
+        return memberRepository.searchForMention(keyword);
+    }
+
+    // 멘션 회원
+    public List<Member> findMembersByIds(List<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return List.of();
+        }
+
+        return memberRepository.findByIdIn(memberIds);
     }
 }
