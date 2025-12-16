@@ -24,16 +24,13 @@ public class STTController {
     public ResponseEntity<?> createSTT(@PathVariable Long id,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        System.out.println("==============stt 등록 시작==============");
         sttService.uploadSTT(id, multipartFiles);
-
         return ResponseEntity.ok().build();
 
     }
 
     @GetMapping("/meeting/{id}")
     public ResponseEntity<?> getSTT(@PathVariable Long id) {
-        System.out.println("==============stt 조회 시작==========");
         List<STTDto> stts = sttService.getSTTById(id);
 
         // 데이터 없으면 404 반환
@@ -41,17 +38,13 @@ public class STTController {
             return ResponseEntity.status(404)
                     .body("해당 회의에 STT가 존재하지 않습니다.");
         }
-        System.out.println("프론트로 보내는 STT 데이터: " + stts);
         return ResponseEntity.ok(stts);
     }
 
     @PostMapping("/{id}/summary")
     public ResponseEntity<?> createSTTSummary(@PathVariable Long id,
                                        @RequestBody String content) {
-
-        System.out.println("==============stt 요약 등록 시작==============");
         sttService.summarySTT(id, content);
-
         return ResponseEntity.ok().build();
 
     }
