@@ -12,6 +12,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -39,15 +42,23 @@ public class CommentController {
     ;
 
     @PostMapping("/issue/{id}/comment")
-    public ResponseEntity<?> createIssueComment(@RequestBody CommentRequest dto, @PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<CommentDto> createIssueComment(
+            @PathVariable Long id,
+            @RequestPart("data") CommentRequest dto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles,
+            Authentication authentication
+    ) {
         Long memberId = Long.valueOf(authentication.getName());
-
-        CommentDto saved = commentService.createIssueComment(id, dto, memberId);
-
+        CommentDto saved =
+                commentService.createIssueComment(id, dto, memberId, multipartFiles);
         return ResponseEntity.ok(saved);
     }
 
-    ;
+    @PutMapping("/comment/{id}")
+    public ResponseEntity<CommentDto> updateComment(){
+        
+    }
+
 
     // 회의 댓글
     @GetMapping("/meeting/{id}/comments")
@@ -69,11 +80,15 @@ public class CommentController {
     ;
 
     @PostMapping("/meeting/{id}/comment")
-    public ResponseEntity<?> createMeetingComment(@RequestBody CommentRequest dto, @PathVariable Long id, Authentication authentication) {
-        String memberId = authentication.getName();
-
-        CommentDto comment = commentService.createMeetingComment(id, dto, Long.valueOf(memberId));
-
-        return ResponseEntity.ok(comment);
+    public ResponseEntity<CommentDto> createMeetingComment(
+            @PathVariable Long id,
+            @RequestPart("data") CommentRequest dto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles,
+            Authentication authentication
+    ) {
+        Long memberId = Long.valueOf(authentication.getName());
+        CommentDto saved =
+                commentService.createMeetingComment(id, dto, memberId, multipartFiles);
+        return ResponseEntity.ok(saved);
     }
 }

@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.comment;
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.member.Member;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -24,6 +26,9 @@ public class CommentDto {
     // 작성자 직책
     private String writerJPName;
 
+    // 첨부파일
+    private List<FileDto> fileList;
+
     // 본문
     private String content;
 
@@ -36,7 +41,7 @@ public class CommentDto {
     @JsonProperty("isDel")
     private Boolean del;
 
-    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName) {
+    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList) {
 
 
         return CommentDto.builder()
@@ -46,6 +51,7 @@ public class CommentDto {
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
+                .fileList(fileList)
                 .del(comment.isDel())
                 .build();
     }
