@@ -3,7 +3,8 @@ package com.codehows.daehobe.service.stt;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.STTDto;
-import com.codehows.daehobe.entity.file.STT;
+import com.codehows.daehobe.dto.stt.SummaryResponseDto;
+import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
@@ -18,6 +19,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -56,7 +59,7 @@ public class STTService {
         return savedSTTs;
     }
 
-    //1-2. 응답 상태 확인
+    //1-1. api 호출
     private STTResponseDto callDaglo(MultipartFile file) {
 
         try {
@@ -85,10 +88,12 @@ public class STTService {
                 )
                 .bodyToMono(STTResponseDto.class)// Dto(String)로 변환
                 .block();//비동기 → 동기로 변경
+
             if (response == null || response.getRid() == null) {
                 throw new RuntimeException("rid 발급 실패");
             }
 
+            //상태 확인
             //rid 추출
             String rid = response.getRid();
 
@@ -134,7 +139,7 @@ public class STTService {
     }
 
 
-    //조회
+    //STT 조회
     public List<STTDto> getSTTById(Long meetingId) {
 
         Meeting meeting = meetingService.getMeetingById(meetingId);
@@ -152,4 +157,86 @@ public class STTService {
                 .map(STTDto::fromEntity)
                 .toList();
     }
+//==================================================요약==================================================================
+    //요약
+    @Transactional
+    public SummaryResponseDto summarySTT(Long sttId, String content) {
+
+        STT stt = sttRepository.findById(sttId)
+                .orElseThrow(() -> new IllegalArgumentException("STT 없음"));
+
+        //1. api 호출
+        try
+        {
+            SummaryResponseDto response = webClient.post()
+                    .uri("/nlp/v1/async/minutes")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of("text", content))//JSON 문자열로 변환
+                    .retrieve()
+                    .bodyToMono(SummaryResponseDto.class)
+                    .block();
+
+            if (response == null || response.getRid() == null) {
+                throw new RuntimeException("rid 발급 실패");
+            }
+
+            //상태 확인
+            //rid 추출
+            String rid = response.getRid();
+
+            int maxRetries = 100;//반복 횟수
+            int intervalMs = 2000;//시도 사이 간격 ms
+
+            //Polling: 변환 완료될 때까지 반복 확인
+            for (int i = 0; i < maxRetries; i++) {
+                SummaryResponseDto result = checkSummaryStatus(rid);
+                System.out.println("Attempt " + i + " - status: " + result.getStatus());
+                if (result.isCompleted()) {
+                    stt.updateSummary(result.getSummaryText());
+                    return result; // 변환 완료
+                }
+                Thread.sleep(intervalMs);
+            }
+            SummaryResponseDto lastResult = checkSummaryStatus(rid); // 마지막 상태 확인(콘솔용)
+            throw new RuntimeException("STT 변환 완료 대기 시간 초과. rid: " + rid + ", last status: " + lastResult.getStatus());
+
+        } catch (Exception e) {
+            throw new RuntimeException("STT 처리 중 오류 발생", e);
+        }
+
+
+    }
+
+
+    //2. rid로 stt 상태 확인
+    private SummaryResponseDto checkSummaryStatus(String rid){
+        System.out.println("==========================================");
+        System.out.println("checkSummaryStatus 실행 확인");
+        System.out.println("==========================================");
+
+        SummaryResponseDto result = webClient.get()
+                .uri("/nlp/v1/async/minutes/{rid}", rid)
+                .retrieve()
+                .bodyToMono(SummaryResponseDto.class)
+                .block();
+
+        if (result == null) {
+            throw new RuntimeException("STT 상태 조회 실패. rid: " + rid);
+        }
+        return result;
+
+    }
+
+
+//==================================================삭제==================================================================
+
+    @Transactional
+    public void deleteSTT(Long id) {
+        if (!sttRepository.existsById(id)) {
+            throw new RuntimeException("STT가 존재하지 않습니다.");
+        }
+        sttRepository.deleteById(id); // 완전 삭제
+    }
+
+
 }

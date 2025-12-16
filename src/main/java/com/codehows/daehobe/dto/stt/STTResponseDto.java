@@ -1,10 +1,9 @@
 package com.codehows.daehobe.dto.stt;
 
-import com.codehows.daehobe.entity.file.STT;
+import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.List;
  */
 @Getter
 @Setter
-@NoArgsConstructor
 public class STTResponseDto {
 
     private String rid;

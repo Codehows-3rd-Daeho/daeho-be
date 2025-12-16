@@ -1,18 +1,14 @@
 package com.codehows.daehobe.dto.stt;
 
-import com.codehows.daehobe.entity.file.STT;
-import lombok.AllArgsConstructor;
+import com.codehows.daehobe.entity.stt.STT;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 /*
 프론트 반환용
  */
 
 @Getter
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
 public class STTDto {
 private Long id;

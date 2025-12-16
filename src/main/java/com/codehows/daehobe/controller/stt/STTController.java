@@ -41,9 +41,25 @@ public class STTController {
             return ResponseEntity.status(404)
                     .body("해당 회의에 STT가 존재하지 않습니다.");
         }
-
+        System.out.println("프론트로 보내는 STT 데이터: " + stts);
         return ResponseEntity.ok(stts);
     }
 
+    @PostMapping("/{id}/summary")
+    public ResponseEntity<?> createSTTSummary(@PathVariable Long id,
+                                       @RequestBody String content) {
+
+        System.out.println("==============stt 요약 등록 시작==============");
+        sttService.summarySTT(id, content);
+
+        return ResponseEntity.ok().build();
+
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSTT(@PathVariable Long id) {
+        sttService.deleteSTT(id);
+        return ResponseEntity.noContent().build(); // 204 반환
+    }
 
 }

@@ -1,4 +1,4 @@
-package com.codehows.daehobe.entity.file;
+package com.codehows.daehobe.entity.stt;
 
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.meeting.Meeting;
@@ -29,4 +29,10 @@ public class STT extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
+
+
+    //stt 변환 후 요약시 update로 값 추가
+    public void updateSummary(String summary) {
+        this.summary = summary;
+    }
 }
