@@ -20,6 +20,9 @@ public class CommentDto {
     // 댓글 id
     private Long id;
 
+    // 작성자 id
+    private Long writerMemberId;
+
     // 작성자
     private String writerName;
 
@@ -41,13 +44,14 @@ public class CommentDto {
     @JsonProperty("isDel")
     private Boolean del;
 
-    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList) {
+    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList, Long writerMemberId) {
 
 
         return CommentDto.builder()
                 .id(comment.getId())
                 .writerName(writerName)
                 .writerJPName(writerJPName)
+                .writerMemberId(writerMemberId)
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())

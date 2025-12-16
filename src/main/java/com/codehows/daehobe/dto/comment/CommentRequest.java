@@ -13,4 +13,5 @@ public class CommentRequest {
     private TargetType targetType;
     private String content;
     private List<Long> mentionedMemberIds; // 멘션
+    private List<Long> removeFileIds;
 }

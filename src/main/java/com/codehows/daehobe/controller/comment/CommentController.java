@@ -2,6 +2,7 @@ package com.codehows.daehobe.controller.comment;
 
 import com.codehows.daehobe.dto.comment.CommentDto;
 import com.codehows.daehobe.dto.comment.CommentRequest;
+import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.service.comment.CommentService;
 import com.codehows.daehobe.service.member.MemberService;
@@ -54,9 +55,39 @@ public class CommentController {
         return ResponseEntity.ok(saved);
     }
 
+    // 수정
     @PutMapping("/comment/{id}")
-    public ResponseEntity<CommentDto> updateComment(){
-        
+    public ResponseEntity<?> updateComment(
+            @PathVariable Long id,
+            @RequestPart("data") CommentRequest dto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload
+    ) {
+        try {
+            List<MultipartFile> newFiles =
+                    filesToUpload != null ? filesToUpload : List.of();
+
+            List<Long> removeFileIds =
+                    dto.getRemoveFileIds() != null ? dto.getRemoveFileIds() : List.of();
+
+            commentService.updateComment(id, dto, newFiles, removeFileIds);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("댓글 수정 중 오류 발생");
+        }
+    }
+
+
+    // 삭제
+    @DeleteMapping("/comment/{id}")
+    public ResponseEntity<?> deleteComment(@PathVariable Long id) {
+        try {
+            commentService.deleteComment(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("댓글 삭제 중 오류 발생");
+        }
     }
 
 

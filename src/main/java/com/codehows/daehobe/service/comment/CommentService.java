@@ -13,9 +13,11 @@ import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import com.codehows.daehobe.service.member.MemberService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,7 +38,7 @@ public class CommentService {
     // 이슈 ==========================================
     // 이슈 댓글 호출
     public  Page<CommentDto> getCommentsByIssueId(Long issueId, Pageable pageable) {
-        Page<Comment> comments = commentRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE, false, pageable);
+        Page<Comment> comments = commentRepository.findByTargetIdAndTargetTypeAndIsDelFalse(issueId, TargetType.ISSUE, pageable);
         return comments.map(this::toCommentDto);
     }
 
@@ -66,7 +68,7 @@ public class CommentService {
     // 회의 ==================================
     // 회의 댓글 호출
     public  Page<CommentDto> getCommentsByMeetingId(Long meetingId, Pageable pageable) {
-        Page<Comment> comments = commentRepository.findByTargetIdAndTargetType(meetingId, TargetType.MEETING, false, pageable);
+        Page<Comment> comments = commentRepository.findByTargetIdAndTargetTypeAndIsDelFalse(meetingId, TargetType.MEETING, pageable);
         return comments.map(this::toCommentDto);
     }
 
@@ -93,16 +95,7 @@ public class CommentService {
     }
 
     // 수정
-    public Comment updateComment(Long id, CommentDto dto, List<MultipartFile> newFiles,
-                             List<Long> removeFileIds) {
-        Comment comment = getComment(id);
 
-        // 파일 업데이트
-        if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
-            fileService.updateFiles(id, newFiles, removeFileIds, TargetType.ISSUE);
-        }
-        return comment;
-    }
 
 
     // ==============================
@@ -120,7 +113,7 @@ public class CommentService {
 
         List<FileDto> fileList = fileService.getCommentFiles(comment.getId());
 
-        return CommentDto.fromComment(comment,writerName, writerJPName, fileList);
+        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId());
     }
 
     // 등록
@@ -140,4 +133,35 @@ public class CommentService {
 
         return commentRepository.save(comment);
     }
+
+    // 수정
+    public Comment updateComment(Long id,
+                                  CommentRequest dto,
+                                  List<MultipartFile> newFiles,
+                                  List<Long> removeFileIds){
+        Comment comment = getCommentById(id);
+
+        // 내용 수정
+        comment.update(dto);
+
+        // 파일 수정
+        if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
+            fileService.updateFiles(id, newFiles, removeFileIds, TargetType.COMMENT);
+        }
+
+        return comment;
+
+    }
+
+    public void deleteComment(Long id) {
+        Comment comment = getCommentById(id);
+        comment.delete();
+    }
+
+    // 댓글 단일 조회 > id
+    public Comment getCommentById(Long commentId) {
+        return commentRepository.findById(commentId).orElseThrow(() -> new EntityNotFoundException("댓글이 존재하지 않습니다."));
+    }
+
+
 }

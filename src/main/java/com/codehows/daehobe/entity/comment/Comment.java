@@ -1,7 +1,11 @@
 package com.codehows.daehobe.entity.comment;
 
+import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.comment.CommentRequest;
+import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,5 +43,13 @@ public class Comment extends BaseEntity {
 
     // 삭제상태 기본 false
     private boolean isDel;
+
+    public void update(CommentRequest dto) {
+        this.content = dto.getContent();
+    }
+
+    public void delete(){
+        this.isDel = true;
+    }
 
 }
