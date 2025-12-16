@@ -3,7 +3,9 @@ package com.codehows.daehobe.controller.issue;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
+import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.service.issue.IssueService;
+import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +23,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IssueController {
     private final IssueService issueService;
+    private final MeetingService meetingService;
 
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
@@ -135,5 +138,19 @@ public class IssueController {
     public ResponseEntity<?> getSelectedINM(@PathVariable Long id) {
         IssueFormDto issueFormDto = issueService.getSelectedINM(id);
         return ResponseEntity.ok(issueFormDto);
+    }
+
+    @GetMapping("/{id}/meeting")
+    public ResponseEntity<?> getMeetingRelatedIssue(@PathVariable Long id,
+                                                    @RequestParam(defaultValue = "0") int page,
+                                                    @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id,pageable);
+            return ResponseEntity.ok(meetingListDtos);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

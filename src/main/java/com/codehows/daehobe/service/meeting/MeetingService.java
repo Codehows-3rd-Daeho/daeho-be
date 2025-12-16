@@ -13,9 +13,7 @@ import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.repository.file.FileRepository;
-import com.codehows.daehobe.repository.meeting.MeetingDepartmentRepository;
-import com.codehows.daehobe.repository.meeting.MeetingMemberRepository;
+import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
@@ -150,6 +148,45 @@ public class MeetingService {
         meetingMember.updateIsRead(true);
     }
 
+    public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
+        Meeting meeting = getMeetingById(id);
+        Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());
+
+        Long issueId = meetingFormDto.getIssueId();
+        Issue issue = null;
+        if (issueId != null) {
+            issue = issueService.getIssueById(issueId);
+        }
+        meeting.update(meetingFormDto, category, issue);
+
+        // 상태가 완료일 경우, 마감일 자동입력
+        if (meetingFormDto.getStatus().equals(String.valueOf(Status.COMPLETED))) {
+            meeting.updateEndDate();
+        }
+
+        // 회의 부서 엔티티 삭제 후 추가
+        meetingDepartmentService.deleteMeetingDepartment(meeting);
+        List<Long> departmentIds = meetingFormDto.getDepartmentIds();
+        if (departmentIds != null && !departmentIds.isEmpty()) {
+            meetingDepartmentService.saveDepartment(id, departmentIds);
+        } else {
+            // 상태가 완료가 아닌 경우 마감일 제거
+            meeting.clearEndDate();
+        }
+
+        // 회의 참여자 엔티티 삭제 후 추가
+        meetingMemberService.deleteMeetingMember(meeting);
+        List<MeetingMemberDto> meetingMemberDtos = meetingFormDto.getMembers();
+        if (meetingMemberDtos != null && !meetingMemberDtos.isEmpty()) {
+            meetingMemberService.saveMeetingMember(id, meetingMemberDtos);
+        }
+
+        // 파일 업데이트
+        if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
+            fileService.updateFiles(id, newFiles, removeFileIds, TargetType.MEETING);
+        }
+        return meeting;
+    }
 
     public void deleteMeeting(Long id) {
         Meeting meeting = getMeetingById(id);
@@ -178,22 +215,30 @@ public class MeetingService {
 
     // 미팅 조회
     public Page<MeetingListDto> findAll(Pageable pageable) {
-        Page<Meeting> issues = meetingRepository.findByIsDelFalse(pageable);
-
-        return issues.map(meeting -> {
-            MeetingMember host = meetingMemberService.getHost(meeting);
-            String hostName = (host != null) ? host.getMember().getName() : null; // 주관자 이름
-            String hostJPName = (host != null && host.getMember().getJobPosition() != null) // 주관자 직급
-                    ? host.getMember().getJobPosition().getName()
-                    : null;
-            List<String> departmentName = meetingDepartmentService.getDepartmentName(meeting);
-            return MeetingListDto.fromEntity(meeting, departmentName, hostName, hostJPName);
-        });
+        return meetingRepository.findByIsDelFalse(pageable)
+                .map(this::toMeetingListDto);
     }
 
-    // meetingId로 이슈 조회
+    // issueId로 관련 회의 조회
+    public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {
+        Issue issue = issueService.getIssueById(issueId);
+        return meetingRepository.findByIssue(issue, pageable)
+                .map(this::toMeetingListDto);
+    }
+
+    // Meeting → MeetingListDto 변환
+    private MeetingListDto toMeetingListDto(Meeting meeting) {
+        MeetingMember host = meetingMemberService.getHost(meeting);
+        String hostName = (host != null) ? host.getMember().getName() : null;
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null)
+                ? host.getMember().getJobPosition().getName()
+                : null;
+        List<String> departmentName = meetingDepartmentService.getDepartmentName(meeting);
+        return MeetingListDto.fromEntity(meeting, departmentName, hostName, hostJPName);
+    }
+
+    // meetingId로 회의 조회
     public Meeting getMeetingById(Long meetingId) {
         return meetingRepository.findById(meetingId).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
     }
-
 }

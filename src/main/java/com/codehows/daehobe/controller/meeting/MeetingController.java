@@ -1,5 +1,6 @@
 package com.codehows.daehobe.controller.meeting;
 
+import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -61,6 +63,25 @@ public class MeetingController {
         }
     }
 
+    // 회의 수정
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateMeeting(
+            @PathVariable Long id,
+            @RequestPart("data") MeetingFormDto meetingFormDto,
+            @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
+            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
+    ) {
+        try {
+            List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
+            List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
+            meetingService.updateIssue(id, meetingFormDto, newFiles, removeFileIds);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("회의 수정 중 오류 발생");
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteMeeting(@PathVariable Long id) {
         try {
@@ -101,7 +122,7 @@ public class MeetingController {
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
             Page<MeetingListDto> dtoList = meetingService.findAll(pageable);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
@@ -109,5 +130,4 @@ public class MeetingController {
             return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
         }
     }
-
 }

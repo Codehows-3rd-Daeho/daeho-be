@@ -1,6 +1,7 @@
 package com.codehows.daehobe.entity.meeting;
 
 import com.codehows.daehobe.constant.Status;
+import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
@@ -63,7 +64,7 @@ public class Meeting extends BaseEntity {
     @Column(name = "is_del", nullable = false)
     private boolean isDel;
 
-    public void deleteMeeting(){
+    public void deleteMeeting() {
         this.isDel = true;
     }
 
@@ -77,4 +78,21 @@ public class Meeting extends BaseEntity {
         this.file = null;
     }
 
+    public void update(MeetingFormDto meetingFormDto, Category category, Issue issue) {
+        this.issue = issue;
+        this.title = meetingFormDto.getTitle();
+        this.content = meetingFormDto.getContent();
+        this.category = category;
+        this.startDate = meetingFormDto.getStartDate();
+        this.endDate = meetingFormDto.getEndDate();
+        this.status = Status.valueOf(meetingFormDto.getStatus());
+    }
+
+    public void updateEndDate() {
+        this.endDate = LocalDateTime.now();
+    }
+
+    public void clearEndDate() {
+        this.endDate = null;
+    }
 }

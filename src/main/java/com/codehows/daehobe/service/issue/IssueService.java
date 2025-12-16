@@ -7,6 +7,7 @@ import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
@@ -15,6 +16,7 @@ import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.meeting.MeetingService;
 import com.codehows.daehobe.service.member.MemberService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -129,7 +131,7 @@ public class IssueService {
 
     // 선택된 이슈 조회
     public IssueFormDto getSelectedINM(Long id) {
-        Issue issue = issueRepository.findByIdAndIsDelFalse(id)
+        Issue issue = issueRepository.findByIdAndIsDelFalseAndStatus(id, Status.IN_PROGRESS)
                 .orElseThrow(() -> new RuntimeException("삭제되지 않은 이슈가 존재하지 않습니다."));
 
         return convertToDto(issue);
@@ -232,5 +234,4 @@ public class IssueService {
     public Issue getIssueById(Long issueId) {
         return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
     }
-
 }
