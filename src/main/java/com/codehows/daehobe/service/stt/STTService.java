@@ -92,7 +92,7 @@ public class STTService {
             //rid 추출
             String rid = response.getRid();
 
-            int maxRetries = 30;//반복 횟수
+            int maxRetries = 100;//반복 횟수
             int intervalMs = 2000;//시도 사이 간격 ms
 
             //Polling: 변환 완료될 때까지 반복 확인
