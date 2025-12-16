@@ -1,4 +1,4 @@
-package com.codehows.daehobe.config;
+package com.codehows.daehobe.config.stt;
 /*
 * 외부 api 설정
 * */

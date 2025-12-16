@@ -1,4 +1,4 @@
-package com.codehows.daehobe.config;
+package com.codehows.daehobe.config.stt;
 
 import lombok.Getter;
 import lombok.Setter;

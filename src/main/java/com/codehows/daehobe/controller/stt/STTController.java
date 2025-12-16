@@ -36,9 +36,8 @@ public class STTController {
         System.out.println("==============stt 조회 시작==========");
         List<STTDto> stts = sttService.getSTTById(id);
 
-
+        // 데이터 없으면 404 반환
         if (stts.isEmpty()) {
-            // 데이터 없으면 404 반환
             return ResponseEntity.status(404)
                     .body("해당 회의에 STT가 존재하지 않습니다.");
         }

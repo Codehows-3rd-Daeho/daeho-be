@@ -7,7 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /*
@@ -16,7 +15,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-public class DagloSTTResponseDto {
+public class STTResponseDto {
 
     private String rid;
     private String status;
@@ -24,20 +23,34 @@ public class DagloSTTResponseDto {
     @JsonProperty("sttResults")
     private List<STTResult> sttResults;
 
+    //변환완료인지 체크
     public boolean isCompleted() {
         return "transcribed".equalsIgnoreCase(status);
     }
 
-    // 변환된 전체 텍스트를 가져오는 편의 메서드
+    // 변환된 전체 텍스트를 가져오는 메서드
     public String getContent() {
         if (sttResults == null || sttResults.isEmpty()) return null;
 
         StringBuilder sb = new StringBuilder();
+        String prevSpeaker = null;
+
         for (STTResult result : sttResults) {
-            if (result.getTranscript() != null) {
-                sb.append(result.getTranscript()).append(" ");
+            if (result.getWords() == null) continue;
+
+            for (STTResult.Word word : result.getWords()) {
+                String speaker = word.getSpeaker();
+
+                // 화자가 바뀔 때만 speaker 표시
+                if (speaker != null && !speaker.equals(prevSpeaker)) {
+                    sb.append("\n(화자 ").append(speaker).append(")\n");
+                    prevSpeaker = speaker;
+                }
+
+                sb.append(word.getWord());
             }
         }
+
         return sb.toString().trim();//trim(): 문자열 앞뒤 공백 제거
     }
 
@@ -50,6 +63,7 @@ public class DagloSTTResponseDto {
         return stt;
     }
 
+    //응답 형태(객체 안의 객체 형태)
     @Getter
     @Setter
     public static class STTResult {
@@ -60,6 +74,7 @@ public class DagloSTTResponseDto {
         @Getter
         @Setter
         public static class Word {
+            private String speaker;
             private String word;
             private Time startTime;
             private Time endTime;
