@@ -14,11 +14,7 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
 
     boolean existsByLoginId(String loginId);
 
-    List<Member> findByIdIn(List<Long> id);
-
     int countByJobPositionId(Long id);
-
-    boolean existsByLoginIdAndIdNot(String loginId, Long memberId);
 
     List<Member> findByRoleAndIsEmployedTrue(Role role);
 

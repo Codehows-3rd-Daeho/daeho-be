@@ -1,4 +1,4 @@
-package com.codehows.daehobe.entity.file;
+package com.codehows.daehobe.entity.stt;
 
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.meeting.Meeting;
@@ -8,6 +8,7 @@ import lombok.*;
 @Entity
 @Table(name = "stt")
 @Getter
+@Setter
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,7 +18,7 @@ public class STT extends BaseEntity {
     @Id
     @Column(name = "stt_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
@@ -27,5 +28,11 @@ public class STT extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id", nullable = false)
-    private Meeting meetingId;
+    private Meeting meeting;
+
+
+    //stt 변환 후 요약시 update로 값 추가
+    public void updateSummary(String summary) {
+        this.summary = summary;
+    }
 }
