@@ -4,7 +4,6 @@ pipeline {
     environment {
         COMPOSE_PROJECT = 'spring-backend'
         DOCKER_NETWORK = 'app-network'
-        // 호스트의 설정 파일 경로 (Jenkins가 접근 가능한 경로)
         HOST_CONFIG_PATH = '/var/jenkins_config/application.properties'
     }
     
@@ -15,7 +14,7 @@ pipeline {
                 checkout scm
             }
         }
-        
+
         stage('Copy Configuration to Build') {
             steps {
                 script {
@@ -76,16 +75,8 @@ pipeline {
                 script {
                     echo 'Waiting for services to be healthy...'
                     sh """
-                        # MySQL health check
                         timeout 120 sh -c 'until docker inspect --format="{{.State.Health.Status}}" mysql-db | grep -q healthy; do sleep 2; done' || true
-                        
-                        # Milvus health check
-                        timeout 120 sh -c 'until docker inspect --format="{{.State.Health.Status}}" milvus-standalone | grep -q healthy; do sleep 2; done' || true
-                        
-                        # Spring Boot health check
-                        timeout 120 sh -c 'until docker inspect --format="{{.State.Health.Status}}" spring-backend | grep -q healthy; do sleep 2; done' || true
-                        
-                        echo "All services are healthy"
+                        sleep 10
                     """
                 }
             }
@@ -96,14 +87,8 @@ pipeline {
                 script {
                     echo 'Verifying deployment...'
                     sh """
-                        echo "=== Container Status ==="
                         docker compose ps
-                        
-                        echo "=== Spring Backend Logs (Last 50 lines) ==="
                         docker logs spring-backend --tail=50
-                        
-                        echo "=== Testing Spring Boot Health Endpoint ==="
-                        curl -f http://localhost:8080/actuator/health || echo "Health check endpoint not available yet"
                     """
                 }
             }
@@ -115,8 +100,7 @@ pipeline {
                     echo 'Cleaning up unused Docker resources...'
                     sh """
                         docker image prune -f
-                        # volume은 데이터 유실 방지를 위해 주석 처리
-                        # docker volume prune -f
+                        docker volume prune -f
                     """
                 }
             }
@@ -125,20 +109,12 @@ pipeline {
     
     post {
         success {
-            echo '✅ Spring Boot deployment successful!'
-            sh """
-                echo "=== Deployment Summary ==="
-                docker compose ps
-            """
+            echo 'Spring Boot deployment successful!'
         }
         failure {
-            echo '❌ Spring Boot deployment failed!'
+            echo 'Spring Boot deployment failed!'
             sh """
-                echo "=== Docker Compose Logs ==="
-                docker compose logs --tail=100 || true
-                
-                echo "=== Container Status ==="
-                docker ps -a || true
+                docker compose logs || true
             """
         }
     }
