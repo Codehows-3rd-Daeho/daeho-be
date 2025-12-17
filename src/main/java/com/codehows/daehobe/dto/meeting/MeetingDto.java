@@ -60,8 +60,12 @@ public class MeetingDto {
             boolean isEditPermitted,
             List<MeetingMemberDto> participantList
     ) {
-        // 관련 이슈
+        // 관련 이슈 (삭제상태가 true면 null)
         Issue issue = meeting.getIssue();
+        if (issue != null && issue.isDel()) {
+            issue = null;
+        }
+
 
         String hostName = host != null ? host.getMember().getName() : null;
         String hostJPName = (host != null && host.getMember().getJobPosition() != null)
