@@ -1,6 +1,7 @@
 package com.codehows.daehobe.dto.meeting;
 
 import com.codehows.daehobe.entity.meeting.Meeting;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +21,7 @@ public class MeetingListDto {
     private String title;                // 제목
     private String status;               // 상태
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime startDate;         // 시작일
     private LocalDateTime endDate;           // 종료일
 
