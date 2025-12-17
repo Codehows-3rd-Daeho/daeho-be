@@ -25,6 +25,10 @@ COPY src ./src
 RUN chmod +x ./gradlew && ./gradlew bootJar --no-daemon
 # Maven 빌드 시: RUN mvn clean package -DskipTests
 
+# JAR 내부 확인
+RUN echo "=== Checking JAR contents ===" && \
+    jar tf /app/build/libs/*.jar | grep application.properties
+
 # 런타임 스테이지
 FROM eclipse-temurin:21-jre-alpine
 
