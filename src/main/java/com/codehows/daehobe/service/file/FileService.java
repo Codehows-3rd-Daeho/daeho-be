@@ -119,4 +119,12 @@ public class FileService {
                 .map(FileDto::fromEntity)
                 .toList();
     }
+
+    // 댓글 파일 찾기
+    public List<FileDto> getCommentFiles(Long commentId) {
+        return fileRepository.findByTargetIdAndTargetType(commentId, TargetType.COMMENT)
+                .stream()
+                .map(FileDto::fromEntity)
+                .toList();
+    }
 }

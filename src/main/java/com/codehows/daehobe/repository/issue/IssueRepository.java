@@ -1,5 +1,6 @@
 package com.codehows.daehobe.repository.issue;
 
+import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.entity.issue.Issue;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,7 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
 
     List<Issue> findAllByIsDelFalse();
 
-    Optional<Issue> findByIdAndIsDelFalse(Long id);
+    Optional<Issue> findByIdAndIsDelFalseAndStatus(Long id, Status status);
 
     Page<Issue> findByIsDelFalse(Pageable pageable);
 
