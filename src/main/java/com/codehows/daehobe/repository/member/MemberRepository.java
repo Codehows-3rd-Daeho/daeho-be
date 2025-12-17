@@ -32,4 +32,6 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     LIMIT 10
 """, nativeQuery = true)
     List<MentionMemberDto> searchForMention(@Param("keyword") String keyword);
+
+    List<Member> findByIdIn(List<Long> memberIds);
 }
