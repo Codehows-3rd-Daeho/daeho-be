@@ -222,7 +222,7 @@ public class MeetingService {
     // issueId로 관련 회의 조회
     public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {
         Issue issue = issueService.getIssueById(issueId);
-        return meetingRepository.findByIssue(issue, pageable)
+        return meetingRepository.findByIssueAndIsDelFalse(issue, pageable)
                 .map(this::toMeetingListDto);
     }
 

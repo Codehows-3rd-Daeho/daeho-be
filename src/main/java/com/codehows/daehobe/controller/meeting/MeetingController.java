@@ -5,6 +5,7 @@ import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
+import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,10 +31,8 @@ public class MeetingController {
             @RequestPart("data") MeetingFormDto meetingFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        System.out.println("==============이슈 등록 시작");
-        meetingService.createMeeting(meetingFormDto, multipartFiles);
-
-        return ResponseEntity.ok().build();
+        Meeting meeting = meetingService.createMeeting(meetingFormDto, multipartFiles);
+        return ResponseEntity.ok(meeting.getId());
 
     }
 

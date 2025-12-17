@@ -4,6 +4,7 @@ import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
+import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +31,8 @@ public class IssueController {
             @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
 
-        issueService.createIssue(issueFormDto, multipartFiles);
-
-        return ResponseEntity.ok().build();
+        Issue issue = issueService.createIssue(issueFormDto, multipartFiles);
+        return ResponseEntity.ok(issue.getId());
 
     }
 
