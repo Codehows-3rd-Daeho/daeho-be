@@ -3,7 +3,17 @@ package com.codehows.daehobe.entity.comment;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Entity
+@Table(name = "mention")
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Mention extends BaseEntity {
 
     @Id
@@ -13,10 +23,10 @@ public class Mention extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "comment_id", nullable = false)
-    private Comment commentId;
+    private Comment comment;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member memberId;
+    private Member member;
 
 }

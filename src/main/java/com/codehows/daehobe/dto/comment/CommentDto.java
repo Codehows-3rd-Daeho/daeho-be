@@ -1,6 +1,8 @@
 package com.codehows.daehobe.dto.comment;
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.comment.Comment;
+import com.codehows.daehobe.entity.member.Member;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -17,11 +20,20 @@ public class CommentDto {
     // 댓글 id
     private Long id;
 
+    // 작성자 id
+    private Long writerMemberId;
+
     // 작성자
     private String writerName;
 
+    // 작성자 직책
+    private String writerJPName;
+
+    // 첨부파일
+    private List<FileDto> fileList;
+
     // 본문
-    private String comment;
+    private String content;
 
     // 생성시간
     private LocalDateTime createdAt;
@@ -32,13 +44,18 @@ public class CommentDto {
     @JsonProperty("isDel")
     private Boolean del;
 
-    public static CommentDto fromComment(Comment comment, String writerName) {
+    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList, Long writerMemberId) {
+
+
         return CommentDto.builder()
                 .id(comment.getId())
                 .writerName(writerName)
-                .comment(comment.getContent())
+                .writerJPName(writerJPName)
+                .writerMemberId(writerMemberId)
+                .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
+                .fileList(fileList)
                 .del(comment.isDel())
                 .build();
     }
