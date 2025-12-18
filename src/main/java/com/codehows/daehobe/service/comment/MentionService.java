@@ -1,5 +1,6 @@
 package com.codehows.daehobe.service.comment;
 
+import com.codehows.daehobe.dto.comment.CommentMentionDto;
 import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.comment.Mention;
 import com.codehows.daehobe.entity.member.Member;
@@ -37,5 +38,15 @@ public class MentionService {
                             .build()
             );
         }
+    }
+
+    public List<CommentMentionDto> getMentionsByComment(Comment comment) {
+
+        return mentionRepository.findByComment(comment).stream()
+                .map(m -> new CommentMentionDto(
+                        m.getMember().getId(),
+                        m.getMember().getName()
+                ))
+                .toList();
     }
 }

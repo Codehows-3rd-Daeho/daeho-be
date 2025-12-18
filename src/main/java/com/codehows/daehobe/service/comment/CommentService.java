@@ -2,6 +2,7 @@ package com.codehows.daehobe.service.comment;
 
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.comment.CommentDto;
+import com.codehows.daehobe.dto.comment.CommentMentionDto;
 import com.codehows.daehobe.dto.comment.CommentRequest;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
@@ -112,8 +113,10 @@ public class CommentService {
                 : null;
 
         List<FileDto> fileList = fileService.getCommentFiles(comment.getId());
+        List<CommentMentionDto> mentions =
+                mentionService.getMentionsByComment(comment);
 
-        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId());
+        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId(), mentions);
     }
 
     // 등록
