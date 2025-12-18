@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -115,6 +116,7 @@ public class MeetingController {
         }
     }
 
+    //회의 목록 조회(페이징)
     @GetMapping("/list")
     public ResponseEntity<?> getMeetings(
             @RequestParam(defaultValue = "0") int page,
@@ -129,4 +131,27 @@ public class MeetingController {
             return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
         }
     }
+
+    //회의 캘린더 조회
+    @GetMapping("/scheduler")
+    public ResponseEntity<?> getMeetingByMonth(
+            @RequestParam int year,
+            @RequestParam int month
+    ) {
+
+        System.out.println("================================================================");
+        System.out.println("getMeetingByMonth 컨트롤러 실행 확인");
+        System.out.println("================================================================");
+        try {
+
+
+            List<MeetingListDto> meetings =
+                    meetingService.findByDateBetween(year, month);
+
+            return ResponseEntity.ok(meetings);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
+        }
+    }
+
 }

@@ -27,6 +27,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -218,6 +220,28 @@ public class MeetingService {
         return meetingRepository.findByIsDelFalse(pageable)
                 .map(this::toMeetingListDto);
     }
+
+    //회의 캘린더 조회
+    public List<MeetingListDto> findByDateBetween(
+            int year, int month
+    ) {
+        //LocalDate로 변경
+        LocalDate startDate  = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
+        LocalDate endDate  = startDate.withDayOfMonth(startDate.lengthOfMonth()); //ex? 12월의 마지막 날을 일자 부분에 삽입 => 2025-12-31
+
+        //LocalDateTime 으로 변경
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        List<Meeting> meetings = meetingRepository.findByStartDateBetween(startDateTime, endDateTime);
+
+        return meetings.stream()
+                .map(this::toMeetingListDto)
+                .toList();
+
+    }
+
+
 
     // issueId로 관련 회의 조회
     public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {

@@ -6,11 +6,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.nio.channels.FileChannel;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     Page<Meeting> findByIsDelFalse(Pageable pageable);
 
     Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
+
+    List<Meeting> findByStartDateBetween(
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
 }
