@@ -234,4 +234,32 @@ public class IssueService {
     public Issue getIssueById(Long issueId) {
         return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
     }
+
+//    ================================================나의 업무=================================================================
+
+    //memberId가 참여한 이슈만 추출(공통 로직)
+    private List<IssueListDto> getIssuesForMember(Long memberId, List<Issue> issues) {
+        return issues.stream()
+                .filter(issue -> issueMemberService.isParticipant(memberId, issue)) // 참여자만 필터
+                .map(this::toIssueListDto) // DTO 변환
+                .toList();
+    }
+
+
+    //진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getInProgressForMember(Long memberId) {
+        return getIssuesForMember(memberId, issueRepository.findInProgress() );
+    }
+
+    //지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getDelayedForMember(Long memberId) {
+        return getIssuesForMember(memberId, issueRepository.findDelayed());
+    }
+
+    //완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getCompletedForMember(Long memberId) {
+        LocalDate setDate = LocalDate.now().minusDays(7);
+        return getIssuesForMember(memberId, issueRepository.findRecentCompleted(setDate));
+    }
+
 }

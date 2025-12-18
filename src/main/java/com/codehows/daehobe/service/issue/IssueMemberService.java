@@ -66,4 +66,14 @@ public class IssueMemberService {
     public void deleteIssueMember(Issue issue) {
         issueMemberRepository.deleteByIssue(issue);
     }
+
+
+//    ================================================나의 업무=================================================================
+
+    //로그인 사용자 id로 해당 이슈의 참여자인지 확인
+    public boolean isParticipant(Long memberId, Issue issue ) {
+        return getMembers(issue).stream() // issue의 모든 참여자 조회
+                .anyMatch(im -> im.getMember().getId().equals(memberId));
+    }
+
 }
