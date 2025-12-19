@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,9 +16,7 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     boolean existsByLoginId(String loginId);
 
     int countByJobPositionId(Long id);
-
-    List<Member> findByRoleAndIsEmployedTrue(Role role);
-
+    
     @Query(value = """
     SELECT
         m.member_id        AS id,
@@ -34,4 +33,6 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     List<MentionMemberDto> searchForMention(@Param("keyword") String keyword);
 
     List<Member> findByIdIn(List<Long> memberIds);
+
+    List<Member> findByIsEmployedTrue();
 }

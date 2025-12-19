@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.member;
 
+import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
@@ -27,7 +28,6 @@ public class MemberDto {
     private String password;
 
     // 이름
-    @NotBlank(message = "이름은 필수 입력값입니다.")
     private String name;
 
     // 부서
@@ -36,19 +36,17 @@ public class MemberDto {
     // 직급
     private Long jobPositionId;
 
-    // 전화번호: 숫자, 하이픈 허용 + 하이픈 필수
-    @NotBlank(message = "전화번호는 필수 입력값입니다.")
-    @Pattern(regexp = "^[0-9]+(-[0-9]+)+$", message = "전화번호는 숫자와 하이픈(-)을 포함해야 합니다.")
+    // 전화번호
     private String phone;
 
     // 이메일
-    @NotBlank(message = "이메일은 필수 입력값입니다.")
-    @Email(message = "올바른 이메일 형식이 아닙니다.")
     private String email;
 
     // 재직 여부
-    @NotNull(message = "재직 여부를 선택해주세요.")
     private Boolean isEmployed;
+
+    // 관리자 여부
+    private String role;
 
     // 프로필 이미지 id
     private Long profileFileId;
@@ -66,6 +64,7 @@ public class MemberDto {
                 .phone(member.getPhone())
                 .email(member.getEmail())
                 .isEmployed(member.getIsEmployed())
+                .role(String.valueOf(member.getRole()))
                 .profileUrl(profileFile != null ? profileFile.getPath() : null)
                 .profileFileId(profileFile != null ? profileFile.getFileId() : null)
                 .build();

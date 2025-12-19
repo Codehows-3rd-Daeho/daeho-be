@@ -29,8 +29,4 @@ public class PartMemberController {
             return ResponseEntity.status(500).body("회원 조회 중 오류 발생");
         }
     }
-
-    //주관자 조회 삭제
-
-
 }

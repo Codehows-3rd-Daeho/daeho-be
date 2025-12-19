@@ -68,6 +68,7 @@ public class Member extends BaseEntity {
         this.phone = memberDto.getPhone();
         this.email = memberDto.getEmail();
         this.isEmployed = memberDto.getIsEmployed();
+        this.role = "ADMIN".equals(memberDto.getRole()) ? Role.ADMIN : Role.USER;
 
         if (memberDto.getPassword() != null && !memberDto.getPassword().isBlank()) {
             this.password = passwordEncoder.encode(memberDto.getPassword());
