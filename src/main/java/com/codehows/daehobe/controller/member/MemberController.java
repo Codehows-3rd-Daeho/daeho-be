@@ -2,6 +2,7 @@ package com.codehows.daehobe.controller.member;
 
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
+import com.codehows.daehobe.dto.member.MemberProfileDto;
 import com.codehows.daehobe.service.member.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -100,5 +101,19 @@ public class MemberController {
             return ResponseEntity.status(500).body("회원 수정 중 오류 발생");
         }
     }
+
+    //나의 업무
+    @GetMapping("/mypage/{id}")
+    public ResponseEntity<?> getMemberProfile(@PathVariable Long id) {
+        try {
+            MemberProfileDto dtoList = memberService.getMemberProfile(id);
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("회원 조회 중 오류 발생");
+        }
+    }
+
+
 
 }

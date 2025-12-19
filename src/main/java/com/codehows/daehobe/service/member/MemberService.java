@@ -4,6 +4,7 @@ import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.comment.MentionMemberDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
+import com.codehows.daehobe.dto.member.MemberProfileDto;
 import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
@@ -90,8 +91,15 @@ public class MemberService {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
         File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
 
-        String profileUrl = (profileFile != null) ? profileFile.getPath() : null;
         return MemberDto.fromEntity(member, profileFile);
+    }
+
+    //마이페이지 회원 조회
+    public MemberProfileDto getMemberProfile(Long id) {
+        Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+        File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
+        ;
+        return MemberProfileDto.fromEntity(member, profileFile);
     }
 
     public String generatePwd(Long id) {
