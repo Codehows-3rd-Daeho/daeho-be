@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -33,15 +34,15 @@ public class MeetingMemberService {
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new EntityNotFoundException("해당 ID의 이슈를 찾을 수 없습니다: " + meetingId));
         List<MeetingMember> meetingMembers = meetingMemberDtos.stream()
-                        .map(dto -> MeetingMember.builder()
-                                .meeting(meeting)
-                                .member(memberRepository.findById(dto.getId())
-                                        .orElseThrow(() -> new EntityNotFoundException("member not found")))
-                                .isHost(dto.isHost())
-                                .isPermitted(dto.isPermitted())
-                                .isRead(false)
-                                .build()
-                        ).toList();
+                .map(dto -> MeetingMember.builder()
+                        .meeting(meeting)
+                        .member(memberRepository.findById(dto.getId())
+                                .orElseThrow(() -> new EntityNotFoundException("member not found")))
+                        .isHost(dto.isHost())
+                        .isPermitted(dto.isPermitted())
+                        .isRead(false)
+                        .build()
+                ).toList();
 
 
         meetingMemberRepository.saveAll(meetingMembers);
@@ -55,7 +56,7 @@ public class MeetingMemberService {
     }
 
     // 회의, 멤버로 참여자 엔티티 찾기
-    public MeetingMember getMember(Meeting meeting, Member member){
+    public MeetingMember getMember(Meeting meeting, Member member) {
         return meetingMemberRepository.findByMeetingAndMember(meeting, member).orElseThrow(EntityNotFoundException::new);
     }
 
@@ -83,9 +84,13 @@ public class MeetingMemberService {
 
 //    ================================================나의 업무=================================================================
 
-public Page<MeetingMember> findByMemberId(Long memberId, Pageable pageable) {
+    public Page<MeetingMember> findByMemberId(Long memberId, Pageable pageable) {
         return meetingMemberRepository.findByMemberId(memberId, pageable);
-}
+    }
+
+    public List<MeetingMember> findMeetingsByMemberAndDate(Long memberId, LocalDateTime start, LocalDateTime end) {
+        return meetingMemberRepository.findMeetingsByMemberAndDate(memberId, start, end);
+    }
 
 
 }

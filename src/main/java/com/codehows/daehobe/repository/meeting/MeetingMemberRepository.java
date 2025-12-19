@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,13 @@ public interface MeetingMemberRepository extends JpaRepository<MeetingMember, Lo
                   AND m.isDel = false
             """)
     Page<MeetingMember> findByMemberId(@Param("memberId") Long memberId, Pageable pageable);
+
+    @Query("SELECT mm FROM MeetingMember mm " +
+            "WHERE mm.meeting.startDate BETWEEN :start AND :end " +
+            "AND mm.member.id = :memberId")
+    List<MeetingMember> findMeetingsByMemberAndDate(@Param("memberId") Long memberId,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end);
 
 
 }

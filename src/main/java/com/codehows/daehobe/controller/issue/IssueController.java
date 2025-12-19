@@ -164,6 +164,7 @@ public class IssueController {
     @GetMapping("/kanban/mytask/{id}")
     public ResponseEntity<?> getKanbanDataById(@PathVariable Long id
     ) {
+        System.out.println(" =============================================================");
 
         System.out.println(" getKanbanDataById id: " + id);
         var inProgress = issueService.getInProgressForMember(id);       // 진행중 전체
@@ -177,7 +178,7 @@ public class IssueController {
 
     //나의 업무 리스트
     @GetMapping("/list/mytask/{id}")
-    public ResponseEntity<?> getIssuesBYId(@PathVariable Long id,
+    public ResponseEntity<?> getIssuesById(@PathVariable Long id,
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size) {
 

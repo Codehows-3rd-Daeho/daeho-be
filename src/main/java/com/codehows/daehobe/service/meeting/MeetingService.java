@@ -9,6 +9,7 @@ import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
@@ -239,6 +240,30 @@ public class MeetingService {
                 .map(this::toMeetingListDto)
                 .toList();
 
+    }
+
+    //나의 업무 캘린더 조회
+    public List<MeetingListDto> findByDateBetweenForMember( Long memberId, int year, int month) {
+        LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth())
+                .withHour(23).withMinute(59).withSecond(59);
+
+
+        System.out.println(" =============================================================");
+        System.out.println(" findByDateBetweenForMember memberId: " + memberId);
+        System.out.println(" findByDateBetweenForMember year: " + year);
+        System.out.println(" findByDateBetweenForMember month: " + month);
+        System.out.println(" =============================================================");
+
+        List<MeetingMember> meetings = meetingMemberService.findMeetingsByMemberAndDate(memberId, start, end);
+
+        System.out.println(" findByDateBetweenForMember meetings: " + meetings);
+
+
+        return meetings.stream()
+                .map(MeetingMember::getMeeting)
+                .map(this::toMeetingListDto) // 엔티티 → DTO 변환
+                .toList();
     }
 
 

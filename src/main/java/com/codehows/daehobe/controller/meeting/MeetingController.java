@@ -151,7 +151,29 @@ public class MeetingController {
         }
     }
 
-    //회의 목록 조회(페이징)
+    //나의 업무 캘린더
+    @GetMapping("/scheduler/mytask/{id}")
+    public ResponseEntity<?> getMeetingByMonthForMember(
+            @PathVariable Long id,
+            @RequestParam int year,
+            @RequestParam int month
+    ) {
+        System.out.println(" =============================================================");
+        System.out.println(" getMeetingByMonthForMember id: " + id);
+        System.out.println(" =============================================================");
+
+        try {
+            List<MeetingListDto> meetings =
+                    meetingService.findByDateBetweenForMember(id, year, month);
+            System.out.println(" meetings: " + meetings);
+            return ResponseEntity.ok(meetings);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
+        }
+    }
+
+
+    //나의 업무 회의 목록 조회(페이징)
     @GetMapping("/mytask/{id}")
     public ResponseEntity<?> getMeetingsById(
             @PathVariable Long id,
