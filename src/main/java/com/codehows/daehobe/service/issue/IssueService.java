@@ -1,5 +1,7 @@
 package com.codehows.daehobe.service.issue;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
@@ -41,6 +43,7 @@ public class IssueService {
     private final CategoryService categoryService;
     private final MemberService memberService;
 
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.ISSUE)
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles) {
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회

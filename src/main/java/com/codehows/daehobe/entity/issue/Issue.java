@@ -1,7 +1,9 @@
 package com.codehows.daehobe.entity.issue;
 
+import com.codehows.daehobe.aop.AuditableField;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.log.Auditable;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.constant.Status;
 import jakarta.persistence.*;
@@ -15,15 +17,17 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Issue extends BaseEntity {
+public class Issue extends BaseEntity implements Auditable<Long> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "issue_id")
     private Long id; // PK
 
+    @AuditableField(name="제목")
     @Column(name = "title", nullable = false)
     private String title;
+
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
