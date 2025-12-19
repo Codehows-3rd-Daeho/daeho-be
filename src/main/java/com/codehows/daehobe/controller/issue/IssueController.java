@@ -162,7 +162,8 @@ public class IssueController {
 
     //    나의 업무 칸반
     @GetMapping("/kanban/mytask/{id}")
-    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id) {
+    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id
+    ) {
 
         System.out.println(" getKanbanDataById id: " + id);
         var inProgress = issueService.getInProgressForMember(id);       // 진행중 전체
@@ -174,6 +175,20 @@ public class IssueController {
         );
     }
 
+    //나의 업무 리스트
+    @GetMapping("/list/mytask/{id}")
+    public ResponseEntity<?> getIssuesBYId(@PathVariable Long id,
+                                           @RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
 
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+            List<IssueListDto> memberIssues = issueService.getIssuesForMember(id, pageable);
+            return ResponseEntity.ok(memberIssues);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
+        }
+    }
 
 }

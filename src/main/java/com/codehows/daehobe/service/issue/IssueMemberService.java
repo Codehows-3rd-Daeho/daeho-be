@@ -9,6 +9,8 @@ import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,4 +78,7 @@ public class IssueMemberService {
                 .anyMatch(im -> im.getMember().getId().equals(memberId));
     }
 
+    public Page<IssueMember> findByMemberId(Long memberId, Pageable pageable) {
+        return issueMemberRepository.findByMemberId(memberId, pageable);
+    }
 }
