@@ -219,7 +219,7 @@ public class IssueService {
                 .toList();
     }
 
-    // 리스트 공통부분
+    // 리스트 공통부분(Entity -> Dto, 주관자 정보, 부서 정보 )
     private IssueListDto toIssueListDto(Issue issue) {
         IssueMember host = issueMemberService.getHost(issue);
         String hostName = (host != null) ? host.getMember().getName() : null; // 주관자 이름

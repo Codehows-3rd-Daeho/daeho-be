@@ -13,6 +13,8 @@ import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -78,4 +80,12 @@ public class MeetingMemberService {
     public void deleteMeetingMember(Meeting meeting) {
         meetingMemberRepository.deleteByMeeting(meeting);
     }
+
+//    ================================================나의 업무=================================================================
+
+public Page<MeetingMember> findByMemberId(Long memberId, Pageable pageable) {
+        return meetingMemberRepository.findByMemberId(memberId, pageable);
+}
+
+
 }

@@ -7,6 +7,7 @@ import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.service.meeting.MeetingService;
+import com.codehows.daehobe.service.member.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ import java.util.List;
 public class MeetingController {
 
     private final MeetingService meetingService;
+    private final MemberService memberService;
 
     @PostMapping("/create")
     public ResponseEntity<?> createMeeting(
@@ -139,17 +141,30 @@ public class MeetingController {
             @RequestParam int month
     ) {
 
-        System.out.println("================================================================");
-        System.out.println("getMeetingByMonth 컨트롤러 실행 확인");
-        System.out.println("================================================================");
         try {
-
-
             List<MeetingListDto> meetings =
                     meetingService.findByDateBetween(year, month);
 
             return ResponseEntity.ok(meetings);
         } catch (Exception e) {
+            return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
+        }
+    }
+
+    //회의 목록 조회(페이징)
+    @GetMapping("/mytask/{id}")
+    public ResponseEntity<?> getMeetingsById(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+            List<MeetingListDto> memberMeetings = memberService.getMeetingsForMember(id, pageable);
+            return ResponseEntity.ok(memberMeetings);
+
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
         }
     }

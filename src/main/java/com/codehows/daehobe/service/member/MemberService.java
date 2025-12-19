@@ -3,6 +3,7 @@ package com.codehows.daehobe.service.member;
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.comment.MentionMemberDto;
+import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.member.PartMemberListDto;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
@@ -10,12 +11,17 @@ import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.entity.masterData.JobPosition;
+import com.codehows.daehobe.entity.meeting.Meeting;
+import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.DepartmentService;
 import com.codehows.daehobe.service.masterData.JobPositionService;
+import com.codehows.daehobe.service.meeting.MeetingDepartmentService;
+import com.codehows.daehobe.service.meeting.MeetingMemberService;
+import com.codehows.daehobe.service.meeting.MeetingService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +50,8 @@ public class MemberService {
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int PASSWORD_LENGTH = 8;
     private static final SecureRandom random = new SecureRandom();
+    private final MeetingMemberService meetingMemberService;
+    private final MeetingDepartmentService meetingDepartmentService;
 
     public Member createMember(@Valid MemberDto memberDto, List<MultipartFile> profileImage) {
         JobPosition pos = jobPositionService.getJobPositionById(memberDto.getJobPositionId());
@@ -97,9 +105,9 @@ public class MemberService {
     }
 
     public Member updateMember(Long id,
-            MemberDto memberDto,
-            List<MultipartFile> newFiles,
-            List<Long> removeFileIds) {
+                               MemberDto memberDto,
+                               List<MultipartFile> newFiles,
+                               List<Long> removeFileIds) {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
 
@@ -148,4 +156,28 @@ public class MemberService {
 
         return memberRepository.findByIdIn(memberIds);
     }
+
+    //    ================================================나의 업무=================================================================
+    public List<MeetingListDto> getMeetingsForMember(Long memberId, Pageable pageable) {
+
+        Page<MeetingMember> meetingMembers = meetingMemberService.findByMemberId(memberId, pageable);
+
+        return meetingMembers.getContent().stream()
+                .map(MeetingMember::getMeeting)
+                .map(this::toMeetingListDto)
+                .toList();
+    }
+
+    //Entity -> Dto, 주관자 정보, 부서 정보
+    private MeetingListDto toMeetingListDto(Meeting meeting) {
+
+        MeetingMember host = meetingMemberService.getHost(meeting);
+        String hostName = (host != null) ? host.getMember().getName() : null;
+        String hostJPName = (host != null && host.getMember().getJobPosition() != null) ? host.getMember().getJobPosition().getName() : null;
+        List<String> departmentName = meetingDepartmentService.getDepartmentName(meeting);
+        return MeetingListDto.fromEntity(meeting, departmentName, hostName, hostJPName);
+
+    }
+
+
 }
