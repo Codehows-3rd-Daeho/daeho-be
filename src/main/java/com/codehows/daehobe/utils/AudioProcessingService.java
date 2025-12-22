@@ -66,16 +66,16 @@ public class AudioProcessingService {
 
             if (exitCode == 0) {
                 Files.move(tempPath, filePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("✅ FFmpeg로 메타데이터 수정 완료");
+                log.info("[FFmpeg] 메타데이터 수정 완료");
             } else {
-                log.error("❌ FFmpeg 실행 실패 (exit code: {})", exitCode);
-                log.error("FFmpeg 전체 출력:\n{}", output.toString());
+                log.error("[FFmpeg] 실행 실패 (exit code: {})", exitCode);
+                log.error("[FFmpeg] 전체 출력:\n{}", output.toString());
                 Files.deleteIfExists(tempPath);
-                throw new RuntimeException("FFmpeg 처리 실패");
+                throw new RuntimeException("[FFmpeg] 처리 실패");
             }
 
         } catch (Exception e) {
-            log.error("FFmpeg 메타데이터 수정 실패", e);
+            log.error("[FFmpeg] 메타데이터 수정 실패", e);
             try{
                 Files.deleteIfExists(filePath.resolveSibling(fileNameWithoutExtension + ".temp.wav"));
             }catch (Exception ex){

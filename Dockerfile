@@ -26,7 +26,7 @@ RUN chmod +x ./gradlew && ./gradlew bootJar --no-daemon
 # Maven 빌드 시: RUN mvn clean package -DskipTests
 
 # 런타임 스테이지
-FROM eclipse-temurin:21-jre-alpine
+FROM openjdk:21-jdk
 
 WORKDIR /app
 

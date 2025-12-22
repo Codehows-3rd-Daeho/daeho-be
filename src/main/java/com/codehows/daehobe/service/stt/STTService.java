@@ -290,12 +290,13 @@ public class STTService {
         stt.setStatus(STT.Status.PROCESSING);
         sttRepository.save(stt);
 
+        fileService.encodeAudioFile(stt.getTempFileName());
+
         File file = fileService.getFileById(stt.getFileId());
         Path filePath = Paths.get(fileLocation, file.getPath());
         try {
             byte[] fileContent = Files.readAllBytes(filePath);
             String originalFilename = file.getSavedName();
-            System.out.println("originalFilename: " + originalFilename);
             ByteArrayResource resource = new ByteArrayResource(fileContent) {
                 @Override
                 public String getFilename() {

@@ -37,6 +37,12 @@ public class FileService {
     private final FileRepository fileRepository;
     private final AudioProcessingService audioProcessingService;
 
+    public boolean encodeAudioFile(String savedFileName) {
+        String savedFilePath = "/file/" + savedFileName;
+        Path path = Paths.get(fileLocation, savedFilePath);
+        audioProcessingService.fixAudioMetadata(path);
+    }
+
     public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
         java.io.File dir = new java.io.File(fileLocation);
         if (!dir.exists()) dir.mkdirs();
@@ -50,8 +56,6 @@ public class FileService {
                 os.flush();
             } catch (IOException e) {
                 throw new RuntimeException("Failed to append chunk to file", e);
-            } finally {
-                audioProcessingService.fixAudioMetadata(path);
             }
         }
 
