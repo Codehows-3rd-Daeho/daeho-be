@@ -21,24 +21,31 @@ public class AudioProcessingService {
         try {
             Path tempPath = filePath.resolveSibling(filePath.getFileName() + ".temp");
 
+            // Windows 경로를 FFmpeg가 이해할 수 있는 형태로 변환
+            String inputPath = filePath.toAbsolutePath().toString().replace("\\", "/");
+            String outputPath = tempPath.toAbsolutePath().toString().replace("\\", "/");
+
+            log.info("Input: {}", inputPath);
+            log.info("Output: {}", outputPath);
+
             ProcessBuilder pb = new ProcessBuilder(
                     ffmpegPath,
-                    "-i", filePath.toAbsolutePath().toString(),
-                    "-c", "copy",  // 코덱 복사 (재인코딩 안 함)
-                    "-y",  // 덮어쓰기
-                    tempPath.toAbsolutePath().toString()
+                    "-i", inputPath,
+                    "-c", "copy",
+                    "-y",
+                    outputPath
             );
 
-            // 에러 출력 로깅
             pb.redirectErrorStream(true);
-
             Process process = pb.start();
 
-            // FFmpeg 출력 로그
+            // FFmpeg 출력 로그 (에러 메시지 확인용)
+            StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
                     log.debug("FFmpeg: {}", line);
                 }
             }
@@ -50,8 +57,9 @@ public class AudioProcessingService {
                 log.info("FFmpeg로 메타데이터 수정 완료: {}", filePath);
             } else {
                 log.error("FFmpeg 실행 실패 (exit code: {})", exitCode);
+                log.error("FFmpeg 출력:\n{}", output.toString());
                 Files.deleteIfExists(tempPath);
-                throw new RuntimeException("FFmpeg 처리 실패");
+                throw new RuntimeException("FFmpeg 처리 실패: " + output.toString());
             }
 
         } catch (Exception e) {
