@@ -1,20 +1,19 @@
 package com.codehows.daehobe.controller.stt;
 
 
-import com.codehows.daehobe.dto.meeting.MeetingDto;
-import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.stt.STTDto;
+import com.codehows.daehobe.dto.stt.StartRecordingRequest;
 import com.codehows.daehobe.service.stt.STTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/stt")
+@RequestMapping("/api/stt")
 @RequiredArgsConstructor
 public class STTController {
 
@@ -55,4 +54,21 @@ public class STTController {
         return ResponseEntity.noContent().build(); // 204 반환
     }
 
+    @PostMapping("/recording/start")
+    public ResponseEntity<Map<String, Long>> startRecording(@RequestBody StartRecordingRequest request) {
+        Long sttId = sttService.startRecording(request.getMeetingId());
+        return ResponseEntity.ok(Map.of("sttId", sttId));
+    }
+
+    @PostMapping("/{sttId}/chunk")
+    public ResponseEntity<Void> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
+        sttService.appendChunk(sttId, chunk);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{sttId}/recording/finish")
+    public ResponseEntity<STTDto> finishRecording(@PathVariable Long sttId) {
+        STTDto sttDto = sttService.finishRecording(sttId);
+        return ResponseEntity.ok(sttDto);
+    }
 }

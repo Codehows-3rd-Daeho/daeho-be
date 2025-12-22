@@ -6,10 +6,13 @@ import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
+import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
-import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +21,15 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -30,15 +39,17 @@ public class STTService {
 
     private final WebClient webClient;
     private final FileService fileService;
-    private final MeetingService meetingService;
+    private final MeetingRepository meetingRepository;
     private final STTRepository sttRepository;
     private final SttConfigService sttConfigService;
 
+    @Value("${file.location}")
+    private String fileLocation;
 
 
     // 저장
     public List<STTDto> uploadSTT(Long id, List<MultipartFile> files){
-        Meeting meeting = meetingService.getMeetingById(id);
+        Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
 
         List<STTDto> savedSTTs = files.stream() .map(file -> {
             //1. stt api 호출
@@ -142,7 +153,7 @@ public class STTService {
     //STT 조회
     public List<STTDto> getSTTById(Long meetingId) {
 
-        Meeting meeting = meetingService.getMeetingById(meetingId);
+        Meeting meeting = meetingRepository.findById(meetingId).orElseThrow(IllegalArgumentException::new);
 
         //1. meeting id로 존재 확인
         if ( meeting == null) {
@@ -238,5 +249,100 @@ public class STTService {
         sttRepository.deleteById(id); // 완전 삭제
     }
 
+    public Long startRecording(Long meetingId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid meeting ID: " + meetingId));
 
+        STT stt = STT.builder()
+                .meeting(meeting)
+                .content("")
+                .status("RECORDING")
+                .tempFileName(UUID.randomUUID().toString() + ".wav")
+                .build();
+
+        sttRepository.save(stt);
+        return stt.getId();
+    }
+
+    public void appendChunk(Long sttId, MultipartFile chunk) {
+        STT stt = sttRepository.findById(sttId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
+
+        Path path = Paths.get(fileLocation, stt.getTempFileName());
+
+        try (OutputStream os = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            os.write(chunk.getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to append chunk to file", e);
+        }
+    }
+
+    public STTDto finishRecording(Long sttId) {
+        STT stt = sttRepository.findById(sttId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
+
+        stt.setStatus("PROCESSING");
+        sttRepository.save(stt);
+
+        Path filePath = Paths.get(fileLocation, stt.getTempFileName());
+        Resource resource = new FileSystemResource(filePath);
+
+        STTResponseDto response = callDagloWithResource(resource);
+
+        stt.setContent(response.getContent());
+        summarySTT(stt.getId(), response.getContent()); // Re-fetch inside summarySTT is not ideal but using existing method
+
+        // Re-fetch to get the summary
+        STT updatedStt = sttRepository.findById(sttId).orElseThrow();
+        updatedStt.setStatus("COMPLETED");
+        sttRepository.save(updatedStt);
+
+        // Clean up the temporary file
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            // Log this error, but don't fail the entire operation
+            System.err.println("Failed to delete temporary file: " + filePath);
+        }
+
+        return STTDto.fromEntity(updatedStt);
+    }
+
+    private STTResponseDto callDagloWithResource(Resource resource) {
+         try {
+            STTResponseDto response = webClient.post()
+                .uri("/stt/v1/async/transcripts")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData("file", resource)
+                        .with("sttConfig", sttConfigService.toJson())
+                )
+                .retrieve()
+                .onStatus(status -> status.is4xxClientError(), clientResponse ->
+                        Mono.error(new RuntimeException("Daglo API Client Error: " + clientResponse.statusCode())))
+                .onStatus(status -> status.is5xxServerError(), clientResponse ->
+                        Mono.error(new RuntimeException("Daglo API Server Error")))
+                .bodyToMono(STTResponseDto.class)
+                .block();
+
+            if (response == null || response.getRid() == null) {
+                throw new RuntimeException("Failed to get RID from Daglo");
+            }
+
+            String rid = response.getRid();
+            int maxRetries = 100;
+            int intervalMs = 2000;
+
+            for (int i = 0; i < maxRetries; i++) {
+                STTResponseDto result = checkSTTStatus(rid);
+                if (result.isCompleted()) {
+                    return result;
+                }
+                Thread.sleep(intervalMs);
+            }
+
+            throw new RuntimeException("STT processing timed out. RID: " + rid);
+        } catch (Exception e) {
+            throw new RuntimeException("STT processing failed", e);
+        }
+    }
 }
