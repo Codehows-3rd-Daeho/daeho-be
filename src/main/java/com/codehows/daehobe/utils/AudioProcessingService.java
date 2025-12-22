@@ -36,7 +36,9 @@ public class AudioProcessingService {
             ProcessBuilder pb = new ProcessBuilder(
                     ffmpegPath,
                     "-i", inputPath,
-                    "-c:a", "copy",           // 오디오 스트림 복사 (재인코딩 X)
+                    "-c:a", "pcm_s16le",     // Opus → 16비트 PCM (WAV 표준)
+                    "-ar", "48000",          // 샘플레이트 48kHz (Opus 표준)
+                    "-ac", "2",              // 스테레오
                     "-vn",                    // 비디오 스트림 제거
                     "-f", "wav",              // 출력 형식 명시적 WAV 지정
                     "-map_metadata", "0",     // 메타데이터 복사
