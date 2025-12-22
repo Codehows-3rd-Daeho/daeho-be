@@ -37,7 +37,7 @@ public class FileService {
     private final FileRepository fileRepository;
     private final AudioProcessingService audioProcessingService;
 
-    public boolean encodeAudioFile(String savedFileName) {
+    public void encodeAudioFile(String savedFileName) {
         String savedFilePath = "/file/" + savedFileName;
         Path path = Paths.get(fileLocation, savedFilePath);
         audioProcessingService.fixAudioMetadata(path);
