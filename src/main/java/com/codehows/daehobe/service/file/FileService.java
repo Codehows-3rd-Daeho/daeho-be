@@ -4,6 +4,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -46,14 +47,17 @@ public class FileService {
             throw new RuntimeException("Failed to append chunk to file", e);
         }
 
-        File file = fileRepository.findById(fileId).orElseGet(() -> File.builder()
-                .path(savedFilePath)
-                .originalName("recording-" + System.currentTimeMillis())
-                .savedName(savedFileName)
-                .size(0L)
-                .targetId(targetId)
-                .targetType(targetType)
-                .build());
+        if(fileId == null) {
+            return fileRepository.save(File.builder()
+                    .path(savedFilePath)
+                    .originalName("recording-" + System.currentTimeMillis())
+                    .savedName(savedFileName)
+                    .size(chunk.getSize())
+                    .targetId(targetId)
+                    .targetType(targetType)
+                    .build());
+        }
+        File file = fileRepository.findById(fileId).orElseThrow(EntityNotFoundException::new);
         Long size = file.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
         return fileRepository.save(file);
