@@ -256,7 +256,7 @@ public class STTService {
         STT stt = STT.builder()
                 .meeting(meeting)
                 .content("")
-                .status("RECORDING")
+                .status(STT.Status.RECORDING)
                 .tempFileName(UUID.randomUUID().toString() + ".wav")
                 .build();
 
@@ -281,7 +281,7 @@ public class STTService {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
 
-        stt.setStatus("PROCESSING");
+        stt.setStatus(STT.Status.PROCESSING);
         sttRepository.save(stt);
 
         Path filePath = Paths.get(fileLocation, stt.getTempFileName());
@@ -294,7 +294,7 @@ public class STTService {
 
         // Re-fetch to get the summary
         STT updatedStt = sttRepository.findById(sttId).orElseThrow();
-        updatedStt.setStatus("COMPLETED");
+        updatedStt.setStatus(STT.Status.COMPLETED);
         sttRepository.save(updatedStt);
 
         // Clean up the temporary file
