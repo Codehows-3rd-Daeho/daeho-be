@@ -286,7 +286,7 @@ public class STTService {
             Resource resource = new InputStreamResource(Files.newInputStream(filePath)) {
                 @Override
                 public String getFilename() {
-                    return file.getOriginalName();
+                    return file.getSavedName();
                 }
 
                 @Override
