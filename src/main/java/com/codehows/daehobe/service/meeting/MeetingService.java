@@ -3,22 +3,28 @@ package com.codehows.daehobe.service.meeting;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.entity.notification.SetNotification;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +48,10 @@ public class MeetingService {
     private final MeetingMemberService meetingMemberService;
     private final IssueService issueService;
     private final MemberService memberService;
+    private final NotificationService notificationService;
+    private final SetNotificationService setNotificationService;
 
-    public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
+    public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles, String writerId) {
 
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
@@ -87,6 +95,22 @@ public class MeetingService {
         //파일 저장
         if (multipartFiles != null) {
             fileService.uploadFiles(saveMeeting.getId(), multipartFiles, TargetType.MEETING);
+        }
+
+
+        // 알림 발송
+        SetNotificationDto settingdto = setNotificationService.getSetting();
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isMeetingCreated()) {
+            for (MeetingMemberDto memberDto : issueMemberDtos) {
+                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("새 회의가 등록되었습니다 \n " + saveMeeting.getTitle());
+                messageDto.setUrl("/meeting/" + saveMeeting.getId());
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
         }
 
         return saveMeeting;
@@ -148,7 +172,7 @@ public class MeetingService {
         meetingMember.updateIsRead(true);
     }
 
-    public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
+    public Meeting updateMeeting(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds, String writerId) {
         Meeting meeting = getMeetingById(id);
         Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
@@ -157,7 +181,9 @@ public class MeetingService {
         if (issueId != null) {
             issue = issueService.getIssueById(issueId);
         }
+        Status beforeStatus = meeting.getStatus(); // 수정전 상태
         meeting.update(meetingFormDto, category, issue);
+        Status afterStatus = meeting.getStatus(); // 수정후 상태
 
         // 상태가 완료일 경우, 마감일 자동입력
         if (meetingFormDto.getStatus().equals(String.valueOf(Status.COMPLETED))) {
@@ -184,6 +210,21 @@ public class MeetingService {
         // 파일 업데이트
         if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
             fileService.updateFiles(id, newFiles, removeFileIds, TargetType.MEETING);
+        }
+
+        // 상태 변경 알림
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (!beforeStatus.equals(afterStatus) && meetingMemberDtos != null && settingdto.isMeetingStatus()) {
+            for (MeetingMemberDto memberDto : meetingMemberDtos) {
+                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("회의 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
+                messageDto.setUrl("/meeting/" + meeting.getId());
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
         }
         return meeting;
     }

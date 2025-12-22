@@ -40,8 +40,6 @@ public class CommentController {
         }
     }
 
-    ;
-
     @PostMapping("/issue/{id}/comment")
     public ResponseEntity<CommentDto> createIssueComment(
             @PathVariable Long id,
@@ -107,8 +105,6 @@ public class CommentController {
             return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
         }
     }
-
-    ;
 
     @PostMapping("/meeting/{id}/comment")
     public ResponseEntity<CommentDto> createMeetingComment(

@@ -16,7 +16,7 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     boolean existsByLoginId(String loginId);
 
     int countByJobPositionId(Long id);
-    
+
     @Query(value = """
     SELECT
         m.member_id        AS id,

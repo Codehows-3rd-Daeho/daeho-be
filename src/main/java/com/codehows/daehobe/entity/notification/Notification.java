@@ -1,6 +1,7 @@
 package com.codehows.daehobe.entity.notification;
 
 import com.codehows.daehobe.entity.BaseEntity;
+import com.codehows.daehobe.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,34 +17,16 @@ import lombok.NoArgsConstructor;
 public class Notification extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "notification_id")
-    private Long meetingId; // PK
+    @Column(name = "notification_id", nullable = false)
+    private Long id;
 
-    @Column(nullable = false)
-    private boolean issueCreated;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
 
-    @Column(nullable = false)
-    private boolean issueUpdated;
+    @Column(name = "forward_url", nullable = false)
+    private String forwardUrl;
 
-    @Column(nullable = false)
-    private boolean issueStatus;
-
-    @Column(nullable = false)
-    private boolean meetingCreated;
-
-    @Column(nullable = false)
-    private boolean meetingUpdated;
-
-    @Column(nullable = false)
-    private boolean meetingStatus;
-
-    @Column(nullable = false)
-    private boolean commentCreated;
-
-    @Column(nullable = false)
-    private boolean commentUpdated;
-
-    @Column(nullable = false)
-    private boolean commentMention;
-
+    @Column(name = "message", nullable = false)
+    private String message;
 }

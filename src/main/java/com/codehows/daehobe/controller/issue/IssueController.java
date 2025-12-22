@@ -29,9 +29,9 @@ public class IssueController {
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
             @RequestPart("data") IssueFormDto issueFormDto,
-            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles, Authentication authentication) {
 
-        Issue issue = issueService.createIssue(issueFormDto, multipartFiles);
+        Issue issue = issueService.createIssue(issueFormDto, multipartFiles, authentication.getName());
         return ResponseEntity.ok(issue.getId());
 
     }
@@ -104,12 +104,13 @@ public class IssueController {
             @PathVariable Long id,
             @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
-            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
+            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove,
+            Authentication authentication
     ) {
         try {
             List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
             List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
-            issueService.updateIssue(id, issueFormDto, newFiles, removeFileIds);
+            issueService.updateIssue(id, issueFormDto, newFiles, removeFileIds, authentication.getName());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -146,7 +147,7 @@ public class IssueController {
                                                     @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id,pageable);
+            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, pageable);
             return ResponseEntity.ok(meetingListDtos);
         } catch (Exception e) {
             e.printStackTrace();
