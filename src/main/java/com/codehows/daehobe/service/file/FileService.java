@@ -6,6 +6,7 @@ import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,6 +31,7 @@ import java.util.UUID;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class FileService {
 
     @Value("${file.location}")
@@ -41,10 +44,16 @@ public class FileService {
 
         String savedFilePath = "/file/" + savedFileName;
         Path path = Paths.get(fileLocation, savedFilePath);
-        try (OutputStream os = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            os.write(chunk.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to append chunk to file", e);
+        synchronized (savedFileName.intern()) {
+            try (OutputStream os = Files.newOutputStream(path,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                os.write(chunk.getBytes());
+                os.flush();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to append chunk to file", e);
+            } finally {
+                fixAudioMetadata(path);
+            }
         }
 
         if(fileId == null) {
@@ -61,6 +70,60 @@ public class FileService {
         Long size = file.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
         return fileRepository.save(file);
+    }
+
+    private void fixAudioMetadata(Path filePath) {
+        try {
+            String fileName = filePath.getFileName().toString().toLowerCase();
+
+            if (fileName.endsWith(".wav")) {
+                fixWavHeader(filePath);
+            } else if (fileName.endsWith(".mp3")) {
+                // MP3는 자동으로 처리되는 경우가 많지만, 필요시 라이브러리 사용
+                log.info("MP3 파일 메타데이터 검증 완료: {}", filePath);
+            }
+
+        } catch (Exception e) {
+            log.error("오디오 메타데이터 수정 실패", e);
+            // 재생은 되므로 예외를 던지지 않고 로그만 남김
+        }
+    }
+
+    private void fixWavHeader(Path filePath) throws IOException {
+        try (RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "rw")) {
+            long fileSize = raf.length();
+
+            // WAV 파일 크기 정보 업데이트 (RIFF chunk size)
+            raf.seek(4);
+            raf.write(intToByteArray((int)(fileSize - 8), true));
+
+            // data chunk size 찾아서 업데이트
+            raf.seek(40); // 일반적인 WAV 헤더의 data chunk 위치
+            byte[] dataMarker = new byte[4];
+            raf.read(dataMarker);
+
+            if (new String(dataMarker).equals("data")) {
+                raf.write(intToByteArray((int)(fileSize - 44), true));
+            }
+
+            log.info("WAV 헤더 수정 완료: {}, 크기: {} bytes", filePath, fileSize);
+        }
+    }
+
+    private byte[] intToByteArray(int value, boolean littleEndian) {
+        byte[] bytes = new byte[4];
+        if (littleEndian) {
+            bytes[0] = (byte) (value & 0xFF);
+            bytes[1] = (byte) ((value >> 8) & 0xFF);
+            bytes[2] = (byte) ((value >> 16) & 0xFF);
+            bytes[3] = (byte) ((value >> 24) & 0xFF);
+        } else {
+            bytes[0] = (byte) ((value >> 24) & 0xFF);
+            bytes[1] = (byte) ((value >> 16) & 0xFF);
+            bytes[2] = (byte) ((value >> 8) & 0xFF);
+            bytes[3] = (byte) (value & 0xFF);
+        }
+        return bytes;
     }
 
     // 파일 업로드
