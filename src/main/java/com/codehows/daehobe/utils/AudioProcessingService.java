@@ -19,8 +19,12 @@ public class AudioProcessingService {
     private String ffmpegPath;
 
     public void fixAudioMetadata(Path filePath) {
+        String fileName = filePath.getFileName().toString();
+        String fileNameWithoutExtension = fileName.contains(".")
+                ? fileName.substring(0, fileName.lastIndexOf("."))
+                : fileName;
         try {
-            Path tempPath = filePath.resolveSibling(filePath.getFileName() + ".temp");
+            Path tempPath = filePath.resolveSibling(fileNameWithoutExtension + ".temp.wav");
 
             String inputPath = filePath.toAbsolutePath().toString().replace("\\", "/");
             String outputPath = tempPath.toAbsolutePath().toString().replace("\\", "/");
@@ -32,9 +36,12 @@ public class AudioProcessingService {
             ProcessBuilder pb = new ProcessBuilder(
                     ffmpegPath,
                     "-i", inputPath,
-                    "-acodec", "copy",  // 오디오 코덱만 복사
-                    "-vn",  // 비디오 스트림 제거
-                    "-y",
+                    "-c:a", "copy",           // 오디오 스트림 복사 (재인코딩 X)
+                    "-vn",                    // 비디오 스트림 제거
+                    "-f", "wav",              // 출력 형식 명시적 WAV 지정
+                    "-map_metadata", "0",     // 메타데이터 복사
+                    "-y",                     // 덮어쓰기
+                    "-threads", "0",          // 모든 CPU 코어 사용
                     outputPath
             );
 
@@ -47,7 +54,9 @@ public class AudioProcessingService {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
-                    log.info("FFmpeg: {}", line);  // debug -> info로 변경해서 확실히 확인
+                    if (line.contains("Input #0") || line.contains("Output #0") || line.contains("size=")) {
+                        log.info("FFmpeg: {}", line);
+                    }
                 }
             }
 
@@ -65,6 +74,11 @@ public class AudioProcessingService {
 
         } catch (Exception e) {
             log.error("FFmpeg 메타데이터 수정 실패", e);
+            try{
+                Files.deleteIfExists(filePath.resolveSibling(fileNameWithoutExtension + ".temp.wav"));
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
             throw new RuntimeException("오디오 파일 처리 실패", e);
         }
     }
