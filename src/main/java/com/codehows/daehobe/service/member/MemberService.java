@@ -22,12 +22,14 @@ import com.codehows.daehobe.service.masterData.DepartmentService;
 import com.codehows.daehobe.service.masterData.JobPositionService;
 import com.codehows.daehobe.service.meeting.MeetingDepartmentService;
 import com.codehows.daehobe.service.meeting.MeetingMemberService;
-import com.codehows.daehobe.service.meeting.MeetingService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +104,7 @@ public class MemberService {
         return MemberProfileDto.fromEntity(member, profileFile);
     }
 
+    //관리자 비밀번호 생성
     public String generatePwd(Long id) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
 
@@ -110,6 +113,28 @@ public class MemberService {
         String encodedPassword = passwordEncoder.encode(newPwd);
         member.updatePassword(encodedPassword);
         return newPwd;
+    }
+
+    //비밀번호 재설정
+    public void changPwd(String newPwd) {
+        System.out.println("=========================================================================");
+        System.out.println("newPwd: " + newPwd);
+        System.out.println("=========================================================================");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();//인증정보
+
+        String memberIdStr = (String) authentication.getPrincipal();;//principal 추출
+        Long memberId = Long.parseLong(memberIdStr);
+
+        Member member = memberRepository.findById(memberId)//멤버 정보
+                .orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
+
+        //멤버의 pw만 변경
+        String encodingPwd = passwordEncoder.encode(newPwd);
+        member.updatePassword(encodingPwd);
+        System.out.println("encodingPwd: " + encodingPwd);
+        System.out.println("member.getPassword: " + member.getPassword());
+
+
     }
 
     public Member updateMember(Long id,
@@ -165,7 +190,7 @@ public class MemberService {
         return memberRepository.findByIdIn(memberIds);
     }
 
-    //    ================================================나의 업무=================================================================
+    //================================================나의 업무=================================================================
     public List<MeetingListDto> getMeetingsForMember(Long memberId, Pageable pageable) {
 
         Page<MeetingMember> meetingMembers = meetingMemberService.findByMemberId(memberId, pageable);

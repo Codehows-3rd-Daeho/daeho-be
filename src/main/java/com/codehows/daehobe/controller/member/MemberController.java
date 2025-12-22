@@ -3,6 +3,7 @@ package com.codehows.daehobe.controller.member;
 import com.codehows.daehobe.dto.member.MemberDto;
 import com.codehows.daehobe.dto.member.MemberListDto;
 import com.codehows.daehobe.dto.member.MemberProfileDto;
+import com.codehows.daehobe.dto.member.PasswordRequestDto;
 import com.codehows.daehobe.service.member.MemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -113,6 +114,15 @@ public class MemberController {
             return ResponseEntity.status(500).body("회원 조회 중 오류 발생");
         }
     }
+
+    //비밀번호 재설정
+    @PatchMapping("mypage/password")
+    public ResponseEntity<?> changePassword(@RequestBody PasswordRequestDto passwordRequestDto) {
+        memberService.changPwd(passwordRequestDto.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
+
+
 
 
 
