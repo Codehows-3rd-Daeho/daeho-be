@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/stt")
+@RequestMapping("/stt")
 @RequiredArgsConstructor
 public class STTController {
 

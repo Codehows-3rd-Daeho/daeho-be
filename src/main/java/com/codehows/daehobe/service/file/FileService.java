@@ -11,6 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +33,31 @@ public class FileService {
     @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
+
+    public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
+        java.io.File dir = new java.io.File(fileLocation);
+        if (!dir.exists()) dir.mkdirs();
+
+        String savedFilePath = "/file/" + savedFileName;
+        Path path = Paths.get(fileLocation, savedFilePath);
+        try (OutputStream os = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            os.write(chunk.getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to append chunk to file", e);
+        }
+
+        File file = fileRepository.findById(fileId).orElseGet(() -> File.builder()
+                .path(savedFilePath)
+                .originalName("recording-" + System.currentTimeMillis())
+                .savedName(savedFileName)
+                .size(0L)
+                .targetId(targetId)
+                .targetType(targetType)
+                .build());
+        Long size = file.addFileSize(chunk.getSize());
+        System.out.println("File size after chunk appended: " + size);
+        return fileRepository.save(file);
+    }
 
     // 파일 업로드
     public List<File> uploadFiles(Long targetId, List<MultipartFile> multipartFiles, TargetType targetType) {

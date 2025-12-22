@@ -4,6 +4,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
@@ -51,9 +52,9 @@ public class STTService {
     public List<STTDto> uploadSTT(Long id, List<MultipartFile> files){
         Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
 
-        List<STTDto> savedSTTs = files.stream() .map(file -> {
+        List<STTDto> savedSTTs = files.stream().map(file -> {
             //1. stt api 호출
-            STTResponseDto response = callDaglo(file);
+            STTResponseDto response = callDaglo(file.getResource());
 
             //2. dto로 받은 반환값을 stt 엔티티에 저장
             STT stt = response.toEntity(meeting);
@@ -61,8 +62,7 @@ public class STTService {
 
             //3.  반환
             return STTDto.fromEntity(saved);
-            })
-            .toList();
+        }).toList();
 
         //3. stt id로 fileService => 음성 파일 저장
         fileService.uploadFiles(id, files, TargetType.STT);//targetId사용해야함
@@ -71,14 +71,13 @@ public class STTService {
     }
 
     //1-1. api 호출
-    private STTResponseDto callDaglo(MultipartFile file) {
-
+    private STTResponseDto callDaglo(Resource file) {
         try {
             STTResponseDto response = webClient.post()
                 .uri("/stt/v1/async/transcripts")//요청
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 //MultipartFile → 바이트 배열
-                .body(BodyInserters.fromMultipartData("file", file.getResource())
+                .body(BodyInserters.fromMultipartData("file", file)
                         .with("sttConfig", sttConfigService.toJson())
                 )
                 .retrieve()//응답 받기
@@ -253,11 +252,13 @@ public class STTService {
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid meeting ID: " + meetingId));
 
+        String savedFileName = UUID.randomUUID().toString();
+
         STT stt = STT.builder()
                 .meeting(meeting)
                 .content("")
                 .status(STT.Status.RECORDING)
-                .tempFileName(UUID.randomUUID().toString() + ".wav")
+                .tempFileName(savedFileName + ".wav")
                 .build();
 
         sttRepository.save(stt);
@@ -268,29 +269,24 @@ public class STTService {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
 
-        Path path = Paths.get(fileLocation, stt.getTempFileName());
-
-        try (OutputStream os = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            os.write(chunk.getBytes());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to append chunk to file", e);
-        }
+        File savedFileId = fileService.appendChunk(stt.getId(), stt.getTempFileName(), chunk, TargetType.STT, stt.getFileId());
+        stt.setFileId(savedFileId.getFileId());
     }
 
     public STTDto finishRecording(Long sttId) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-
         stt.setStatus(STT.Status.PROCESSING);
         sttRepository.save(stt);
 
-        Path filePath = Paths.get(fileLocation, stt.getTempFileName());
+        File file = fileService.getFileById(stt.getFileId());
+        Path filePath = Paths.get(fileLocation, file.getPath());
         Resource resource = new FileSystemResource(filePath);
 
-        STTResponseDto response = callDagloWithResource(resource);
+        STTResponseDto response = callDaglo(resource);
 
         stt.setContent(response.getContent());
-        summarySTT(stt.getId(), response.getContent()); // Re-fetch inside summarySTT is not ideal but using existing method
+        summarySTT(stt.getId(), response.getContent());
 
         // Re-fetch to get the summary
         STT updatedStt = sttRepository.findById(sttId).orElseThrow();
@@ -306,43 +302,5 @@ public class STTService {
         }
 
         return STTDto.fromEntity(updatedStt);
-    }
-
-    private STTResponseDto callDagloWithResource(Resource resource) {
-         try {
-            STTResponseDto response = webClient.post()
-                .uri("/stt/v1/async/transcripts")
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(BodyInserters.fromMultipartData("file", resource)
-                        .with("sttConfig", sttConfigService.toJson())
-                )
-                .retrieve()
-                .onStatus(status -> status.is4xxClientError(), clientResponse ->
-                        Mono.error(new RuntimeException("Daglo API Client Error: " + clientResponse.statusCode())))
-                .onStatus(status -> status.is5xxServerError(), clientResponse ->
-                        Mono.error(new RuntimeException("Daglo API Server Error")))
-                .bodyToMono(STTResponseDto.class)
-                .block();
-
-            if (response == null || response.getRid() == null) {
-                throw new RuntimeException("Failed to get RID from Daglo");
-            }
-
-            String rid = response.getRid();
-            int maxRetries = 100;
-            int intervalMs = 2000;
-
-            for (int i = 0; i < maxRetries; i++) {
-                STTResponseDto result = checkSTTStatus(rid);
-                if (result.isCompleted()) {
-                    return result;
-                }
-                Thread.sleep(intervalMs);
-            }
-
-            throw new RuntimeException("STT processing timed out. RID: " + rid);
-        } catch (Exception e) {
-            throw new RuntimeException("STT processing failed", e);
-        }
     }
 }

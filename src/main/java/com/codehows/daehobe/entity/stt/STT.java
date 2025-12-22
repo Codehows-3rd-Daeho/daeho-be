@@ -34,6 +34,8 @@ public class STT extends BaseEntity {
 
     private String tempFileName;
 
+    private Long fileId;
+
     public enum Status {
         RECORDING, PROCESSING, COMPLETED
     }
