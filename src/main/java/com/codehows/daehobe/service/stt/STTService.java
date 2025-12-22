@@ -307,15 +307,15 @@ public class STTService {
             stt.setContent(response.getContent());
             summarySTT(stt.getId(), response.getContent());
 
-            // Re-fetch to get the summary
-            STT updatedStt = sttRepository.findById(sttId).orElseThrow();
-            updatedStt.setStatus(STT.Status.COMPLETED);
-            sttRepository.save(updatedStt);
-
-            return STTDto.fromEntity(updatedStt);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+        // Re-fetch to get the summary
+        STT updatedStt = sttRepository.findById(sttId).orElseThrow();
+        updatedStt.setStatus(STT.Status.COMPLETED);
+        sttRepository.save(updatedStt);
+
+        return STTDto.fromEntity(updatedStt);
     }
 }
