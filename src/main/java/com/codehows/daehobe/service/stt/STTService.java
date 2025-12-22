@@ -13,6 +13,7 @@ import com.codehows.daehobe.service.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -281,25 +282,30 @@ public class STTService {
 
         File file = fileService.getFileById(stt.getFileId());
         Path filePath = Paths.get(fileLocation, file.getPath());
-        Resource resource = new FileSystemResource(filePath);
+        try {
+            Resource resource = new InputStreamResource(Files.newInputStream(filePath)) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalName();
+                }
 
-        STTResponseDto response = callDaglo(resource);
-
-        stt.setContent(response.getContent());
-        summarySTT(stt.getId(), response.getContent());
+                @Override
+                public long contentLength() throws IOException {
+                    return Files.size(filePath);
+                }
+            };
+            STTResponseDto response = callDaglo(resource);
+            stt.setContent(response.getContent());
+            summarySTT(stt.getId(), response.getContent());
+        }catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("파일을 찾지 못했습니다.");
+        }
 
         // Re-fetch to get the summary
         STT updatedStt = sttRepository.findById(sttId).orElseThrow();
         updatedStt.setStatus(STT.Status.COMPLETED);
         sttRepository.save(updatedStt);
-
-        // Clean up the temporary file
-        try {
-            Files.deleteIfExists(filePath);
-        } catch (IOException e) {
-            // Log this error, but don't fail the entire operation
-            System.err.println("Failed to delete temporary file: " + filePath);
-        }
 
         return STTDto.fromEntity(updatedStt);
     }
