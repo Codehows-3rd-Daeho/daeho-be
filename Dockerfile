@@ -30,7 +30,7 @@ RUN echo "=== Checking JAR contents ===" && \
     jar tf /app/build/libs/*.jar | grep application.properties
 
 # 런타임 스테이지
-FROM eclipse-temurin:21-jre
+FROM openjdk:21-jdk
 
 WORKDIR /app
 
