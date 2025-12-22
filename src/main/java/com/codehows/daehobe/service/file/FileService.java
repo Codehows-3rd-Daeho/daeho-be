@@ -4,6 +4,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
+import com.codehows.daehobe.utils.AudioProcessingService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ public class FileService {
     @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
+    private final AudioProcessingService audioProcessingService;
 
     public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
         java.io.File dir = new java.io.File(fileLocation);
@@ -49,7 +51,7 @@ public class FileService {
             } catch (IOException e) {
                 throw new RuntimeException("Failed to append chunk to file", e);
             } finally {
-                fixAudioMetadata(path);
+                audioProcessingService.fixAudioMetadata(path);
             }
         }
 
@@ -67,35 +69,6 @@ public class FileService {
         Long size = file.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
         return fileRepository.save(file);
-    }
-
-    private void fixAudioMetadata(Path filePath) {
-        try {
-            Path tempPath = filePath.resolveSibling(filePath.getFileName() + ".temp");
-
-            // FFmpeg로 재인코딩 없이 메타데이터만 수정
-            ProcessBuilder pb = new ProcessBuilder(
-                    "ffmpeg",
-                    "-i", filePath.toString(),
-                    "-c", "copy",  // 코덱 복사 (재인코딩 안 함)
-                    "-y",  // 덮어쓰기
-                    tempPath.toString()
-            );
-
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-
-            if (exitCode == 0) {
-                Files.move(tempPath, filePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("FFmpeg로 메타데이터 수정 완료: {}", filePath);
-            } else {
-                log.warn("FFmpeg 실행 실패, 원본 파일 유지");
-                Files.deleteIfExists(tempPath);
-            }
-
-        } catch (Exception e) {
-            log.error("FFmpeg 메타데이터 수정 실패", e);
-        }
     }
 
     // 파일 업로드
