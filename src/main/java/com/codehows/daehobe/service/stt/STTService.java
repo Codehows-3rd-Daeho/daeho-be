@@ -12,6 +12,7 @@ import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -50,7 +51,7 @@ public class STTService {
 
 
     // 저장
-    public List<STTDto> uploadSTT(Long id, List<MultipartFile> files){
+    public List<STTDto> uploadSTT(Long id, List<MultipartFile> files) {
         Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
 
         List<STTDto> savedSTTs = files.stream().map(file -> {
@@ -75,30 +76,38 @@ public class STTService {
     private STTResponseDto callDaglo(Resource file) {
         try {
             STTResponseDto response = webClient.post()
-                .uri("/stt/v1/async/transcripts")//요청
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                //MultipartFile → 바이트 배열
-                .body(BodyInserters.fromMultipartData("file", file)
-                        .with("sttConfig", sttConfigService.toJson())
-                )
-                .retrieve()//응답 받기
-                .onStatus(status -> status.is4xxClientError(), clientResponse -> {
-                    switch (clientResponse.statusCode().value()) {
-                        case 400: return Mono.error(new IllegalArgumentException("잘못된 요청입니다."));
-                        case 204: return Mono.error(new IllegalArgumentException("반환한 결과가 없습니다."));
-                        case 401: return Mono.error(new RuntimeException("인증 실패"));
-                        case 403: return Mono.error(new RuntimeException("권한 없음"));
-                        case 413: return Mono.error(new RuntimeException("파일이 너무 큽니다."));
-                        case 415: return Mono.error(new RuntimeException("지원되지 않는 파일 형식입니다."));
-                        case 429: return Mono.error(new RuntimeException("요청이 너무 많습니다."));
-                        default: return Mono.error(new RuntimeException("클라이언트 오류"));
-                    }
-                })
-                .onStatus(status -> status.is5xxServerError(), clientResponse ->
-                        Mono.error(new RuntimeException("STT 서버 내부 오류"))
-                )
-                .bodyToMono(STTResponseDto.class)// Dto(String)로 변환
-                .block();//비동기 → 동기로 변경
+                    .uri("/stt/v1/async/transcripts")//요청
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    //MultipartFile → 바이트 배열
+                    .body(BodyInserters.fromMultipartData("file", file)
+                            .with("sttConfig", sttConfigService.toJson())
+                    )
+                    .retrieve()//응답 받기
+                    .onStatus(status -> status.is4xxClientError(), clientResponse -> {
+                        switch (clientResponse.statusCode().value()) {
+                            case 400:
+                                return Mono.error(new IllegalArgumentException("잘못된 요청입니다."));
+                            case 204:
+                                return Mono.error(new IllegalArgumentException("반환한 결과가 없습니다."));
+                            case 401:
+                                return Mono.error(new RuntimeException("인증 실패"));
+                            case 403:
+                                return Mono.error(new RuntimeException("권한 없음"));
+                            case 413:
+                                return Mono.error(new RuntimeException("파일이 너무 큽니다."));
+                            case 415:
+                                return Mono.error(new RuntimeException("지원되지 않는 파일 형식입니다."));
+                            case 429:
+                                return Mono.error(new RuntimeException("요청이 너무 많습니다."));
+                            default:
+                                return Mono.error(new RuntimeException("클라이언트 오류"));
+                        }
+                    })
+                    .onStatus(status -> status.is5xxServerError(), clientResponse ->
+                            Mono.error(new RuntimeException("STT 서버 내부 오류"))
+                    )
+                    .bodyToMono(STTResponseDto.class)// Dto(String)로 변환
+                    .block();//비동기 → 동기로 변경
 
             if (response == null || response.getRid() == null) {
                 throw new RuntimeException("rid 발급 실패");
@@ -156,10 +165,11 @@ public class STTService {
         Meeting meeting = meetingRepository.findById(meetingId).orElseThrow(IllegalArgumentException::new);
 
         //1. meeting id로 존재 확인
-        if ( meeting == null) {
+        if (meeting == null) {
             System.out.println("해당 회의가 존재하지 않습니다.");
             return List.of(); // 빈 리스트 반환
-        };
+        }
+        ;
 
         List<STT> stts = sttRepository.findByMeetingId(meetingId);
 
@@ -168,7 +178,8 @@ public class STTService {
                 .map(STTDto::fromEntity)
                 .toList();
     }
-//==================================================요약==================================================================
+
+    //==================================================요약==================================================================
     //요약
     @Transactional
     public SummaryResponseDto summarySTT(Long sttId, String content) {
@@ -177,8 +188,7 @@ public class STTService {
                 .orElseThrow(() -> new IllegalArgumentException("STT 없음"));
 
         //1. api 호출
-        try
-        {
+        try {
             SummaryResponseDto response = webClient.post()
                     .uri("/nlp/v1/async/minutes")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -220,7 +230,7 @@ public class STTService {
 
 
     //2. rid로 stt 상태 확인
-    private SummaryResponseDto checkSummaryStatus(String rid){
+    private SummaryResponseDto checkSummaryStatus(String rid) {
         System.out.println("==========================================");
         System.out.println("checkSummaryStatus 실행 확인");
         System.out.println("==========================================");
@@ -283,30 +293,29 @@ public class STTService {
         File file = fileService.getFileById(stt.getFileId());
         Path filePath = Paths.get(fileLocation, file.getPath());
         try {
-            Resource resource = new InputStreamResource(Files.newInputStream(filePath)) {
+            byte[] fileContent = Files.readAllBytes(filePath);
+            String originalFilename = file.getSavedName();
+            System.out.println("originalFilename: " + originalFilename);
+            ByteArrayResource resource = new ByteArrayResource(fileContent) {
                 @Override
                 public String getFilename() {
-                    return file.getSavedName();
-                }
-
-                @Override
-                public long contentLength() throws IOException {
-                    return Files.size(filePath);
+                    return originalFilename;
                 }
             };
+
             STTResponseDto response = callDaglo(resource);
             stt.setContent(response.getContent());
             summarySTT(stt.getId(), response.getContent());
-        }catch (IOException e) {
+
+            // Re-fetch to get the summary
+            STT updatedStt = sttRepository.findById(sttId).orElseThrow();
+            updatedStt.setStatus(STT.Status.COMPLETED);
+            sttRepository.save(updatedStt);
+
+            return STTDto.fromEntity(updatedStt);
+        } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("파일을 찾지 못했습니다.");
         }
 
-        // Re-fetch to get the summary
-        STT updatedStt = sttRepository.findById(sttId).orElseThrow();
-        updatedStt.setStatus(STT.Status.COMPLETED);
-        sttRepository.save(updatedStt);
-
-        return STTDto.fromEntity(updatedStt);
     }
 }
