@@ -1,10 +1,14 @@
 package com.codehows.daehobe.entity.meeting;
 
+import com.codehows.daehobe.aop.AuditableField;
+import com.codehows.daehobe.aop.Loggable;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.log.Auditable;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
@@ -23,7 +27,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Meeting extends BaseEntity {
+public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +38,7 @@ public class Meeting extends BaseEntity {
     @JoinColumn(name = "issue_id")
     private Issue issue;
 
+    @AuditableField(name="제목")
     @Column(name = "title", nullable = false)
     private String title;
 
@@ -94,5 +99,24 @@ public class Meeting extends BaseEntity {
 
     public void clearEndDate() {
         this.endDate = null;
+    }
+
+    @Override
+    public String createLogMessage(ChangeType type, String fieldName) {
+        if (type == ChangeType.UPDATE) {
+            return switch (fieldName) {
+                case "제목" -> "수정 > " + title;
+                case "내용" -> "수정 > " + content;
+                case "상태" -> "수정 > " + status;
+                case "카테고리" -> "수정 > " + category.getName();
+                default -> null;
+            };
+        }
+
+        return switch (type) {
+            case CREATE -> "등록 > " + title;
+            case DELETE -> "삭제 > " + title;
+            default -> null;
+        };
     }
 }

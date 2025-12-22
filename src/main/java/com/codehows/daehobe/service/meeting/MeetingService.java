@@ -1,5 +1,7 @@
 package com.codehows.daehobe.service.meeting;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
@@ -43,6 +45,7 @@ public class MeetingService {
     private final IssueService issueService;
     private final MemberService memberService;
 
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.MEETING)
     public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
 
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
@@ -188,9 +191,10 @@ public class MeetingService {
         return meeting;
     }
 
-    public void deleteMeeting(Long id) {
+    public Meeting deleteMeeting(Long id) {
         Meeting meeting = getMeetingById(id);
         meeting.deleteMeeting();
+        return meeting;
     }
 
     public void saveMeetingMinutes(Long id, List<MultipartFile> multipartFiles) {

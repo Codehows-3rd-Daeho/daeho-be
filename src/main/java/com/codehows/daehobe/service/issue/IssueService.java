@@ -159,6 +159,7 @@ public class IssueService {
         issueMember.updateIsRead(true);
     }
 
+    @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE)
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
                              List<Long> removeFileIds) {
         Issue issue = getIssueById(id);
@@ -186,9 +187,11 @@ public class IssueService {
         return issue;
     }
 
-    public void deleteIssue(Long id) {
+    @TrackChanges(type = ChangeType.DELETE, target = TargetType.ISSUE)
+    public Issue deleteIssue(Long id) {
         Issue issue = getIssueById(id);
         issue.delete();
+        return issue;
     }
 
     // 이슈 전체 조회(삭제X)

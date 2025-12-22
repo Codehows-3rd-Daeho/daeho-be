@@ -43,14 +43,14 @@ public class CommentController {
     ;
 
     @PostMapping("/issue/{id}/comment")
-    public ResponseEntity<CommentDto> createIssueComment(
+    public ResponseEntity<?> createIssueComment(
             @PathVariable Long id,
             @RequestPart("data") CommentRequest dto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles,
             Authentication authentication
     ) {
         Long memberId = Long.valueOf(authentication.getName());
-        CommentDto saved =
+        Comment saved =
                 commentService.createIssueComment(id, dto, memberId, multipartFiles);
         return ResponseEntity.ok(saved);
     }
@@ -111,14 +111,14 @@ public class CommentController {
     ;
 
     @PostMapping("/meeting/{id}/comment")
-    public ResponseEntity<CommentDto> createMeetingComment(
+    public ResponseEntity<?> createMeetingComment(
             @PathVariable Long id,
             @RequestPart("data") CommentRequest dto,
             @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles,
             Authentication authentication
     ) {
         Long memberId = Long.valueOf(authentication.getName());
-        CommentDto saved =
+        Comment saved =
                 commentService.createMeetingComment(id, dto, memberId, multipartFiles);
         return ResponseEntity.ok(saved);
     }
