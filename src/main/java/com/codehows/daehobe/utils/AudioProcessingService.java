@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -21,17 +22,18 @@ public class AudioProcessingService {
         try {
             Path tempPath = filePath.resolveSibling(filePath.getFileName() + ".temp");
 
-            // Windows 경로를 FFmpeg가 이해할 수 있는 형태로 변환
             String inputPath = filePath.toAbsolutePath().toString().replace("\\", "/");
             String outputPath = tempPath.toAbsolutePath().toString().replace("\\", "/");
 
-            log.info("Input: {}", inputPath);
-            log.info("Output: {}", outputPath);
+            log.info("Processing file: {}", inputPath);
+            log.info("File size: {} bytes", Files.size(filePath));
+            log.info("File exists: {}", Files.exists(filePath));
 
             ProcessBuilder pb = new ProcessBuilder(
                     ffmpegPath,
                     "-i", inputPath,
-                    "-c", "copy",
+                    "-acodec", "copy",  // 오디오 코덱만 복사
+                    "-vn",  // 비디오 스트림 제거
                     "-y",
                     outputPath
             );
@@ -39,14 +41,13 @@ public class AudioProcessingService {
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
-            // FFmpeg 출력 로그 (에러 메시지 확인용)
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
-                    log.debug("FFmpeg: {}", line);
+                    log.info("FFmpeg: {}", line);  // debug -> info로 변경해서 확실히 확인
                 }
             }
 
@@ -54,12 +55,12 @@ public class AudioProcessingService {
 
             if (exitCode == 0) {
                 Files.move(tempPath, filePath, StandardCopyOption.REPLACE_EXISTING);
-                log.info("FFmpeg로 메타데이터 수정 완료: {}", filePath);
+                log.info("✅ FFmpeg로 메타데이터 수정 완료");
             } else {
-                log.error("FFmpeg 실행 실패 (exit code: {})", exitCode);
-                log.error("FFmpeg 출력:\n{}", output.toString());
+                log.error("❌ FFmpeg 실행 실패 (exit code: {})", exitCode);
+                log.error("FFmpeg 전체 출력:\n{}", output.toString());
                 Files.deleteIfExists(tempPath);
-                throw new RuntimeException("FFmpeg 처리 실패: " + output.toString());
+                throw new RuntimeException("FFmpeg 처리 실패");
             }
 
         } catch (Exception e) {
