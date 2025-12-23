@@ -50,8 +50,6 @@ public class IssueController {
         );
     }
 
-
-
     // 내부 응답 DTO
     record KanbanResponse(
             List<IssueListDto> inProgress,

@@ -191,14 +191,13 @@ public class MemberService {
     }
 
     //================================================나의 업무=================================================================
-    public List<MeetingListDto> getMeetingsForMember(Long memberId, Pageable pageable) {
+    public Page<MeetingListDto> getMeetingsForMember(Long memberId, Pageable pageable) {
 
         Page<MeetingMember> meetingMembers = meetingMemberService.findByMemberId(memberId, pageable);
 
-        return meetingMembers.getContent().stream()
-                .map(MeetingMember::getMeeting)
-                .map(this::toMeetingListDto)
-                .toList();
+        return meetingMembers.map(mm ->
+                toMeetingListDto(mm.getMeeting())
+        );
     }
 
     //Entity -> Dto, 주관자 정보, 부서 정보
