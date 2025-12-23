@@ -234,7 +234,7 @@ public class MeetingService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<Meeting> meetings = meetingRepository.findByStartDateBetween(startDateTime, endDateTime);
+        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(startDateTime, endDateTime);
 
         return meetings.stream()
                 .map(this::toMeetingListDto)

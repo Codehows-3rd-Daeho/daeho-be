@@ -16,7 +16,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
 
-    List<Meeting> findByStartDateBetween(
+    List<Meeting> findByStartDateBetweenAndIsDelFalse(
             LocalDateTime start,
             LocalDateTime end
     );
