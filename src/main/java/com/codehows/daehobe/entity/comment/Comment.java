@@ -65,7 +65,7 @@ public class Comment extends BaseEntity implements Auditable<Long>, Loggable {
         }
 
         if ("내용".equals(fieldName)) {
-            return "수정 > " + content;
+            return "내용 > " + content;
         }
 
         return null;

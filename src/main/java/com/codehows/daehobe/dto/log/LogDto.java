@@ -3,6 +3,7 @@ package com.codehows.daehobe.dto.log;
 import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.entity.log.Log;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,9 +27,11 @@ public class LogDto {
 
     private String updateField;
 
+    @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
     private LocalDateTime createTime;
 
-    private Long createBy;
+    // 사용자
+    private String memberName;
 
     public static LogDto fromEntity(Log log) {
         return LogDto.builder()
@@ -39,7 +42,7 @@ public class LogDto {
                 .message(log.getMessage())
                 .updateField(log.getUpdateField())
                 .createTime(log.getCreatedAt())
-                .createBy(log.getCreatedBy())
+                .memberName(log.getMemberName())
                 .build();
     }
 }

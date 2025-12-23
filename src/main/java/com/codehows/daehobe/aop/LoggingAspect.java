@@ -3,7 +3,9 @@ package com.codehows.daehobe.aop;
 import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.entity.log.Auditable;
 import com.codehows.daehobe.entity.log.Log;
+import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.log.LogRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,9 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +26,7 @@ import java.util.Objects;
 @Component
 @RequiredArgsConstructor
 public class LoggingAspect {
-
+    private final MemberRepository memberRepository;
     private final LogRepository logRepository;
 
     @PersistenceContext
@@ -37,6 +42,8 @@ public class LoggingAspect {
             ProceedingJoinPoint joinPoint,
             TrackChanges trackChanges
     ) throws Throwable {
+
+        String currentMemberName = getCurrentMemberName();
 
         Auditable<?> before = null;
 
@@ -76,6 +83,7 @@ public class LoggingAspect {
 
             if (after instanceof Loggable loggable) {
                 String message = loggable.createLogMessage(trackChanges.type());
+
                 if (message == null) return result;
 
                 logRepository.save(
@@ -84,6 +92,7 @@ public class LoggingAspect {
                                 .targetType(trackChanges.target())
                                 .changeType(trackChanges.type())
                                 .message(message)
+                                .memberName(currentMemberName)
                                 .build()
                 );
             }
@@ -123,6 +132,7 @@ public class LoggingAspect {
                                 .changeType(ChangeType.UPDATE)
                                 .updateField(meta.name())
                                 .message(message)
+                                .memberName(currentMemberName)
                                 .build()
                 );
             }
@@ -130,4 +140,26 @@ public class LoggingAspect {
 
         return result;
     }
+
+    private String getCurrentMemberName() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken) {
+            return "SYSTEM";
+        }
+
+        String memberIdStr = auth.getName(); // 👈 여기
+
+        if (memberIdStr == null) {
+            return "UNKNOWN";
+        }
+
+        // memberId로 이름 조회
+        return memberRepository.findById(Long.valueOf(memberIdStr))
+                .map(Member::getName)
+                .orElse("UNKNOWN");
+    }
+
 }

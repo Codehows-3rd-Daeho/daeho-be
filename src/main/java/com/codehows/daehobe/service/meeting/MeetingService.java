@@ -151,6 +151,7 @@ public class MeetingService {
         meetingMember.updateIsRead(true);
     }
 
+    @TrackChanges(type = ChangeType.UPDATE, target = TargetType.MEETING)
     public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
         Meeting meeting = getMeetingById(id);
         Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());

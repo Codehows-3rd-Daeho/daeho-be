@@ -36,5 +36,19 @@ public class LogController {
         }
     }
 
+    @GetMapping("/meeting/{id}/log")
+    public ResponseEntity<?> meetingLog(@PathVariable Long id,
+                                      @RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Page<Log> logs = logRepository.findByTargetIdAndTargetType(id, TargetType.MEETING, pageable);
+            Page<LogDto> dtoList = logs.map(LogDto::fromEntity);
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 로그 조회 중 오류 발생");
+        }
+    }
 
 }

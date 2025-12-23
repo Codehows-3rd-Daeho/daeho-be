@@ -36,4 +36,9 @@ public class Log extends BaseEntity {
     @Column(name = "update_field")
     private String updateField;
 
+    // 사용자
+    @Column(name = "member_name", nullable = false)
+    private String memberName;
+
+
 }

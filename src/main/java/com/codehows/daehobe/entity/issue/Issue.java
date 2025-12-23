@@ -12,6 +12,9 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "issue")
@@ -55,6 +58,10 @@ public class Issue extends BaseEntity implements Auditable<Long>, Loggable {
     @Column(name = "is_del", nullable = false)
     private boolean isDel;
 
+    @AuditableField(name="참여자")
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<IssueMember> issueMembers = new ArrayList<>();
+
     public void update(IssueFormDto issueFormDto, Category cate) {
         this.title = issueFormDto.getTitle();
         this.content = issueFormDto.getContent();
@@ -72,10 +79,20 @@ public class Issue extends BaseEntity implements Auditable<Long>, Loggable {
     public String createLogMessage(ChangeType type, String fieldName) {
         if (type == ChangeType.UPDATE) {
             return switch (fieldName) {
-                case "제목" -> "수정 > " + title;
-                case "내용" -> "수정 > " + content;
-                case "상태" -> "수정 > " + status;
-                case "카테고리" -> "수정 > " + category.getName();
+                case "제목" -> "제목 > " + title;
+                case "내용" -> "내용 > " + content;
+                case "상태" -> "상태 > " + status;
+                case "카테고리" -> "카테고리 > " + category.getName();
+                case "참여자" -> {
+                    if (issueMembers == null || issueMembers.isEmpty()) {
+                        yield "참여자 > 없음";
+                    }
+                    // 참여자 엔티티에서 멤버 이름을 꺼내 콤마(,)로 연결
+                    String names = issueMembers.stream()
+                            .map(mm -> mm.getMember().getName())
+                            .collect(Collectors.joining(", "));
+                    yield "참여자 > [" + names + "]";
+                }
                 default -> null;
             };
         }
