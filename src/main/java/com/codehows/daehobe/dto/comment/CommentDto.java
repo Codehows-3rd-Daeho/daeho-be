@@ -41,10 +41,14 @@ public class CommentDto {
     // 수정시간
     private LocalDateTime updatedAt;
 
+    // 멘션
+    private List<CommentMentionDto> mentions;
+
+
     @JsonProperty("isDel")
     private Boolean del;
 
-    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList, Long writerMemberId) {
+    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList, Long writerMemberId, List<CommentMentionDto> mentions) {
 
 
         return CommentDto.builder()
@@ -55,6 +59,7 @@ public class CommentDto {
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
+                .mentions(mentions)
                 .fileList(fileList)
                 .del(comment.isDel())
                 .build();
