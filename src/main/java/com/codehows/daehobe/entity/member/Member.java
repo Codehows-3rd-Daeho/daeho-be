@@ -19,7 +19,7 @@ public class Member extends BaseEntity {
     @Id
     @Column(name = "member_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     // 로그인ID
     @Column(unique = true, nullable = false)

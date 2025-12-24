@@ -15,6 +15,7 @@ import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
 import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
@@ -36,6 +37,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -267,6 +270,52 @@ public class MeetingService {
         return meetingRepository.findByIsDelFalse(pageable)
                 .map(this::toMeetingListDto);
     }
+
+    //회의 캘린더 조회
+    public List<MeetingListDto> findByDateBetween(
+            int year, int month
+    ) {
+        //LocalDate로 변경
+        LocalDate startDate  = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
+        LocalDate endDate  = startDate.withDayOfMonth(startDate.lengthOfMonth()); //ex? 12월의 마지막 날을 일자 부분에 삽입 => 2025-12-31
+
+        //LocalDateTime 으로 변경
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(startDateTime, endDateTime);
+
+        return meetings.stream()
+                .map(this::toMeetingListDto)
+                .toList();
+
+    }
+
+    //나의 업무 캘린더 조회
+    public List<MeetingListDto> findByDateBetweenForMember( Long memberId, int year, int month) {
+        LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth())
+                .withHour(23).withMinute(59).withSecond(59);
+
+
+        System.out.println(" =============================================================");
+        System.out.println(" findByDateBetweenForMember memberId: " + memberId);
+        System.out.println(" findByDateBetweenForMember year: " + year);
+        System.out.println(" findByDateBetweenForMember month: " + month);
+        System.out.println(" =============================================================");
+
+        List<MeetingMember> meetings = meetingMemberService.findMeetingsByMemberAndDate(memberId, start, end);
+
+        System.out.println(" findByDateBetweenForMember meetings: " + meetings);
+
+
+        return meetings.stream()
+                .map(MeetingMember::getMeeting)
+                .map(this::toMeetingListDto) // 엔티티 → DTO 변환
+                .toList();
+    }
+
+
 
     // issueId로 관련 회의 조회
     public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {

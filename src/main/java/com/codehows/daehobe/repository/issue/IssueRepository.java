@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-public interface IssueRepository extends JpaRepository<Issue,Long> {
+public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     Optional<Issue> findById(Long id);
 
@@ -26,32 +26,32 @@ public interface IssueRepository extends JpaRepository<Issue,Long> {
     // 이슈 리스트 조회용
     // 진행중 우선 가져오고 이후는 id순서
     @Query("""
-    SELECT i FROM Issue i
-    WHERE i.isDel = false
-    ORDER BY 
-        CASE WHEN i.status = 'IN_PROGRESS' THEN 0 ELSE 1 END,
-        i.id DESC
-""")
+                SELECT i FROM Issue i
+                WHERE i.isDel = false
+                ORDER BY 
+                    CASE WHEN i.status = 'IN_PROGRESS' THEN 0 ELSE 1 END,
+                    i.id DESC
+            """)
     Page<Issue> findAllWithStatusSort(Pageable pageable);
 
     // 칸반 조회용
     // 진행중
     @Query("""
-    SELECT i FROM Issue i
-    WHERE i.status = 'IN_PROGRESS'
-        AND i.isDel = false 
-    ORDER BY i.endDate ASC
-""")
+                SELECT i FROM Issue i
+                WHERE i.status = 'IN_PROGRESS'
+                    AND i.isDel = false 
+                ORDER BY i.endDate ASC
+            """)
     List<Issue> findInProgress();
 
     // 미결
     @Query("""
-    SELECT i FROM Issue i
-    WHERE i.status = 'IN_PROGRESS'
-      AND i.endDate < CURRENT_DATE
-      AND i.isDel = false 
-    ORDER BY i.endDate ASC
-""")
+                SELECT i FROM Issue i
+                WHERE i.status = 'IN_PROGRESS'
+                  AND i.endDate < CURRENT_DATE
+                  AND i.isDel = false 
+                ORDER BY i.endDate ASC
+            """)
     List<Issue> findDelayed();
 
     // 완료 (최근 7일)

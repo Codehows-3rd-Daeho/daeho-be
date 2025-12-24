@@ -21,6 +21,10 @@ src/main/resources/application.properties
 .Dockerfile
 .Jenkinsfile
 
+docker-compose.yml
+Dockerfile
+Jenkinsfile
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
