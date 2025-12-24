@@ -1,5 +1,8 @@
 package com.codehows.daehobe.service.issue;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.aop.TrackMemberChanges;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
@@ -41,6 +44,7 @@ public class IssueService {
     private final CategoryService categoryService;
     private final MemberService memberService;
 
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.ISSUE)
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles) {
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
@@ -156,6 +160,8 @@ public class IssueService {
         issueMember.updateIsRead(true);
     }
 
+    @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE)
+    @TrackMemberChanges(target = TargetType.ISSUE)
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
                              List<Long> removeFileIds) {
         Issue issue = getIssueById(id);
@@ -183,9 +189,11 @@ public class IssueService {
         return issue;
     }
 
-    public void deleteIssue(Long id) {
+    @TrackChanges(type = ChangeType.DELETE, target = TargetType.ISSUE)
+    public Issue deleteIssue(Long id) {
         Issue issue = getIssueById(id);
         issue.delete();
+        return issue;
     }
 
     // 이슈 전체 조회(삭제X)

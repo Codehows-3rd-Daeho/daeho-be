@@ -33,6 +33,13 @@ public class Log extends BaseEntity {
     @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "update_field", nullable = false)
+    @Column(name = "update_field")
     private String updateField;
+
+    // 사용자
+    @Column(name = "member_name", nullable = false)
+    private String memberName;
+
+    @Column(name = "title")
+    private String title;
 }
