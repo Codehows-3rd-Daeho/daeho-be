@@ -8,7 +8,20 @@ services:
       MYSQL_ROOT_PASSWORD: 1234
       MYSQL_DATABASE: base_db
       TZ: Asia/Seoul
-      
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # 초기화 SQL (선택사항)
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s # 초기화 시간 증가
+
   redis:
     image: redis:7.4
     container_name: redis
@@ -26,7 +39,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-      
+
   kafka:
     image: apache/kafka:3.8.0
     container_name: kafka
@@ -38,11 +51,11 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 90s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
   spring-backend:
     build:
@@ -73,14 +86,15 @@ services:
       kafka:
         condition: service_healthy
     networks:
-      - kuke-board-network
-    restart: unless-stopped
+      - app-network
 
 networks:
-  kuke-board-network:
-    driver: bridge
+  app-network:
+    external: true
 
 volumes:
+  mysql-data:
+    driver: local
   redis-data:
     driver: local
   kafka-data:
