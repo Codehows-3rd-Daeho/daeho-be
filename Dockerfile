@@ -25,8 +25,17 @@ COPY src ./src
 RUN chmod +x ./gradlew && ./gradlew bootJar --no-daemon
 # Maven 빌드 시: RUN mvn clean package -DskipTests
 
+# JAR 내부 확인
+RUN echo "=== Checking JAR contents ===" && \
+    jar tf /app/build/libs/*.jar | grep application.properties
+
 # 런타임 스테이지
-FROM openjdk:21-jdk
+FROM eclipse-temurin:21-jre
+
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -37,8 +46,4 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # 포트 노출
 EXPOSE 8080
 
-# 환경변수 설정
-ENV JAVA_OPTS="-Xms512m -Xmx1024m"
-
-# 애플리케이션 실행
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

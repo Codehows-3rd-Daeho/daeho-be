@@ -4,6 +4,7 @@ pipeline {
     environment {
         COMPOSE_PROJECT = 'spring-backend'
         DOCKER_NETWORK = 'app-network'
+        HOST_CONFIG_PATH = '/var/jenkins_config/application.properties'
     }
     
     stages {
@@ -11,6 +12,28 @@ pipeline {
             steps {
                 echo 'Checking out code from GitHub...'
                 checkout scm
+            }
+        }
+
+        stage('Copy Configuration to Build') {
+            steps {
+                script {
+                    echo "Copying application.properties for build..."
+                    sh """
+                        # src/main/resources 디렉토리 생성
+                        mkdir -p src/main/resources
+
+                        # 호스트의 실제 설정을 빌드용으로 복사
+                        if [ -f ${HOST_CONFIG_PATH} ]; then
+                            cp ${HOST_CONFIG_PATH} src/main/resources/application.properties
+                            echo "✅ Configuration copied to build resources"
+                            ls -lh src/main/resources/application.properties
+                        else
+                            echo "❌ Configuration file not found at ${HOST_CONFIG_PATH}"
+                            exit 1
+                        fi
+                    """
+                }
             }
         }
         

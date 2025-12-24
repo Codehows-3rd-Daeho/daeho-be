@@ -16,13 +16,69 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.4
+    container_name: redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   kafka:
     image: apache/kafka:3.8.0
-    container_name: kuke-board-kafka
+    container_name: kafka
     ports:
       - "9092:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  spring-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring-backend
+    restart: unless-stopped
+    environment:
+      FILE_LOCATION: /app/uploads/production
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/base_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_JACKSON_TIME_ZONE: Asia/Seoul
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - /var/app/uploads:/app/uploads/production
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks:
       - kuke-board-network
     restart: unless-stopped
