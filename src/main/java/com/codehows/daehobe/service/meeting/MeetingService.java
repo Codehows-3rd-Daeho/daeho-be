@@ -179,7 +179,7 @@ public class MeetingService {
 
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.MEETING)
     @TrackMemberChanges(target = TargetType.MEETING)
-    public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds, String writerId) {
+    public Meeting updateMeeting(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds, String writerId) {
         Meeting meeting = getMeetingById(id);
         Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
