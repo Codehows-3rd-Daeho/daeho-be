@@ -37,4 +37,9 @@ public class File extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "target_type", nullable = false)
     private TargetType targetType;
+
+    public Long addFileSize(Long size) {
+        this.size += size;
+        return size;
+    }
 }

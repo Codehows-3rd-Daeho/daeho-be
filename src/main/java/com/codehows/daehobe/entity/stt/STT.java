@@ -30,6 +30,15 @@ public class STT extends BaseEntity {
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
+    private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
+
+    private String tempFileName;
+
+    private Long fileId;
+
+    public enum Status {
+        RECORDING, PROCESSING, COMPLETED
+    }
 
     //stt 변환 후 요약시 update로 값 추가
     public void updateSummary(String summary) {
