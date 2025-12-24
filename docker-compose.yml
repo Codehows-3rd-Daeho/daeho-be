@@ -1,23 +1,6 @@
 services:
   redis:
     image: redis:7.4
-    container_name: kuke-board-redis
-    command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - kuke-board-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7.4
     container_name: redis
     command: redis-server --appendonly yes
     ports:
@@ -33,10 +16,27 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
+  
   kafka:
     image: apache/kafka:3.8.0
     container_name: kafka
+    environment:
+      # KRaft 모드 설정 (Zookeeper 없이 동작)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # 단일 브로커 설정
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      # 클러스터 ID (선택사항, 자동 생성됨)
+      CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
     ports:
       - "9092:9092"
     volumes:
@@ -45,47 +45,15 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      test: [ "CMD-SHELL", "nc -z localhost 9092 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 90s
-
-  spring-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: spring-backend
-    restart: unless-stopped
-    environment:
-      FILE_LOCATION: /app/uploads/production
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/base_db?useSSL=false&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 1234
-      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
-      SPRING_JPA_HIBERNATE_DDL_AUTO: create
-      SPRING_JACKSON_TIME_ZONE: Asia/Seoul
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    volumes:
-      - /var/app/uploads:/app/uploads/production
-    ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    networks:
-      - kuke-board-network
-    restart: unless-stopped
-
+  
 networks:
-  kuke-board-network:
-    driver: bridge
+  app-network:
+    external: true
 
 volumes:
   redis-data:
