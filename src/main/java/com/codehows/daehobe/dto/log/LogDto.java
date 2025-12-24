@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 public class LogDto {
     private Long id;
 
+    private String title;
+
     private Long targetId;
 
     private TargetType targetType;
@@ -37,6 +39,7 @@ public class LogDto {
         return LogDto.builder()
                 .id(log.getId())
                 .targetId(log.getTargetId())
+                .title(log.getTitle())
                 .targetType(log.getTargetType())
                 .changeType(log.getChangeType())
                 .message(log.getMessage())

@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.issue;
 
 import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.aop.TrackMemberChanges;
 import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
@@ -160,6 +161,7 @@ public class IssueService {
     }
 
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE)
+    @TrackMemberChanges(target = TargetType.ISSUE)
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
                              List<Long> removeFileIds) {
         Issue issue = getIssueById(id);

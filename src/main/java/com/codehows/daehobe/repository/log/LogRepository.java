@@ -8,4 +8,8 @@ import org.springframework.data.repository.CrudRepository;
 
 public interface LogRepository extends CrudRepository<Log, Long> {
     Page<Log> findByTargetIdAndTargetType(Long id, TargetType targetType, Pageable pageable);
+
+    Page<Log> findAll(Pageable pageable);
+
+
 }

@@ -51,4 +51,20 @@ public class LogController {
         }
     }
 
+    @GetMapping("/admin/log")
+    public ResponseEntity<?> AllLog(
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+            Page<Log> logs = logRepository.findAll(pageable);
+
+            Page<LogDto> dtoList = logs.map(LogDto::fromEntity);
+            return ResponseEntity.ok(dtoList);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("전체 로그 조회 중 오류 발생");
+        }
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.meeting;
 
 import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.aop.TrackMemberChanges;
 import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
@@ -152,6 +153,7 @@ public class MeetingService {
     }
 
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.MEETING)
+    @TrackMemberChanges(target = TargetType.MEETING)
     public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
         Meeting meeting = getMeetingById(id);
         Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());

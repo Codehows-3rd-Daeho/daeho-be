@@ -40,5 +40,6 @@ public class Log extends BaseEntity {
     @Column(name = "member_name", nullable = false)
     private String memberName;
 
-
+    @Column(name = "title")
+    private String title;
 }
