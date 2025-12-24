@@ -38,12 +38,22 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     runtimeOnly 'com.mysql:mysql-connector-j'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    // https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api
+    // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
-    // https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-impl
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
-    // https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    // Kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // Spring Session Redis (STOMP 브로커의 메시지 전송 계층으로 Redis 사용)
+    implementation 'org.springframework.session:spring-session-data-redis'
+    // Web Push
+    implementation 'nl.martijndwars:web-push:5.1.1'
+    implementation 'org.apache.httpcomponents:httpclient' // web-push를 위한 http client
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1' // web-push를 위한 암호화
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
 
 tasks.named('test') {

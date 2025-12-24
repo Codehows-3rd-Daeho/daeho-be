@@ -10,17 +10,20 @@ import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
-import com.codehows.daehobe.dto.meeting.MeetingListDto;
+import com.codehows.daehobe.dto.masterData.SetNotificationDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.entity.notification.SetNotification;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
-import com.codehows.daehobe.service.meeting.MeetingService;
+import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -43,9 +46,12 @@ public class IssueService {
     private final IssueMemberService issueMemberService;
     private final CategoryService categoryService;
     private final MemberService memberService;
+    private final NotificationService notificationService;
+    private final SetNotificationService setNotificationService;
+
 
     @TrackChanges(type = ChangeType.CREATE, target = TargetType.ISSUE)
-    public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles) {
+    public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles, String writerId) {
 
         // 1. DTO에서 categoryId를 가져와 실제 엔티티 조회
         Category categoryId = categoryService.getCategoryById(issueFormDto.getCategoryId());
@@ -83,6 +89,22 @@ public class IssueService {
         // 파일저장 서비스 호출
         if (multipartFiles != null) {
             fileService.uploadFiles(saveIssue.getId(), multipartFiles, TargetType.ISSUE);
+        }
+
+        // 알림 발송
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isIssueCreated()) {
+            for (IssueMemberDto memberDto : issueMemberDtos) {
+                // 알림 발송
+                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("새 이슈가 등록되었습니다 \n" + saveIssue.getTitle());
+                messageDto.setUrl("/issue/" + saveIssue.getId()); // 클릭 시 이동할 URL
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
         }
 
         return saveIssue;
@@ -163,10 +185,13 @@ public class IssueService {
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE)
     @TrackMemberChanges(target = TargetType.ISSUE)
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
-                             List<Long> removeFileIds) {
+                             List<Long> removeFileIds, String writerId) {
         Issue issue = getIssueById(id);
         Category category = categoryService.getCategoryById(issueFormDto.getCategoryId());
+
+        Status beforeStatus = issue.getStatus(); // 수정전 상태
         issue.update(issueFormDto, category);
+        Status afterStatus = issue.getStatus(); // 수정후 상태
 
         // 이슈 부서 엔티티 삭제 후 추가
         issueDepartmentService.deleteIssueDepartment(issue);
@@ -186,6 +211,22 @@ public class IssueService {
         if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
             fileService.updateFiles(id, newFiles, removeFileIds, TargetType.ISSUE);
         }
+
+        // 상태 변경 알림
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (!beforeStatus.equals(afterStatus) && issueMemberDtos != null && settingdto.isIssueStatus()) {
+            for (IssueMemberDto memberDto : issueMemberDtos) {
+                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("이슈 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
+                messageDto.setUrl("/issue/" + issue.getId());
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
+        }
+
         return issue;
     }
 

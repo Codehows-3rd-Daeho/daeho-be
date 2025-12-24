@@ -5,18 +5,23 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "category")
+@Table(name = "custom_group")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Category extends BaseEntity {
+public class CustomGroup extends BaseEntity {
     @Id
-    @Column(name = "category_id")
+    @Column(name = "custom_group_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // 카테고리명
     @Column(unique = true)
     private String name;
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
 }

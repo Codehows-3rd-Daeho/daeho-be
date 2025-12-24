@@ -48,6 +48,7 @@ public class MemberService {
     public Member createMember(@Valid MemberDto memberDto, List<MultipartFile> profileImage) {
         JobPosition pos = jobPositionService.getJobPositionById(memberDto.getJobPositionId());
         Department dpt = departmentService.getDepartmentById(memberDto.getDepartmentId());
+        Role role = "ADMIN".equals(memberDto.getRole()) ? Role.ADMIN : Role.USER;
 
         // DTO → Entity 변환
         Member member = Member.builder()
@@ -59,7 +60,7 @@ public class MemberService {
                 .phone(memberDto.getPhone())
                 .email(memberDto.getEmail())
                 .isEmployed(memberDto.getIsEmployed())
-                .role(Role.USER)
+                .role(role)
                 .build();
 
         // 회원저장
@@ -82,7 +83,6 @@ public class MemberService {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
         File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
 
-        String profileUrl = (profileFile != null) ? profileFile.getPath() : null;
         return MemberDto.fromEntity(member, profileFile);
     }
 
@@ -124,7 +124,7 @@ public class MemberService {
 
     // role이 "USER"이고 isEmployed가 true 인 Member 리스트
     public List<PartMemberListDto> findByRoleAndIsEmployedTrue() {
-        return memberRepository.findByRoleAndIsEmployedTrue(Role.USER)
+        return memberRepository.findByIsEmployedTrue()
                 .stream()
                 .map(PartMemberListDto::fromEntity)
                 .collect(Collectors.toList());

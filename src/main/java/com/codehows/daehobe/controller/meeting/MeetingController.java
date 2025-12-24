@@ -29,9 +29,9 @@ public class MeetingController {
     @PostMapping("/create")
     public ResponseEntity<?> createMeeting(
             @RequestPart("data") MeetingFormDto meetingFormDto,
-            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles,Authentication authentication) {
 
-        Meeting meeting = meetingService.createMeeting(meetingFormDto, multipartFiles);
+        Meeting meeting = meetingService.createMeeting(meetingFormDto, multipartFiles,authentication.getName());
         return ResponseEntity.ok(meeting.getId());
 
     }
@@ -68,12 +68,13 @@ public class MeetingController {
             @PathVariable Long id,
             @RequestPart("data") MeetingFormDto meetingFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
-            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
+            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove,
+            Authentication authentication
     ) {
         try {
             List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
             List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
-            meetingService.updateIssue(id, meetingFormDto, newFiles, removeFileIds);
+            meetingService.updateMeeting(id, meetingFormDto, newFiles, removeFileIds,authentication.getName());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             e.printStackTrace();

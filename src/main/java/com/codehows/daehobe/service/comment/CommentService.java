@@ -8,14 +8,18 @@ import com.codehows.daehobe.dto.comment.CommentMentionDto;
 import com.codehows.daehobe.dto.comment.CommentRequest;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
+import com.codehows.daehobe.dto.masterData.SetNotificationDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.commnet.CommentRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
+import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -37,6 +41,8 @@ public class CommentService {
     private final MeetingService meetingService;
     private final MentionService mentionService;
     private final FileService fileService;
+    private final NotificationService notificationService;
+    private final SetNotificationService setNotificationService;
 
     // 이슈 ==========================================
     // 이슈 댓글 호출
@@ -59,6 +65,19 @@ public class CommentService {
 
         if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty()) {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
+
+            // 멘션 알림 발송
+            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
+            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
+            mentionMessageDto.setUrl("/issue/" + issueId);
+
+            for (Long mentionedId : dto.getMentionedMemberIds()) {
+                if (!mentionedId.equals(memberId)) { // 작성자 제외
+                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
+                    // db에 저장
+                    notificationService.saveNotification(mentionedId, mentionMessageDto);
+                }
+            }
         }
 
         if (multipartFiles != null) {
@@ -67,7 +86,6 @@ public class CommentService {
 
         return saved;
     }
-    // =================================
 
     // 회의 ==================================
     // 회의 댓글 호출
@@ -88,8 +106,22 @@ public class CommentService {
                 dto.getContent(),
                 writer);
 
-        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty()) {
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty() && settingdto.isCommentMention()) {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
+
+            // 멘션 알림 발송
+            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
+            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
+            mentionMessageDto.setUrl("/meeting/" + meetingId);
+
+            for (Long mentionedId : dto.getMentionedMemberIds()) {
+                if (!mentionedId.equals(memberId)) { // 작성자 제외
+                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
+                    // db에 저장
+                    notificationService.saveNotification(mentionedId, mentionMessageDto);
+                }
+            }
         }
 
         if (multipartFiles != null) {

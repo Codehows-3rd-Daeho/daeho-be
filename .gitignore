@@ -30,6 +30,10 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+docker-compose.yml
+Dockerfile
+Jenkinsfile
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
