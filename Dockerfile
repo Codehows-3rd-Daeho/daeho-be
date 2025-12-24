@@ -30,7 +30,12 @@ RUN echo "=== Checking JAR contents ===" && \
     jar tf /app/build/libs/*.jar | grep application.properties
 
 # 런타임 스테이지
-FROM openjdk:21-jdk
+FROM eclipse-temurin:21-jre
+
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
