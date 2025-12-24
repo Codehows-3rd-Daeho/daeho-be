@@ -2,6 +2,7 @@ package com.codehows.daehobe.config.SpringSecurity;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -37,6 +38,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if(member.isPresent()){
             Member user = member.get();
 
+            //퇴사자 로그인 차단
+            if (!user.getIsEmployed()) {
+                throw new DisabledException("퇴사 처리된 계정입니다.");
+            }
+
             // User.withUsername() : Spring Security 제공 Builder
             // - username, password, role 정보를 담아 UserDetails 생성
             // - 이 객체를 AuthenticationManager가 인증할 때 사용
@@ -50,8 +56,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("Member not found");
         }
 
+
+
+
         // 4 최종적으로 UserDetails 반환
         // 이후 AuthenticationManager에서 비밀번호 비교 후 인증 성공 시 Authentication 객체 생성
         return userDetails;
+
     }
 }
