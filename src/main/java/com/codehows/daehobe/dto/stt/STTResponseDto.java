@@ -58,6 +58,7 @@ public class STTResponseDto {
         stt.setMeeting(meeting);
         // sttResults[0].transcript 값을 content에 넣음
         stt.setContent(this.getContent());
+//        stt.setStatus(STT.Status.PROCESSING);
         return stt;
     }
 

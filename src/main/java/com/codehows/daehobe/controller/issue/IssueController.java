@@ -1,5 +1,8 @@
 package com.codehows.daehobe.controller.issue;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.constant.ChangeType;
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
@@ -29,13 +32,15 @@ public class IssueController {
     @PostMapping("/create")
     public ResponseEntity<?> createIssue(
             @RequestPart("data") IssueFormDto issueFormDto,
-            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
+            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles, Authentication authentication) {
 
-        Issue issue = issueService.createIssue(issueFormDto, multipartFiles);
+        Issue issue = issueService.createIssue(issueFormDto, multipartFiles, authentication.getName());
         return ResponseEntity.ok(issue.getId());
 
     }
 
+
+    //칸반 전체
     @GetMapping("/kanban")
     public ResponseEntity<?> getKanbanData() {
 
@@ -104,12 +109,13 @@ public class IssueController {
             @PathVariable Long id,
             @RequestPart("data") IssueFormDto issueFormDto,
             @RequestPart(value = "file", required = false) List<MultipartFile> filesToUpload,
-            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove
+            @RequestPart(value = "removeFileIds", required = false) List<Long> filesToRemove,
+            Authentication authentication
     ) {
         try {
             List<MultipartFile> newFiles = filesToUpload != null ? filesToUpload : List.of();
             List<Long> removeFileIds = filesToRemove != null ? filesToRemove : List.of();
-            issueService.updateIssue(id, issueFormDto, newFiles, removeFileIds);
+            issueService.updateIssue(id, issueFormDto, newFiles, removeFileIds, authentication.getName());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -146,11 +152,46 @@ public class IssueController {
                                                     @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id,pageable);
+            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, pageable);
             return ResponseEntity.ok(meetingListDtos);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }
+
+//    ================================================나의 업무=================================================================
+
+    //    나의 업무 칸반
+    @GetMapping("/kanban/mytask/{id}")
+    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id
+    ) {
+        System.out.println(" =============================================================");
+
+        System.out.println(" getKanbanDataById id: " + id);
+        var inProgress = issueService.getInProgressForMember(id);       // 진행중 전체
+        var delayed = issueService.getDelayedForMember(id);             // 미결 전체
+        var completed = issueService.getCompletedForMember(id);         // 최근 7일 완료 전체
+
+        return ResponseEntity.ok(
+                new KanbanResponse(inProgress, delayed, completed)
+        );
+    }
+
+    //나의 업무 리스트
+    @GetMapping("/list/mytask/{id}")
+    public ResponseEntity<?> getIssuesById(@PathVariable Long id,
+                                           @RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
+
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+            List<IssueListDto> memberIssues = issueService.getIssuesForMember(id, pageable);
+            return ResponseEntity.ok(memberIssues);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
+        }
+    }
+
 }

@@ -14,7 +14,7 @@ public class Category extends BaseEntity {
     @Id
     @Column(name = "category_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     // 카테고리명
     @Column(unique = true)

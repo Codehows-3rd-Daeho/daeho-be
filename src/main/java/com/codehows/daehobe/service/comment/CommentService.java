@@ -1,18 +1,25 @@
 package com.codehows.daehobe.service.comment;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.comment.CommentDto;
+import com.codehows.daehobe.dto.comment.CommentMentionDto;
 import com.codehows.daehobe.dto.comment.CommentRequest;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
+import com.codehows.daehobe.dto.masterData.SetNotificationDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.comment.Comment;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.commnet.CommentRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
+import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,6 +41,8 @@ public class CommentService {
     private final MeetingService meetingService;
     private final MentionService mentionService;
     private final FileService fileService;
+    private final NotificationService notificationService;
+    private final SetNotificationService setNotificationService;
 
     // 이슈 ==========================================
     // 이슈 댓글 호출
@@ -43,7 +52,8 @@ public class CommentService {
     }
 
     // 이슈 댓글 작성
-    public CommentDto createIssueComment(Long issueId, CommentRequest dto, Long memberId, List<MultipartFile> multipartFiles) {
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.COMMENT)
+    public Comment createIssueComment(Long issueId, CommentRequest dto, Long memberId, List<MultipartFile> multipartFiles) {
         issueService.getIssueDtl(issueId, memberId);
         Member writer = memberService.getMemberById(memberId);
 
@@ -55,15 +65,27 @@ public class CommentService {
 
         if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty()) {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
+
+            // 멘션 알림 발송
+            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
+            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
+            mentionMessageDto.setUrl("/issue/" + issueId);
+
+            for (Long mentionedId : dto.getMentionedMemberIds()) {
+                if (!mentionedId.equals(memberId)) { // 작성자 제외
+                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
+                    // db에 저장
+                    notificationService.saveNotification(mentionedId, mentionMessageDto);
+                }
+            }
         }
 
         if (multipartFiles != null) {
             fileService.uploadFiles(saved.getId(), multipartFiles, TargetType.COMMENT);
         }
 
-        return toCommentDto(saved);
+        return saved;
     }
-    // =================================
 
     // 회의 ==================================
     // 회의 댓글 호출
@@ -73,7 +95,8 @@ public class CommentService {
     }
 
     // 회의 댓글 작성
-    public CommentDto createMeetingComment(Long meetingId, CommentRequest dto, Long memberId, List<MultipartFile> multipartFiles) {
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.COMMENT)
+    public Comment createMeetingComment(Long meetingId, CommentRequest dto, Long memberId, List<MultipartFile> multipartFiles) {
         meetingService.getMeetingDtl(meetingId, memberId);
         Member writer = memberService.getMemberById(memberId);
 
@@ -83,15 +106,29 @@ public class CommentService {
                 dto.getContent(),
                 writer);
 
-        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty()) {
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty() && settingdto.isCommentMention()) {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
+
+            // 멘션 알림 발송
+            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
+            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
+            mentionMessageDto.setUrl("/meeting/" + meetingId);
+
+            for (Long mentionedId : dto.getMentionedMemberIds()) {
+                if (!mentionedId.equals(memberId)) { // 작성자 제외
+                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
+                    // db에 저장
+                    notificationService.saveNotification(mentionedId, mentionMessageDto);
+                }
+            }
         }
 
         if (multipartFiles != null) {
             fileService.uploadFiles(saved.getId(), multipartFiles, TargetType.COMMENT);
         }
 
-        return toCommentDto(saved);
+        return saved;
     }
 
     // 수정
@@ -112,8 +149,10 @@ public class CommentService {
                 : null;
 
         List<FileDto> fileList = fileService.getCommentFiles(comment.getId());
+        List<CommentMentionDto> mentions =
+                mentionService.getMentionsByComment(comment);
 
-        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId());
+        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId(), mentions);
     }
 
     // 등록
@@ -135,27 +174,26 @@ public class CommentService {
     }
 
     // 수정
-    public Comment updateComment(Long id,
-                                  CommentRequest dto,
-                                  List<MultipartFile> newFiles,
-                                  List<Long> removeFileIds){
+    @TrackChanges(type = ChangeType.UPDATE, target = TargetType.COMMENT)
+    public Comment updateComment(Long id, CommentRequest dto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
         Comment comment = getCommentById(id);
 
-        // 내용 수정
+        // 1. 내용 업데이트
         comment.update(dto);
 
-        // 파일 수정
+        // 3. 파일 수정
         if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
             fileService.updateFiles(id, newFiles, removeFileIds, TargetType.COMMENT);
         }
 
         return comment;
-
     }
 
-    public void deleteComment(Long id) {
+
+    public Comment deleteComment(Long id) {
         Comment comment = getCommentById(id);
         comment.delete();
+        return comment;
     }
 
     // 댓글 단일 조회 > id

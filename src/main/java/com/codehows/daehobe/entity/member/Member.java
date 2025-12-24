@@ -19,7 +19,7 @@ public class Member extends BaseEntity {
     @Id
     @Column(name = "member_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     // 로그인ID
     @Column(unique = true, nullable = false)
@@ -68,6 +68,7 @@ public class Member extends BaseEntity {
         this.phone = memberDto.getPhone();
         this.email = memberDto.getEmail();
         this.isEmployed = memberDto.getIsEmployed();
+        this.role = "ADMIN".equals(memberDto.getRole()) ? Role.ADMIN : Role.USER;
 
         if (memberDto.getPassword() != null && !memberDto.getPassword().isBlank()) {
             this.password = passwordEncoder.encode(memberDto.getPassword());

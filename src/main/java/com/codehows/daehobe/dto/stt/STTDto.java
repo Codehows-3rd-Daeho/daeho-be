@@ -15,6 +15,7 @@ private Long id;
 private String content;
 private String summary;
 private Long meetingId;
+private String status;
 
     public static STTDto fromEntity(STT stt) {
         return STTDto.builder()
@@ -26,6 +27,7 @@ private Long meetingId;
                                 ? stt.getMeeting().getId()
                                 : null
                 )
+                .status(String.valueOf(stt.getStatus()))
                 .build();
     }
 

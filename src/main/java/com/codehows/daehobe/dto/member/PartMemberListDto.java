@@ -13,7 +13,6 @@ public class PartMemberListDto {
     private String department;
     private String jobPositionName;
 
-
     // Entity → DTO 변환
     public static PartMemberListDto fromEntity(Member member) {
         return new PartMemberListDto(
@@ -23,5 +22,4 @@ public class PartMemberListDto {
                 member.getJobPosition()==null ? null : member.getJobPosition().getName() // Lazy라도 트랜잭션 내 safe
         );
     }
-
 }

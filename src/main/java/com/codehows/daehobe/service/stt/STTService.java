@@ -4,12 +4,18 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
+import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
-import com.codehows.daehobe.service.meeting.MeetingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +24,15 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -30,19 +42,21 @@ public class STTService {
 
     private final WebClient webClient;
     private final FileService fileService;
-    private final MeetingService meetingService;
+    private final MeetingRepository meetingRepository;
     private final STTRepository sttRepository;
     private final SttConfigService sttConfigService;
 
+    @Value("${file.location}")
+    private String fileLocation;
 
 
     // 저장
-    public List<STTDto> uploadSTT(Long id, List<MultipartFile> files){
-        Meeting meeting = meetingService.getMeetingById(id);
+    public List<STTDto> uploadSTT(Long id, List<MultipartFile> files) {
+        Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
 
-        List<STTDto> savedSTTs = files.stream() .map(file -> {
+        List<STTDto> savedSTTs = files.stream().map(file -> {
             //1. stt api 호출
-            STTResponseDto response = callDaglo(file);
+            STTResponseDto response = callDaglo(file.getResource());
 
             //2. dto로 받은 반환값을 stt 엔티티에 저장
             STT stt = response.toEntity(meeting);
@@ -50,8 +64,7 @@ public class STTService {
 
             //3.  반환
             return STTDto.fromEntity(saved);
-            })
-            .toList();
+        }).toList();
 
         //3. stt id로 fileService => 음성 파일 저장
         fileService.uploadFiles(id, files, TargetType.STT);//targetId사용해야함
@@ -60,34 +73,41 @@ public class STTService {
     }
 
     //1-1. api 호출
-    private STTResponseDto callDaglo(MultipartFile file) {
-
+    private STTResponseDto callDaglo(Resource file) {
         try {
             STTResponseDto response = webClient.post()
-                .uri("/stt/v1/async/transcripts")//요청
-                .contentType(MediaType.MULTIPART_FORM_DATA)
-                //MultipartFile → 바이트 배열
-                .body(BodyInserters.fromMultipartData("file", file.getResource())
-                        .with("sttConfig", sttConfigService.toJson())
-                )
-                .retrieve()//응답 받기
-                .onStatus(status -> status.is4xxClientError(), clientResponse -> {
-                    switch (clientResponse.statusCode().value()) {
-                        case 400: return Mono.error(new IllegalArgumentException("잘못된 요청입니다."));
-                        case 204: return Mono.error(new IllegalArgumentException("반환한 결과가 없습니다."));
-                        case 401: return Mono.error(new RuntimeException("인증 실패"));
-                        case 403: return Mono.error(new RuntimeException("권한 없음"));
-                        case 413: return Mono.error(new RuntimeException("파일이 너무 큽니다."));
-                        case 415: return Mono.error(new RuntimeException("지원되지 않는 파일 형식입니다."));
-                        case 429: return Mono.error(new RuntimeException("요청이 너무 많습니다."));
-                        default: return Mono.error(new RuntimeException("클라이언트 오류"));
-                    }
-                })
-                .onStatus(status -> status.is5xxServerError(), clientResponse ->
-                        Mono.error(new RuntimeException("STT 서버 내부 오류"))
-                )
-                .bodyToMono(STTResponseDto.class)// Dto(String)로 변환
-                .block();//비동기 → 동기로 변경
+                    .uri("/stt/v1/async/transcripts")//요청
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    //MultipartFile → 바이트 배열
+                    .body(BodyInserters.fromMultipartData("file", file)
+                            .with("sttConfig", sttConfigService.toJson())
+                    )
+                    .retrieve()//응답 받기
+                    .onStatus(status -> status.is4xxClientError(), clientResponse -> {
+                        switch (clientResponse.statusCode().value()) {
+                            case 400:
+                                return Mono.error(new IllegalArgumentException("잘못된 요청입니다."));
+                            case 204:
+                                return Mono.error(new IllegalArgumentException("반환한 결과가 없습니다."));
+                            case 401:
+                                return Mono.error(new RuntimeException("인증 실패"));
+                            case 403:
+                                return Mono.error(new RuntimeException("권한 없음"));
+                            case 413:
+                                return Mono.error(new RuntimeException("파일이 너무 큽니다."));
+                            case 415:
+                                return Mono.error(new RuntimeException("지원되지 않는 파일 형식입니다."));
+                            case 429:
+                                return Mono.error(new RuntimeException("요청이 너무 많습니다."));
+                            default:
+                                return Mono.error(new RuntimeException("클라이언트 오류"));
+                        }
+                    })
+                    .onStatus(status -> status.is5xxServerError(), clientResponse ->
+                            Mono.error(new RuntimeException("STT 서버 내부 오류"))
+                    )
+                    .bodyToMono(STTResponseDto.class)// Dto(String)로 변환
+                    .block();//비동기 → 동기로 변경
 
             if (response == null || response.getRid() == null) {
                 throw new RuntimeException("rid 발급 실패");
@@ -142,13 +162,14 @@ public class STTService {
     //STT 조회
     public List<STTDto> getSTTById(Long meetingId) {
 
-        Meeting meeting = meetingService.getMeetingById(meetingId);
+        Meeting meeting = meetingRepository.findById(meetingId).orElseThrow(IllegalArgumentException::new);
 
         //1. meeting id로 존재 확인
-        if ( meeting == null) {
+        if (meeting == null) {
             System.out.println("해당 회의가 존재하지 않습니다.");
             return List.of(); // 빈 리스트 반환
-        };
+        }
+        ;
 
         List<STT> stts = sttRepository.findByMeetingId(meetingId);
 
@@ -157,7 +178,8 @@ public class STTService {
                 .map(STTDto::fromEntity)
                 .toList();
     }
-//==================================================요약==================================================================
+
+    //==================================================요약==================================================================
     //요약
     @Transactional
     public SummaryResponseDto summarySTT(Long sttId, String content) {
@@ -166,8 +188,7 @@ public class STTService {
                 .orElseThrow(() -> new IllegalArgumentException("STT 없음"));
 
         //1. api 호출
-        try
-        {
+        try {
             SummaryResponseDto response = webClient.post()
                     .uri("/nlp/v1/async/minutes")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -209,7 +230,7 @@ public class STTService {
 
 
     //2. rid로 stt 상태 확인
-    private SummaryResponseDto checkSummaryStatus(String rid){
+    private SummaryResponseDto checkSummaryStatus(String rid) {
         System.out.println("==========================================");
         System.out.println("checkSummaryStatus 실행 확인");
         System.out.println("==========================================");
@@ -238,5 +259,64 @@ public class STTService {
         sttRepository.deleteById(id); // 완전 삭제
     }
 
+    public Long startRecording(Long meetingId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid meeting ID: " + meetingId));
 
+        String savedFileName = UUID.randomUUID().toString();
+
+        STT stt = STT.builder()
+                .meeting(meeting)
+                .content("")
+                .status(STT.Status.RECORDING)
+                .tempFileName(savedFileName + ".wav")
+                .build();
+
+        sttRepository.save(stt);
+        return stt.getId();
+    }
+
+    public void appendChunk(Long sttId, MultipartFile chunk) {
+        STT stt = sttRepository.findById(sttId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
+
+        File savedFileId = fileService.appendChunk(stt.getId(), stt.getTempFileName(), chunk, TargetType.STT, stt.getFileId());
+        stt.setFileId(savedFileId.getFileId());
+    }
+
+    public STTDto finishRecording(Long sttId) {
+        STT stt = sttRepository.findById(sttId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
+        stt.setStatus(STT.Status.PROCESSING);
+        sttRepository.save(stt);
+
+        fileService.encodeAudioFile(stt.getTempFileName());
+
+        File file = fileService.getFileById(stt.getFileId());
+        Path filePath = Paths.get(fileLocation, file.getPath());
+        try {
+            byte[] fileContent = Files.readAllBytes(filePath);
+            String originalFilename = file.getSavedName();
+            ByteArrayResource resource = new ByteArrayResource(fileContent) {
+                @Override
+                public String getFilename() {
+                    return originalFilename;
+                }
+            };
+
+            STTResponseDto response = callDaglo(resource);
+            stt.setContent(response.getContent());
+            summarySTT(stt.getId(), response.getContent());
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Re-fetch to get the summary
+        STT updatedStt = sttRepository.findById(sttId).orElseThrow();
+        updatedStt.setStatus(STT.Status.COMPLETED);
+        sttRepository.save(updatedStt);
+
+        return STTDto.fromEntity(updatedStt);
+    }
 }

@@ -1,4 +1,3 @@
-HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -17,6 +16,13 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 src/main/resources/application.properties
+.docker-compose.yml
+.Dockerfile
+.Jenkinsfile
+
+docker-compose.yml
+Dockerfile
+Jenkinsfile
 
 ### IntelliJ IDEA ###
 .idea
@@ -26,6 +32,10 @@ src/main/resources/application.properties
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+
+docker-compose.yml
+Dockerfile
+Jenkinsfile
 
 ### NetBeans ###
 /nbproject/private/

@@ -9,6 +9,8 @@ import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import jakarta.persistence.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,5 +67,18 @@ public class IssueMemberService {
     // 이슈와 관련된 참여자 삭제
     public void deleteIssueMember(Issue issue) {
         issueMemberRepository.deleteByIssue(issue);
+    }
+
+
+//    ================================================나의 업무=================================================================
+
+    //로그인 사용자 id로 해당 이슈의 참여자인지 확인
+    public boolean isParticipant(Long memberId, Issue issue ) {
+        return getMembers(issue).stream() // issue의 모든 참여자 조회
+                .anyMatch(im -> im.getMember().getId().equals(memberId));
+    }
+
+    public Page<IssueMember> findByMemberId(Long memberId, Pageable pageable) {
+        return issueMemberRepository.findByMemberId(memberId, pageable);
     }
 }

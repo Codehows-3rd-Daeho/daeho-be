@@ -1,24 +1,34 @@
 package com.codehows.daehobe.service.meeting;
 
+import com.codehows.daehobe.aop.TrackChanges;
+import com.codehows.daehobe.aop.TrackMemberChanges;
+import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
+import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.entity.notification.SetNotification;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
+import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +37,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,8 +54,12 @@ public class MeetingService {
     private final MeetingMemberService meetingMemberService;
     private final IssueService issueService;
     private final MemberService memberService;
+    private final NotificationService notificationService;
+    private final SetNotificationService setNotificationService;
 
-    public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles) {
+
+    @TrackChanges(type = ChangeType.CREATE, target = TargetType.MEETING)
+    public Meeting createMeeting(MeetingFormDto meetingFormDto, List<MultipartFile> multipartFiles, String writerId) {
 
         Category categoryId = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
@@ -87,6 +103,22 @@ public class MeetingService {
         //파일 저장
         if (multipartFiles != null) {
             fileService.uploadFiles(saveMeeting.getId(), multipartFiles, TargetType.MEETING);
+        }
+
+
+        // 알림 발송
+        SetNotificationDto settingdto = setNotificationService.getSetting();
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isMeetingCreated()) {
+            for (MeetingMemberDto memberDto : issueMemberDtos) {
+                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("새 회의가 등록되었습니다 \n " + saveMeeting.getTitle());
+                messageDto.setUrl("/meeting/" + saveMeeting.getId());
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
         }
 
         return saveMeeting;
@@ -148,7 +180,9 @@ public class MeetingService {
         meetingMember.updateIsRead(true);
     }
 
-    public Meeting updateIssue(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds) {
+    @TrackChanges(type = ChangeType.UPDATE, target = TargetType.MEETING)
+    @TrackMemberChanges(target = TargetType.MEETING)
+    public Meeting updateMeeting(Long id, MeetingFormDto meetingFormDto, List<MultipartFile> newFiles, List<Long> removeFileIds, String writerId) {
         Meeting meeting = getMeetingById(id);
         Category category = categoryService.getCategoryById(meetingFormDto.getCategoryId());
 
@@ -157,7 +191,9 @@ public class MeetingService {
         if (issueId != null) {
             issue = issueService.getIssueById(issueId);
         }
+        Status beforeStatus = meeting.getStatus(); // 수정전 상태
         meeting.update(meetingFormDto, category, issue);
+        Status afterStatus = meeting.getStatus(); // 수정후 상태
 
         // 상태가 완료일 경우, 마감일 자동입력
         if (meetingFormDto.getStatus().equals(String.valueOf(Status.COMPLETED))) {
@@ -185,12 +221,28 @@ public class MeetingService {
         if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
             fileService.updateFiles(id, newFiles, removeFileIds, TargetType.MEETING);
         }
+
+        // 상태 변경 알림
+        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
+        if (!beforeStatus.equals(afterStatus) && meetingMemberDtos != null && settingdto.isMeetingStatus()) {
+            for (MeetingMemberDto memberDto : meetingMemberDtos) {
+                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
+                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
+                messageDto.setMessage("회의 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
+                messageDto.setUrl("/meeting/" + meeting.getId());
+                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
+
+                // db에 저장
+                notificationService.saveNotification(memberDto.getId(), messageDto);
+            }
+        }
         return meeting;
     }
 
-    public void deleteMeeting(Long id) {
+    public Meeting deleteMeeting(Long id) {
         Meeting meeting = getMeetingById(id);
         meeting.deleteMeeting();
+        return meeting;
     }
 
     public void saveMeetingMinutes(Long id, List<MultipartFile> multipartFiles) {
@@ -210,7 +262,7 @@ public class MeetingService {
         Meeting meeting = getMeetingById(meetingId);
         File file = fileService.getFileById(fileId);
         fileService.deleteFiles(List.of(file));
-        meeting.deleteMeetingMinutes();
+        meeting.saveMeetingMinutes(null);
     }
 
     // 미팅 조회
@@ -218,6 +270,52 @@ public class MeetingService {
         return meetingRepository.findByIsDelFalse(pageable)
                 .map(this::toMeetingListDto);
     }
+
+    //회의 캘린더 조회
+    public List<MeetingListDto> findByDateBetween(
+            int year, int month
+    ) {
+        //LocalDate로 변경
+        LocalDate startDate  = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
+        LocalDate endDate  = startDate.withDayOfMonth(startDate.lengthOfMonth()); //ex? 12월의 마지막 날을 일자 부분에 삽입 => 2025-12-31
+
+        //LocalDateTime 으로 변경
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+
+        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(startDateTime, endDateTime);
+
+        return meetings.stream()
+                .map(this::toMeetingListDto)
+                .toList();
+
+    }
+
+    //나의 업무 캘린더 조회
+    public List<MeetingListDto> findByDateBetweenForMember( Long memberId, int year, int month) {
+        LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth())
+                .withHour(23).withMinute(59).withSecond(59);
+
+
+        System.out.println(" =============================================================");
+        System.out.println(" findByDateBetweenForMember memberId: " + memberId);
+        System.out.println(" findByDateBetweenForMember year: " + year);
+        System.out.println(" findByDateBetweenForMember month: " + month);
+        System.out.println(" =============================================================");
+
+        List<MeetingMember> meetings = meetingMemberService.findMeetingsByMemberAndDate(memberId, start, end);
+
+        System.out.println(" findByDateBetweenForMember meetings: " + meetings);
+
+
+        return meetings.stream()
+                .map(MeetingMember::getMeeting)
+                .map(this::toMeetingListDto) // 엔티티 → DTO 변환
+                .toList();
+    }
+
+
 
     // issueId로 관련 회의 조회
     public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {

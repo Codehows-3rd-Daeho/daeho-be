@@ -4,13 +4,19 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
+import com.codehows.daehobe.utils.AudioProcessingService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -23,11 +29,51 @@ import java.util.UUID;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class FileService {
 
     @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
+    private final AudioProcessingService audioProcessingService;
+
+    public void encodeAudioFile(String savedFileName) {
+        String savedFilePath = "/file/" + savedFileName;
+        Path path = Paths.get(fileLocation, savedFilePath);
+        audioProcessingService.fixAudioMetadata(path);
+    }
+
+    public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
+        java.io.File dir = new java.io.File(fileLocation);
+        if (!dir.exists()) dir.mkdirs();
+
+        String savedFilePath = "/file/" + savedFileName;
+        Path path = Paths.get(fileLocation, savedFilePath);
+        synchronized (savedFileName.intern()) {
+            try (OutputStream os = Files.newOutputStream(path,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                os.write(chunk.getBytes());
+                os.flush();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to append chunk to file", e);
+            }
+        }
+
+        if(fileId == null) {
+            return fileRepository.save(File.builder()
+                    .path(savedFilePath)
+                    .originalName("recording-" + System.currentTimeMillis())
+                    .savedName(savedFileName)
+                    .size(chunk.getSize())
+                    .targetId(targetId)
+                    .targetType(targetType)
+                    .build());
+        }
+        File file = fileRepository.findById(fileId).orElseThrow(EntityNotFoundException::new);
+        Long size = file.addFileSize(chunk.getSize());
+        System.out.println("File size after chunk appended: " + size);
+        return fileRepository.save(file);
+    }
 
     // 파일 업로드
     public List<File> uploadFiles(Long targetId, List<MultipartFile> multipartFiles, TargetType targetType) {

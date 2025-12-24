@@ -23,6 +23,25 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException) throws IOException {
         // 유효한 자격 증명이 없는 상태에서 보호된 리소스에 접근할 때
         // HTTP 상태 코드 401 (Unauthorized)와 함께 "Unauthorized" 메시지를 응답으로 보냅니다.
-        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+//        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+
+        String message =
+                authException.getMessage() != null
+                        ? authException.getMessage()
+                        : "인증에 실패했습니다.";
+
+        response.getWriter().write("""
+        {
+          "message": "%s"
+        }
+        """.formatted(message));
+
+
+
+
+
     }
 }
