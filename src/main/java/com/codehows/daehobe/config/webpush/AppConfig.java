@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * @description 애플리케이션 전반에 걸쳐 사용될 공통 빈들을 정의하는 Spring 설정 클래스입니다.
  *              주로 `ObjectMapper`와 같이 범용적으로 사용되는 유틸리티 객체들을 빈으로 등록합니다.
  */
-@Configuration // Spring 설정 클래스임을 나타냅니다.
+@Configuration
 public class AppConfig {
 
     /**
@@ -29,7 +29,7 @@ public class AppConfig {
      *              날짜를 타임스탬프 대신 ISO 8601 문자열로 직렬화하도록 설정합니다.
      * @returns {ObjectMapper} 기본 설정으로 초기화된 ObjectMapper 인스턴스
      */
-    @Bean // Spring 컨테이너에 빈으로 등록합니다.
+    @Bean
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule()); // Java 8 날짜/시간 API 지원 모듈 등록

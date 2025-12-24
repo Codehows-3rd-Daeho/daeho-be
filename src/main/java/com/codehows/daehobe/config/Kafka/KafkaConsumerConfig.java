@@ -30,14 +30,12 @@ public class KafkaConsumerConfig {
 
     /**
      * Kafka 브로커의 주소 목록입니다.
-     * `application.properties`에서 `spring.kafka.bootstrap-servers` 값으로 주입받습니다.
      */
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     /**
      * Kafka 컨슈머 그룹 ID입니다.
-     * `application.properties`에서 `spring.kafka.consumer.group-id` 값으로 주입받습니다.
      */
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
@@ -83,7 +81,7 @@ public class KafkaConsumerConfig {
      *              이 팩토리는 동시성(concurrency) 제어 등 리스너의 동작 방식을 설정합니다.
      * @returns {ConcurrentKafkaListenerContainerFactory<String, String>} ConcurrentKafkaListenerContainerFactory 객체
      */
-    @Bean // Spring 컨테이너에 빈으로 등록합니다.
+    @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         // 위에서 정의한 consumerFactory()를 사용하여 컨슈머 인스턴스를 생성하도록 설정합니다.

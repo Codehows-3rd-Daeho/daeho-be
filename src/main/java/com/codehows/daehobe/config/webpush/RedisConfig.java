@@ -27,7 +27,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * @description Redis 서버 연결 및 데이터 직렬화/역직렬화 설정을 담당하는 Spring 설정 클래스입니다.
  *              `RedisConnectionFactory`, `RedisTemplate`, `RedisMessageListenerContainer` 빈을 정의합니다.
  */
-@Configuration // Spring 설정 클래스임을 나타냅니다.
+@Configuration
 public class RedisConfig {
 
     @Value("${spring.data.redis.host}")

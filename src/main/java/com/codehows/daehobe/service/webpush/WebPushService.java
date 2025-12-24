@@ -30,10 +30,6 @@ public class WebPushService {
      */
     private static final String REDIS_SUBSCRIPTION_HASH_KEY = "web-push-subscriptions-by-user";
 
-    /**
-     * Redis 데이터베이스와 상호작용하기 위한 {@link RedisTemplate}입니다.
-     * 주로 `opsForHash()`를 사용하여 해시 데이터 구조에 구독 정보를 저장하고 조회합니다.
-     */
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -42,10 +38,6 @@ public class WebPushService {
      */
     private final PushService pushService;
 
-    /**
-     * Java 객체를 JSON 문자열로 변환하거나 그 반대로 변환하기 위한 {@link ObjectMapper}입니다.
-     * 푸시 구독 DTO를 Redis에 저장하기 위해 JSON으로 직렬화하고, Redis에서 가져온 JSON을 다시 DTO로 역직렬화하는 데 사용됩니다.
-     */
     private final ObjectMapper objectMapper;
 
     /**
@@ -84,12 +76,9 @@ public class WebPushService {
     }
 
     /**
-     * @param {String} memberId - 알림을 전송할 사용자의 ID
-     * @param {String} message - 사용자에게 보낼 알림 메시지 내용
      * @method sendNotificationToUser
      * @description 특정 사용자에게 웹 푸시 알림을 전송합니다.
      * Redis에서 해당 사용자의 푸시 구독 정보를 조회하고, `PushService`를 사용하여 알림을 전송합니다.
-     * 알림 전송 결과(HTTP 상태 코드)에 따라 만료된 구독을 Redis에서 제거하는 등의 후처리를 수행합니다.
      */
     public void sendNotificationToUser(String memberId, KafkaNotificationMessageDto messageDto) {
         // Redis에서 해당 사용자의 구독 정보를 조회합니다.

@@ -29,4 +29,11 @@ public class Notification extends BaseEntity {
 
     @Column(name = "message", nullable = false)
     private String message;
+
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead;
+
+    public void setIsRead(){
+        this.isRead = true;
+    }
 }

@@ -13,10 +13,10 @@ import com.codehows.daehobe.dto.webpush.NotificationResponseDto;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.entity.notification.Notification;
 import com.codehows.daehobe.repository.notification.NotificationRepository;
-import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.member.MemberService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @class NotificationService
@@ -34,6 +35,7 @@ import org.springframework.stereotype.Service;
  */
 @Slf4j // 로깅을 위한 Lombok 어노테이션
 @Service // Spring 서비스 컴포넌트임을 나타냅니다.
+@Transactional
 @RequiredArgsConstructor // final 필드에 대한 생성자를 자동으로 생성합니다.
 public class NotificationService {
 
@@ -56,11 +58,8 @@ public class NotificationService {
     private final ObjectMapper objectMapper;
     private final NotificationRepository notificationRepository;
     private final MemberService memberService;
-    private final FileService fileService;
 
     /**
-     * @param {String}                      memberId - Kafka 메시지의 키로 사용될 사용자 ID
-     * @param {KafkaNotificationMessageDto} messageDto - Kafka에 발행할 알림 메시지 정보를 담은 DTO
      * @method sendNotification
      * @description {@link KafkaNotificationMessageDto} 객체를 JSON 문자열로 직렬화하여 Kafka 토픽에 발행합니다.
      * 메시지 발행 중 {@link JsonProcessingException}이 발생하면 예외를 처리하고 로깅합니다.
@@ -88,6 +87,7 @@ public class NotificationService {
                 .member(member)
                 .message(messageDto.getMessage())
                 .forwardUrl(messageDto.getUrl())
+                .isRead(false)
                 .build();
         notificationRepository.save(notification);
     }
@@ -100,10 +100,18 @@ public class NotificationService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
         Page<Notification> notifications = notificationRepository.findByMemberId(memberId, pageable);
-
         return notifications.map(notification -> {
             Member sender = memberService.getMemberById(notification.getCreatedBy());
             return NotificationResponseDto.fromEntity(notification, sender);
         });
+    }
+
+    public void readNotification(Long id) {
+        Notification notification = notificationRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("알림이 존재하지 않습니다."));
+        notification.setIsRead();
+    }
+
+    public int getUnreadCount(Long memberId) {
+        return notificationRepository.countByMemberIdAndIsReadFalse(memberId);
     }
 }

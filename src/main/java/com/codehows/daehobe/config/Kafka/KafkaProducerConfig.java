@@ -29,7 +29,6 @@ public class KafkaProducerConfig {
 
     /**
      * Kafka 브로커의 주소 목록입니다.
-     * `application.properties`에서 `spring.kafka.bootstrap-servers` 값으로 주입받습니다.
      */
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
