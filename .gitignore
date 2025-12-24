@@ -18,6 +18,10 @@ bin/
 !**/src/test/**/bin/
 src/main/resources/application.properties
 
+docker-compose.yml
+Dockerfile
+Jenkinsfile
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
