@@ -12,7 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # 초기화 SQL (선택사항)
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
     healthcheck:
@@ -20,7 +20,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 40s # 초기화 시간 증가
+      start_period: 40s
 
   redis:
     image: redis:7.4
@@ -43,6 +43,23 @@ services:
   kafka:
     image: apache/kafka:3.8.0
     container_name: kafka
+    environment:
+      # KRaft 모드 설정 (Zookeeper 없이 동작)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # 단일 브로커 설정
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      # 클러스터 ID (선택사항, 자동 생성됨)
+      CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
     ports:
       - "9092:9092"
     volumes:
@@ -51,9 +68,9 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "nc -z localhost 9092 || exit 1" ]
+      test: ["CMD-SHELL", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
       start_period: 90s
 
