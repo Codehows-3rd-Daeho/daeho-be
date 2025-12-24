@@ -38,7 +38,7 @@ public class FileService {
     private final AudioProcessingService audioProcessingService;
 
     public void encodeAudioFile(String savedFileName) {
-        String savedFilePath = "/file/" + savedFileName;
+        String savedFilePath = "/" + savedFileName;
         Path path = Paths.get(fileLocation, savedFilePath);
         audioProcessingService.fixAudioMetadata(path);
     }
@@ -47,7 +47,7 @@ public class FileService {
         java.io.File dir = new java.io.File(fileLocation);
         if (!dir.exists()) dir.mkdirs();
 
-        String savedFilePath = "/file/" + savedFileName;
+        String savedFilePath = "/" + savedFileName;
         Path path = Paths.get(fileLocation, savedFilePath);
         synchronized (savedFileName.intern()) {
             try (OutputStream os = Files.newOutputStream(path,
