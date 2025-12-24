@@ -70,12 +70,6 @@ public class Meeting extends BaseEntity {
 
     public void saveMeetingMinutes(File file) {
         this.file = file;
-        this.status = Status.COMPLETED;
-        this.endDate = LocalDateTime.now();
-    }
-
-    public void deleteMeetingMinutes() {
-        this.file = null;
     }
 
     public void update(MeetingFormDto meetingFormDto, Category category, Issue issue) {

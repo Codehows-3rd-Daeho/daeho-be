@@ -251,7 +251,7 @@ public class MeetingService {
         Meeting meeting = getMeetingById(meetingId);
         File file = fileService.getFileById(fileId);
         fileService.deleteFiles(List.of(file));
-        meeting.deleteMeetingMinutes();
+        meeting.saveMeetingMinutes(null);
     }
 
     // 미팅 조회
