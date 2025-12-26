@@ -270,7 +270,7 @@ public class STTService {
                 .status(STT.Status.RECORDING)
                 .build());
 
-        String savedFileName = "stt-recording-" + UUID.randomUUID();
+        String savedFileName = "stt-recording-" + UUID.randomUUID() + ".wav";
         fileService.createFile(savedFileName, newSTT.getId(), TargetType.STT);
         return newSTT.getId();
     }

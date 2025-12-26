@@ -38,7 +38,7 @@ public class FileService {
     private final AudioProcessingService audioProcessingService;
 
     public void createFile(String fileName, Long targetId, TargetType targetType) {
-        String filePath = "/" + fileName;
+        String filePath = "/file/" + fileName;
         fileRepository.save(File.builder()
                 .path(filePath)
                 .originalName(fileName)
@@ -58,7 +58,7 @@ public class FileService {
             throw new EntityNotFoundException("File not found");
         }
         File recordingFile = recordingFiles.getFirst();
-        Path path = Paths.get(fileLocation, recordingFile.getPath());
+        Path path = Paths.get(fileLocation, recordingFile.getSavedName());
         synchronized (recordingFile.getSavedName().intern()) {
             try (OutputStream os = Files.newOutputStream(path,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
@@ -79,7 +79,7 @@ public class FileService {
             throw new EntityNotFoundException("File not found");
         }
         File recordingFile = recordingFiles.getFirst();
-        Path path = Paths.get(fileLocation, recordingFile.getPath());
+        Path path = Paths.get(fileLocation, recordingFile.getSavedName());
         audioProcessingService.fixAudioMetadata(path);
         return recordingFile;
     }
