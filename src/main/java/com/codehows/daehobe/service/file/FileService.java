@@ -37,9 +37,9 @@ public class FileService {
     private final FileRepository fileRepository;
     private final AudioProcessingService audioProcessingService;
 
-    public void createFile(String fileName, Long targetId, TargetType targetType) {
+    public File createFile(String fileName, Long targetId, TargetType targetType) {
         String filePath = "/file/" + fileName;
-        fileRepository.save(File.builder()
+        return fileRepository.save(File.builder()
                 .path(filePath)
                 .originalName(fileName)
                 .savedName(fileName)

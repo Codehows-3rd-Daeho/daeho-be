@@ -54,9 +54,9 @@ public class STTController {
     }
 
     @PostMapping("/recording/start")
-    public ResponseEntity<Map<String, Long>> startRecording(@RequestBody StartRecordingRequest request) {
-        Long sttId = sttService.startRecording(request.getMeetingId());
-        return ResponseEntity.ok(Map.of("sttId", sttId));
+    public ResponseEntity<?> startRecording(@RequestBody StartRecordingRequest request) {
+        STTDto sttDto = sttService.startRecording(request.getMeetingId());
+        return ResponseEntity.ok(sttDto);
     }
 
     @PostMapping("/{sttId}/chunk")

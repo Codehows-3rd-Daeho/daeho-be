@@ -260,7 +260,7 @@ public class STTService {
     }
 
     @Transactional
-    public Long startRecording(Long meetingId) {
+    public STTDto startRecording(Long meetingId) {
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid meeting ID: " + meetingId));
 
@@ -271,8 +271,8 @@ public class STTService {
                 .build());
 
         String savedFileName = "stt-recording-" + UUID.randomUUID() + ".wav";
-        fileService.createFile(savedFileName, newSTT.getId(), TargetType.STT);
-        return newSTT.getId();
+        File newFile = fileService.createFile(savedFileName, newSTT.getId(), TargetType.STT);
+        return STTDto.fromEntity(newSTT, FileDto.fromEntity(newFile));
     }
 
     @Transactional
