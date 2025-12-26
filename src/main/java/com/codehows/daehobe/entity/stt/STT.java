@@ -34,7 +34,7 @@ public class STT extends BaseEntity {
 
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
-    private Integer chunkingCnt;
+    private int chunkingCnt;
 
     public enum Status {
         RECORDING, PROCESSING, COMPLETED
