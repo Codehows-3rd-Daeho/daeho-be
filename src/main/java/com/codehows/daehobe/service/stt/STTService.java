@@ -289,7 +289,7 @@ public class STTService {
         sttRepository.saveAndFlush(stt);
 
         File encodedFile = fileService.encodeAudioFile(sttId, TargetType.STT);
-        Path filePath = Paths.get(fileLocation, encodedFile.getPath());
+        Path filePath = Paths.get(fileLocation, encodedFile.getSavedName());
         try {
             byte[] fileContent = Files.readAllBytes(filePath);
             String originalFilename = encodedFile.getSavedName();
