@@ -276,11 +276,12 @@ public class STTService {
     }
 
     @Transactional
-    public void appendChunk(Long sttId, MultipartFile chunk) {
+    public STTDto appendChunk(Long sttId, MultipartFile chunk) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-        fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
+        File file = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
         stt.countChunk();
+        return STTDto.fromEntity(stt, FileDto.fromEntity(file));
     }
 
     public STTDto finishRecording(Long sttId) {

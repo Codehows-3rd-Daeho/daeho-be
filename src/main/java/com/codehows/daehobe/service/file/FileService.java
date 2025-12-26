@@ -49,7 +49,7 @@ public class FileService {
                 .build());
     }
 
-    public void appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
+    public File appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
         java.io.File dir = new java.io.File(fileLocation);
         if (!dir.exists() && !dir.mkdirs()) throw new RuntimeException("Unable to create directory: " + fileLocation);
 
@@ -70,7 +70,7 @@ public class FileService {
         }
         Long size = recordingFile.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
-        fileRepository.save(recordingFile);
+        return fileRepository.save(recordingFile);
     }
 
     public void encodeAudioFile(File recordingFile) {
