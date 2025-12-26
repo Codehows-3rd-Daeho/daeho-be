@@ -34,6 +34,8 @@ public class STT extends BaseEntity {
 
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
+    private Integer chunkingCnt;
+
     public enum Status {
         RECORDING, PROCESSING, COMPLETED
     }
@@ -41,5 +43,9 @@ public class STT extends BaseEntity {
     //stt 변환 후 요약시 update로 값 추가
     public void updateSummary(String summary) {
         this.summary = summary;
+    }
+
+    public void countChunk() {
+        this.chunkingCnt++;
     }
 }

@@ -280,6 +280,7 @@ public class STTService {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
+        stt.countChunk();
     }
 
     public STTDto finishRecording(Long sttId) {
