@@ -54,7 +54,7 @@ public class AudioProcessingService {
     }
 
     public Long fixAudioMetadata(Path filePath) {
-        Long recordingTime = 0L;
+        long recordingTime = 0L;
         String fileName = filePath.getFileName().toString();
         String fileNameWithoutExtension = fileName.contains(".")
                 ? fileName.substring(0, fileName.lastIndexOf("."))

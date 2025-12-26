@@ -61,8 +61,8 @@ public class STTController {
 
     @PostMapping("/{sttId}/chunk")
     public ResponseEntity<STTDto> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
-        sttService.appendChunk(sttId, chunk);
-        return ResponseEntity.ok().build();
+        STTDto sttDto = sttService.appendChunk(sttId, chunk);
+        return ResponseEntity.ok(sttDto);
     }
 
     @PostMapping("/{sttId}/recording/finish")
