@@ -64,6 +64,7 @@ public class FileService {
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 os.write(chunk.getBytes());
                 os.flush();
+                encodeAudioFile(recordingFile);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
@@ -73,12 +74,7 @@ public class FileService {
         fileRepository.save(recordingFile);
     }
 
-    public File encodeAudioFile(Long targetId, TargetType targetType) {
-        List<File> recordingFiles = fileRepository.findByTargetIdAndTargetType(targetId, targetType);
-        if(recordingFiles.isEmpty()) {
-            throw new EntityNotFoundException("File not found");
-        }
-        File recordingFile = recordingFiles.getFirst();
+    public File encodeAudioFile(File recordingFile) {
         Path path = Paths.get(fileLocation, recordingFile.getSavedName());
         audioProcessingService.fixAudioMetadata(path);
         return recordingFile;
@@ -182,6 +178,10 @@ public class FileService {
                 .stream()
                 .map(FileDto::fromEntity)
                 .toList();
+    }
+
+    public File getSTTFile(Long sttId) {
+        return fileRepository.findByTargetIdAndTargetType(sttId, TargetType.STT).getFirst();
     }
 
     public List<File> getSTTFiles(List<Long> sttIds) {

@@ -287,12 +287,12 @@ public class STTService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.setStatus(STT.Status.PROCESSING);
         sttRepository.saveAndFlush(stt);
+        File recordingFile = fileService.getSTTFile(sttId);
 
-        File encodedFile = fileService.encodeAudioFile(sttId, TargetType.STT);
-        Path filePath = Paths.get(fileLocation, encodedFile.getSavedName());
+        Path filePath = Paths.get(fileLocation, recordingFile.getSavedName());
         try {
             byte[] fileContent = Files.readAllBytes(filePath);
-            String originalFilename = encodedFile.getSavedName();
+            String originalFilename = recordingFile.getSavedName();
             ByteArrayResource resource = new ByteArrayResource(fileContent) {
                 @Override
                 public String getFilename() {
@@ -316,7 +316,7 @@ public class STTService {
         updatedStt.setStatus(STT.Status.COMPLETED);
         sttRepository.save(updatedStt);
 
-        return STTDto.fromEntity(updatedStt, FileDto.fromEntity(encodedFile));
+        return STTDto.fromEntity(updatedStt, FileDto.fromEntity(recordingFile));
     }
 
     @Transactional

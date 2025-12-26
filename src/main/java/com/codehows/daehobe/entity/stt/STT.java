@@ -30,6 +30,8 @@ public class STT extends BaseEntity {
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
+    private Long recordingTime;
+
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
     public enum Status {
