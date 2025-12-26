@@ -59,6 +59,9 @@ public class AudioProcessingService {
                     if (line.contains("Input #0") || line.contains("Output #0") || line.contains("size=")) {
                         log.info("FFmpeg: {}", line);
                     }
+                    if(line.contains("time=")) {
+                        log.info("FFmpeg: {}", line);
+                    }
                 }
             }
 
