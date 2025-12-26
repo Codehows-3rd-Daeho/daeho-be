@@ -37,19 +37,29 @@ public class FileService {
     private final FileRepository fileRepository;
     private final AudioProcessingService audioProcessingService;
 
-    public void encodeAudioFile(String savedFileName) {
-        String savedFilePath = "/file/" + savedFileName;
-        Path path = Paths.get(fileLocation, savedFilePath);
-        audioProcessingService.fixAudioMetadata(path);
+    public void createFile(String fileName, Long targetId, TargetType targetType) {
+        String filePath = "/" + fileName;
+        fileRepository.save(File.builder()
+                .path(filePath)
+                .originalName(fileName)
+                .savedName(fileName)
+                .size(0L)
+                .targetId(targetId)
+                .targetType(targetType)
+                .build());
     }
 
-    public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
+    public void appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
         java.io.File dir = new java.io.File(fileLocation);
-        if (!dir.exists()) dir.mkdirs();
+        if (!dir.exists() && !dir.mkdirs()) throw new RuntimeException("Unable to create directory: " + fileLocation);
 
-        String savedFilePath = "/file/" + savedFileName;
-        Path path = Paths.get(fileLocation, savedFilePath);
-        synchronized (savedFileName.intern()) {
+        List<File> recordingFiles = fileRepository.findByTargetIdAndTargetType(targetId, targetType);
+        if(recordingFiles.isEmpty()) {
+            throw new EntityNotFoundException("File not found");
+        }
+        File recordingFile = recordingFiles.getFirst();
+        Path path = Paths.get(fileLocation, recordingFile.getPath());
+        synchronized (recordingFile.getSavedName().intern()) {
             try (OutputStream os = Files.newOutputStream(path,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 os.write(chunk.getBytes());
@@ -58,21 +68,20 @@ public class FileService {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
         }
-
-        if(fileId == null) {
-            return fileRepository.save(File.builder()
-                    .path(savedFilePath)
-                    .originalName("recording-" + System.currentTimeMillis())
-                    .savedName(savedFileName)
-                    .size(chunk.getSize())
-                    .targetId(targetId)
-                    .targetType(targetType)
-                    .build());
-        }
-        File file = fileRepository.findById(fileId).orElseThrow(EntityNotFoundException::new);
-        Long size = file.addFileSize(chunk.getSize());
+        Long size = recordingFile.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
-        return fileRepository.save(file);
+        fileRepository.save(recordingFile);
+    }
+
+    public File encodeAudioFile(Long targetId, TargetType targetType) {
+        List<File> recordingFiles = fileRepository.findByTargetIdAndTargetType(targetId, targetType);
+        if(recordingFiles.isEmpty()) {
+            throw new EntityNotFoundException("File not found");
+        }
+        File recordingFile = recordingFiles.getFirst();
+        Path path = Paths.get(fileLocation, recordingFile.getPath());
+        audioProcessingService.fixAudioMetadata(path);
+        return recordingFile;
     }
 
     // 파일 업로드
@@ -150,6 +159,7 @@ public class FileService {
     public File getFileById(Long fileId) {
         return fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("파일이 존재하지 않습니다."));
     }
+
     // 이슈 파일 찾기
     public List<FileDto> getIssueFiles(Long issueId) {
         return fileRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE)
@@ -172,5 +182,9 @@ public class FileService {
                 .stream()
                 .map(FileDto::fromEntity)
                 .toList();
+    }
+
+    public List<File> getSTTFiles(List<Long> sttIds) {
+        return fileRepository.findByTargetIdInAndTargetType(sttIds, TargetType.STT);
     }
 }

@@ -1,8 +1,10 @@
 package com.codehows.daehobe.controller.stt;
 
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.StartRecordingRequest;
+import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.stt.STTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,15 +18,14 @@ import java.util.Map;
 @RequestMapping("/stt")
 @RequiredArgsConstructor
 public class STTController {
-
     private final STTService sttService;
 
     @PostMapping("/meeting/{id}")
     public ResponseEntity<?> createSTT(@PathVariable Long id,
-            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
+            @RequestPart(value = "file", required = false) MultipartFile multipartFiles) {
 
-        sttService.uploadSTT(id, multipartFiles);
-        return ResponseEntity.ok().build();
+        STTDto stt = sttService.uploadSTT(id, multipartFiles);
+        return ResponseEntity.ok(stt);
 
     }
 
@@ -40,12 +41,10 @@ public class STTController {
         return ResponseEntity.ok(stts);
     }
 
-    @PostMapping("/{id}/summary")
-    public ResponseEntity<?> createSTTSummary(@PathVariable Long id,
-                                       @RequestBody String content) {
-        sttService.summarySTT(id, content);
+    @PatchMapping("/{id}/summary")
+    public ResponseEntity<?> updateSTTSummary(@PathVariable Long id, @RequestBody String content) {
+        sttService.updateSummary(id, content);
         return ResponseEntity.ok().build();
-
     }
 
     @DeleteMapping("/{id}")

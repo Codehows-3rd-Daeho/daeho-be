@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.stt;
 
 import com.codehows.daehobe.constant.TargetType;
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
@@ -33,9 +34,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class STTService {
 
@@ -51,25 +52,29 @@ public class STTService {
 
 
     // 저장
-    public List<STTDto> uploadSTT(Long id, List<MultipartFile> files) {
+    public STTDto uploadSTT(Long id, MultipartFile file) {
         Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
+        STT stt = STT.builder()
+                .meeting(meeting)
+                .content("")
+                .status(STT.Status.PROCESSING)
+                .build();
 
-        List<STTDto> savedSTTs = files.stream().map(file -> {
-            //1. stt api 호출
-            STTResponseDto response = callDaglo(file.getResource());
+        sttRepository.saveAndFlush(stt);
 
-            //2. dto로 받은 반환값을 stt 엔티티에 저장
-            STT stt = response.toEntity(meeting);
-            STT saved = sttRepository.save(stt);
+        STTResponseDto response = callDaglo(file.getResource());
 
-            //3.  반환
-            return STTDto.fromEntity(saved);
-        }).toList();
+        stt.setContent(response.getContent());
 
-        //3. stt id로 fileService => 음성 파일 저장
-        fileService.uploadFiles(id, files, TargetType.STT);//targetId사용해야함
+        stt.setSummary(summarySTT(response.getContent()).getSummaryText());
 
-        return savedSTTs;
+        stt.setStatus(STT.Status.COMPLETED);
+
+        sttRepository.saveAndFlush(stt);
+
+        File savedFile = fileService.uploadFiles(stt.getId(), List.of(file), TargetType.STT).getFirst();
+
+        return STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
     }
 
     //1-1. api 호출
@@ -158,7 +163,7 @@ public class STTService {
         return result;
     }
 
-
+    @Transactional(readOnly = true)
     //STT 조회
     public List<STTDto> getSTTById(Long meetingId) {
 
@@ -169,25 +174,22 @@ public class STTService {
             System.out.println("해당 회의가 존재하지 않습니다.");
             return List.of(); // 빈 리스트 반환
         }
-        ;
 
         List<STT> stts = sttRepository.findByMeetingId(meetingId);
+        List<Long> sttIds = stts.stream().map(STT::getId).toList();
+        List<File> files = fileService.getSTTFiles(sttIds);
+        Map<Long, File> fileByTargetId = files.stream().collect(Collectors.toMap(File::getTargetId, file -> file));
 
         // 엔티티 -> DTO
         return stts.stream()
-                .map(STTDto::fromEntity)
+                .map(stt -> {
+                    File file = fileByTargetId.get(stt.getId());
+                    return STTDto.fromEntity(stt, FileDto.fromEntity(file));
+                })
                 .toList();
     }
 
-    //==================================================요약==================================================================
-    //요약
-    @Transactional
-    public SummaryResponseDto summarySTT(Long sttId, String content) {
-
-        STT stt = sttRepository.findById(sttId)
-                .orElseThrow(() -> new IllegalArgumentException("STT 없음"));
-
-        //1. api 호출
+    protected SummaryResponseDto summarySTT(String content) {
         try {
             SummaryResponseDto response = webClient.post()
                     .uri("/nlp/v1/async/minutes")
@@ -213,7 +215,6 @@ public class STTService {
                 SummaryResponseDto result = checkSummaryStatus(rid);
                 System.out.println("Attempt " + i + " - status: " + result.getStatus());
                 if (result.isCompleted()) {
-                    stt.updateSummary(result.getSummaryText());
                     return result; // 변환 완료
                 }
                 Thread.sleep(intervalMs);
@@ -224,7 +225,6 @@ public class STTService {
         } catch (Exception e) {
             throw new RuntimeException("STT 처리 중 오류 발생", e);
         }
-
 
     }
 
@@ -259,44 +259,40 @@ public class STTService {
         sttRepository.deleteById(id); // 완전 삭제
     }
 
+    @Transactional
     public Long startRecording(Long meetingId) {
         Meeting meeting = meetingRepository.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid meeting ID: " + meetingId));
 
-        String savedFileName = UUID.randomUUID().toString();
-
-        STT stt = STT.builder()
+        STT newSTT = sttRepository.save(STT.builder()
                 .meeting(meeting)
                 .content("")
                 .status(STT.Status.RECORDING)
-                .tempFileName(savedFileName + ".wav")
-                .build();
+                .build());
 
-        sttRepository.save(stt);
-        return stt.getId();
+        String savedFileName = "stt-recording-" + UUID.randomUUID();
+        fileService.createFile(savedFileName, newSTT.getId(), TargetType.STT);
+        return newSTT.getId();
     }
 
+    @Transactional
     public void appendChunk(Long sttId, MultipartFile chunk) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-
-        File savedFileId = fileService.appendChunk(stt.getId(), stt.getTempFileName(), chunk, TargetType.STT, stt.getFileId());
-        stt.setFileId(savedFileId.getFileId());
+        fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
     }
 
     public STTDto finishRecording(Long sttId) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.setStatus(STT.Status.PROCESSING);
-        sttRepository.save(stt);
+        sttRepository.saveAndFlush(stt);
 
-        fileService.encodeAudioFile(stt.getTempFileName());
-
-        File file = fileService.getFileById(stt.getFileId());
-        Path filePath = Paths.get(fileLocation, file.getPath());
+        File encodedFile = fileService.encodeAudioFile(sttId, TargetType.STT);
+        Path filePath = Paths.get(fileLocation, encodedFile.getPath());
         try {
             byte[] fileContent = Files.readAllBytes(filePath);
-            String originalFilename = file.getSavedName();
+            String originalFilename = encodedFile.getSavedName();
             ByteArrayResource resource = new ByteArrayResource(fileContent) {
                 @Override
                 public String getFilename() {
@@ -304,9 +300,12 @@ public class STTService {
                 }
             };
 
-            STTResponseDto response = callDaglo(resource);
-            stt.setContent(response.getContent());
-            summarySTT(stt.getId(), response.getContent());
+            STTResponseDto sttResponse = callDaglo(resource);
+            String content = sttResponse.getContent();
+            stt.setContent(content);
+
+            SummaryResponseDto SummaryResponse = summarySTT(content);
+            stt.updateSummary(SummaryResponse.getSummaryText());
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -317,6 +316,12 @@ public class STTService {
         updatedStt.setStatus(STT.Status.COMPLETED);
         sttRepository.save(updatedStt);
 
-        return STTDto.fromEntity(updatedStt);
+        return STTDto.fromEntity(updatedStt, FileDto.fromEntity(encodedFile));
+    }
+
+    @Transactional
+    public void updateSummary(Long id, String content) {
+        STT stt = sttRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + id));
+        stt.updateSummary(content);
     }
 }

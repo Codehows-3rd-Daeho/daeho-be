@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.stt;
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.stt.STT;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,8 +17,9 @@ private String content;
 private String summary;
 private Long meetingId;
 private String status;
+private FileDto file;
 
-    public static STTDto fromEntity(STT stt) {
+    public static STTDto fromEntity(STT stt, FileDto audioFile) {
         return STTDto.builder()
                 .id(stt.getId())
                 .content(stt.getContent())
@@ -28,6 +30,7 @@ private String status;
                                 : null
                 )
                 .status(String.valueOf(stt.getStatus()))
+                .file(audioFile)
                 .build();
     }
 
