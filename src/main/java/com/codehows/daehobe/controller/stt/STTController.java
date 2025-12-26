@@ -60,7 +60,7 @@ public class STTController {
     }
 
     @PostMapping("/{sttId}/chunk")
-    public ResponseEntity<Void> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
+    public ResponseEntity<STTDto> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
         sttService.appendChunk(sttId, chunk);
         return ResponseEntity.ok().build();
     }

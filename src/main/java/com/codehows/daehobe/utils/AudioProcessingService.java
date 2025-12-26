@@ -10,6 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -18,7 +20,41 @@ public class AudioProcessingService {
     @Value("${ffmpeg.path:/usr/bin/ffmpeg}")
     private String ffmpegPath;
 
-    public void fixAudioMetadata(Path filePath) {
+    // 정규식 패턴: time=HH:MM:SS.mm 형식 추출
+    private static final Pattern TIME_PATTERN = Pattern.compile("time=(\\d{2}):(\\d{2}):(\\d{2})\\.(\\d{2})");
+
+    /**
+     * FFmpeg 출력 라인에서 시간을 밀리초(Long)로 변환
+     * @param line FFmpeg 출력 라인 (예: "size=123213 time=00:00:08.16 bitrate=...")
+     * @return 시간(밀리초), 추출 실패 시 null
+     */
+    public static Long extractTimeInMillis(String line) {
+        Matcher matcher = TIME_PATTERN.matcher(line);
+
+        if (matcher.find()) {
+            int hours = Integer.parseInt(matcher.group(1));
+            int minutes = Integer.parseInt(matcher.group(2));
+            int seconds = Integer.parseInt(matcher.group(3));
+            int centiseconds = Integer.parseInt(matcher.group(4)); // 1/100초
+
+            // 밀리초로 변환
+            long millis = (hours * 3600L + minutes * 60L + seconds) * 1000L + centiseconds * 10L;
+            return millis;
+        }
+
+        return null;
+    }
+
+    /**
+     * 초 단위로 변환 (소수점 포함)
+     */
+    public static Double extractTimeInSeconds(String line) {
+        Long millis = extractTimeInMillis(line);
+        return millis != null ? millis / 1000.0 : null;
+    }
+
+    public Long fixAudioMetadata(Path filePath) {
+        Long recordingTime = 0L;
         String fileName = filePath.getFileName().toString();
         String fileNameWithoutExtension = fileName.contains(".")
                 ? fileName.substring(0, fileName.lastIndexOf("."))
@@ -58,9 +94,11 @@ public class AudioProcessingService {
                     output.append(line).append("\n");
                     if (line.contains("Input #0") || line.contains("Output #0") || line.contains("size=")) {
                         log.info("FFmpeg: {}", line);
-                    }
-                    if(line.contains("time=")) {
-                        log.info("FFmpeg: {}", line);
+                        Long currentTime = extractTimeInMillis(line);
+                        if (currentTime != null) {
+                            System.out.println("현재 진행 시간: " + currentTime + "ms");
+                            recordingTime = currentTime;
+                        }
                     }
                 }
             }
@@ -86,5 +124,6 @@ public class AudioProcessingService {
             }
             throw new RuntimeException("오디오 파일 처리 실패", e);
         }
+        return recordingTime;
     }
 }

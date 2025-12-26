@@ -19,19 +19,33 @@ private Long meetingId;
 private String status;
 private FileDto file;
 
-    public static STTDto fromEntity(STT stt, FileDto audioFile) {
-        return STTDto.builder()
-                .id(stt.getId())
-                .content(stt.getContent())
-                .summary(stt.getSummary())
-                .meetingId(
-                        stt.getMeeting() != null
-                                ? stt.getMeeting().getId()
-                                : null
-                )
-                .status(String.valueOf(stt.getStatus()))
-                .file(audioFile)
-                .build();
-    }
+public static STTDto fromEntity(STT stt) {
+    return STTDto.builder()
+            .id(stt.getId())
+            .content(stt.getContent())
+            .summary(stt.getSummary())
+            .meetingId(
+                    stt.getMeeting() != null
+                            ? stt.getMeeting().getId()
+                            : null
+            )
+            .status(String.valueOf(stt.getStatus()))
+            .build();
+}
+
+public static STTDto fromEntity(STT stt, FileDto audioFile) {
+    return STTDto.builder()
+            .id(stt.getId())
+            .content(stt.getContent())
+            .summary(stt.getSummary())
+            .meetingId(
+                    stt.getMeeting() != null
+                            ? stt.getMeeting().getId()
+                            : null
+            )
+            .status(String.valueOf(stt.getStatus()))
+            .file(audioFile)
+            .build();
+}
 
 }
