@@ -49,8 +49,7 @@ public class FileService {
                 .build());
     }
 
-    public Long appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
-        Long recordingTime = 0L;
+    public void appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
         java.io.File dir = new java.io.File(fileLocation);
         if (!dir.exists() && !dir.mkdirs()) throw new RuntimeException("Unable to create directory: " + fileLocation);
 
@@ -65,7 +64,6 @@ public class FileService {
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 os.write(chunk.getBytes());
                 os.flush();
-                recordingTime = encodeAudioFile(recordingFile);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
@@ -73,12 +71,11 @@ public class FileService {
         Long size = recordingFile.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
         fileRepository.save(recordingFile);
-        return recordingTime;
     }
 
-    public Long encodeAudioFile(File recordingFile) {
+    public void encodeAudioFile(File recordingFile) {
         Path path = Paths.get(fileLocation, recordingFile.getSavedName());
-        return audioProcessingService.fixAudioMetadata(path);
+        audioProcessingService.fixAudioMetadata(path);
     }
 
     // 파일 업로드

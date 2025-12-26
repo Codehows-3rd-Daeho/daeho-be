@@ -276,12 +276,10 @@ public class STTService {
     }
 
     @Transactional
-    public STTDto appendChunk(Long sttId, MultipartFile chunk) {
+    public void appendChunk(Long sttId, MultipartFile chunk) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-        Long recordingTime = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
-        stt.setRecordingTime(recordingTime);
-        return STTDto.fromEntity(stt);
+        fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
     }
 
     public STTDto finishRecording(Long sttId) {
@@ -289,12 +287,12 @@ public class STTService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.setStatus(STT.Status.PROCESSING);
         sttRepository.saveAndFlush(stt);
-        File recordingFile = fileService.getSTTFile(sttId);
-
-        Path filePath = Paths.get(fileLocation, recordingFile.getSavedName());
+        File savedFile = fileService.getSTTFile(sttId);
+        fileService.encodeAudioFile(savedFile);
+        Path filePath = Paths.get(fileLocation, savedFile.getSavedName());
         try {
             byte[] fileContent = Files.readAllBytes(filePath);
-            String originalFilename = recordingFile.getSavedName();
+            String originalFilename = savedFile.getSavedName();
             ByteArrayResource resource = new ByteArrayResource(fileContent) {
                 @Override
                 public String getFilename() {
@@ -318,7 +316,7 @@ public class STTService {
         updatedStt.setStatus(STT.Status.COMPLETED);
         sttRepository.save(updatedStt);
 
-        return STTDto.fromEntity(updatedStt, FileDto.fromEntity(recordingFile));
+        return STTDto.fromEntity(updatedStt, FileDto.fromEntity(savedFile));
     }
 
     @Transactional
