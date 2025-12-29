@@ -32,6 +32,7 @@ public class STT extends BaseEntity {
 
     private Long recordingTime;
 
+    @Enumerated(EnumType.STRING)
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
     private int chunkingCnt;
