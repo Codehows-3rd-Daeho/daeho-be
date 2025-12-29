@@ -81,11 +81,11 @@ public class SttTaskProcessor {
                 }
 
                 log.info("Finished STT task processing cycle. Waiting for next interval.");
-                Thread.sleep(2000); // Polling interval
+//                Thread.sleep(2000); // Polling interval
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.warn("Task processor was interrupted.");
+//        } catch (InterruptedException e) {
+//            Thread.currentThread().interrupt();
+//            log.warn("Task processor was interrupted.");
         } finally {
             isProcessing.set(false);
             log.info("All task queues are empty. Smart-loop processor going idle.");
