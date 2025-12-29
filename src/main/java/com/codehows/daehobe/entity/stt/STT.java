@@ -20,6 +20,12 @@ public class STT extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "rid", unique = true)
+    private String rid;
+
+    @Column(name = "summary_rid", unique = true)
+    private String summaryRid;
+
     @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
@@ -31,18 +37,27 @@ public class STT extends BaseEntity {
     private Meeting meeting;
 
     @Enumerated(EnumType.STRING)
-    private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
+    private Status status; // e.g., "RECORDING", "PROCESSING", "SUMMARIZING", "COMPLETED"
+
+    private Integer progress;
 
     @Column(name = "chunking_cnt")
     private int chunkingCnt;
 
     public enum Status {
-        RECORDING, PROCESSING, COMPLETED
+        RECORDING, PROCESSING, SUMMARIZING, COMPLETED
     }
 
-    //stt 변환 후 요약시 update로 값 추가
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     public void updateSummary(String summary) {
         this.summary = summary;
+    }
+
+    public void updateProgerss(Integer progress) {
+        this.progress = progress;
     }
 
     public void countChunk() {

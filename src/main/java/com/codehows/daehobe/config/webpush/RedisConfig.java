@@ -59,6 +59,10 @@ public class RedisConfig {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(redisConnectionFactory());
 
+        // Redis 트랜잭션 지원 활성화: @Transactional 블록 내 Redis 명령어가 큐에 저장되고
+        // 주 데이터베이스 트랜잭션이 커밋될 때 함께 실행됩니다. 롤백 시 명령어는 버려집니다.
+        redisTemplate.setEnableTransactionSupport(true);
+
         // Key Serializer: Redis 키를 문자열로 직렬화합니다.
         redisTemplate.setKeySerializer(new StringRedisSerializer());
 

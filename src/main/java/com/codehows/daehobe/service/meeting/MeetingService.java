@@ -6,7 +6,6 @@ import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
@@ -16,13 +15,10 @@ import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
-import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.entity.notification.SetNotification;
-import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
@@ -163,7 +159,7 @@ public class MeetingService {
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        String totalSummary = sttService.getSTTById(id, memberId)
+        String totalSummary = sttService.getSTTsByMeetingId(id, memberId)
                 .stream()
                 .map(STTDto::getSummary)
                 .filter(Objects::nonNull)

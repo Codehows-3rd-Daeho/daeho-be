@@ -13,7 +13,7 @@ public class SummaryResponseDto {
 
     private String rid;
     private String status;
-    private int progress;
+    private Integer progress;
     private String title;
     private boolean completed;
     private String summaryText;

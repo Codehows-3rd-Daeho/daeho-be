@@ -45,4 +45,7 @@ public class KafkaTopicConfig {
                 // "-1"은 무한 보존을 의미합니다.
                 .build();
     }
-}
+
+    }
+
+    

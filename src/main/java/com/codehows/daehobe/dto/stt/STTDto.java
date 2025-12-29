@@ -12,46 +12,52 @@ import lombok.Getter;
 @Getter
 @Builder
 public class STTDto {
-private Long id;
-private String content;
-private String summary;
-private Long meetingId;
-private String status;
-private FileDto file;
-private Integer chunkingCnt;
-private Long memberId;
+    private Long id;
+    private String rid;
+    private String content;
+    private String summary;
+    private Long meetingId;
+    private String status;
+    private FileDto file;
+    private Integer chunkingCnt;
+    private Long memberId;
+    private Integer progress;
 
-public static STTDto fromEntity(STT stt) {
-    return STTDto.builder()
-            .id(stt.getId())
-            .content(stt.getContent())
-            .summary(stt.getSummary())
-            .meetingId(
-                    stt.getMeeting() != null
-                            ? stt.getMeeting().getId()
-                            : null
-            )
-            .chunkingCnt(stt.getChunkingCnt())
-            .status(String.valueOf(stt.getStatus()))
-            .memberId(stt.getCreatedBy())
-            .build();
-}
+    public static STTDto fromEntity(STT stt) {
+        return STTDto.builder()
+                .id(stt.getId())
+                .rid(stt.getRid())
+                .content(stt.getContent())
+                .summary(stt.getSummary())
+                .meetingId(
+                        stt.getMeeting() != null
+                                ? stt.getMeeting().getId()
+                                : null
+                )
+                .chunkingCnt(stt.getChunkingCnt())
+                .status(String.valueOf(stt.getStatus()))
+                .progress(stt.getProgress())
+                .memberId(stt.getCreatedBy())
+                .build();
+    }
 
-public static STTDto fromEntity(STT stt, FileDto audioFile) {
-    return STTDto.builder()
-            .id(stt.getId())
-            .content(stt.getContent())
-            .summary(stt.getSummary())
-            .meetingId(
-                    stt.getMeeting() != null
-                            ? stt.getMeeting().getId()
-                            : null
-            )
-            .chunkingCnt(stt.getChunkingCnt())
-            .status(String.valueOf(stt.getStatus()))
-            .file(audioFile)
-            .memberId(stt.getCreatedBy())
-            .build();
-}
+    public static STTDto fromEntity(STT stt, FileDto audioFile) {
+        return STTDto.builder()
+                .id(stt.getId())
+                .rid(stt.getRid())
+                .content(stt.getContent())
+                .summary(stt.getSummary())
+                .meetingId(
+                        stt.getMeeting() != null
+                                ? stt.getMeeting().getId()
+                                : null
+                )
+                .chunkingCnt(stt.getChunkingCnt())
+                .status(String.valueOf(stt.getStatus()))
+                .progress(stt.getProgress())
+                .file(audioFile)
+                .memberId(stt.getCreatedBy())
+                .build();
+    }
 
 }

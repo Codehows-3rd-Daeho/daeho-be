@@ -23,4 +23,6 @@ public interface STTRepository extends JpaRepository<STT,Long> {
             @Param("meetingId") Long meetingId,
             @Param("memberId") Long memberId
     );
+    
+    List<STT> findByStatus(STT.Status status);
 }

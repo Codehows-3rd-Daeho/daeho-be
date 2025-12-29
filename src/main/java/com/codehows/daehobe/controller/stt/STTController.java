@@ -1,10 +1,8 @@
 package com.codehows.daehobe.controller.stt;
 
 
-import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.StartRecordingRequest;
-import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.stt.STTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/stt")
@@ -21,41 +18,31 @@ import java.util.Map;
 public class STTController {
     private final STTService sttService;
 
-    @PostMapping("/meeting/{id}")
-    public ResponseEntity<?> createSTT(@PathVariable Long id,
-            @RequestPart(value = "file", required = false) MultipartFile multipartFiles) {
-
-        STTDto stt = sttService.uploadSTT(id, multipartFiles);
-        return ResponseEntity.ok(stt);
-
-    }
-
     @GetMapping("/meeting/{id}")
-    public ResponseEntity<?> getSTT(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> getSTTs(@PathVariable Long id, Authentication authentication) {
         Long memberId = Long.valueOf(authentication.getName());
-        List<STTDto> stts = sttService.getSTTById(id, memberId);
-
-        // 데이터 없으면 404 반환
-        if (stts.isEmpty()) {
-            return ResponseEntity.status(404)
-                    .body("해당 회의에 STT가 존재하지 않습니다.");
-        }
+        List<STTDto> stts = sttService.getSTTsByMeetingId(id, memberId);
+        if (stts.isEmpty())
+            return ResponseEntity.status(404).body("해당 회의에 STT가 존재하지 않습니다.");
         return ResponseEntity.ok(stts);
     }
 
-    @GetMapping("/check/stt/{rid}")
-    public ResponseEntity<?> checkSttProcessingStatus(@PathVariable String rid) {
+    @GetMapping("/status/{id}")
+    public ResponseEntity<?> getSTT(@PathVariable Long id) {
         try{
-            return ResponseEntity.ok(sttService.checkSTTStatus(rid));
+            STTDto res = sttService.getSTTById(id);
+            return ResponseEntity.ok(res);
         }catch (RuntimeException e){
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @GetMapping("/check/summary/{rid}")
-    public ResponseEntity<?> checkSummaryProcessingStatus(@PathVariable String rid) {
+    @PostMapping("/upload/{id}")
+    public ResponseEntity<?> createSTT(@PathVariable Long id,
+                                       @RequestPart(value = "file", required = false) MultipartFile multipartFiles) {
         try{
-            return ResponseEntity.ok(sttService.checkSummaryStatus(rid));
+            STTDto res = sttService.uploadSTT(id, multipartFiles);
+            return ResponseEntity.ok(res);
         }catch (RuntimeException e){
             return ResponseEntity.badRequest().body(e.getMessage());
         }
