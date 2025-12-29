@@ -266,9 +266,15 @@ public class MeetingService {
     }
 
     // 미팅 조회
-    public Page<MeetingListDto> findAll(Pageable pageable) {
-        return meetingRepository.findByIsDelFalse(pageable)
-                .map(this::toMeetingListDto);
+    public Page<MeetingListDto> findAll(String keyword, Pageable pageable) {
+        Page<Meeting> meetings;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            meetings = meetingRepository.findByIsDelFalse(pageable);
+        } else {
+            meetings = meetingRepository.searchByKeyword(keyword.trim(), pageable);
+        }
+
+        return meetings.map(this::toMeetingListDto);
     }
 
     //회의 캘린더 조회

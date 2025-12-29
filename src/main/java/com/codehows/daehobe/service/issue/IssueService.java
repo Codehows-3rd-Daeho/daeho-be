@@ -238,31 +238,37 @@ public class IssueService {
     }
 
     // 이슈 전체 조회(삭제X)
-    public Page<IssueListDto> findAll(Pageable pageable) {
-        return issueRepository.findByIsDelFalse(pageable)
-                .map(this::toIssueListDto);
+    public Page<IssueListDto> findAll(String keyword, Pageable pageable) {
+        Page<Issue> issues;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            issues = issueRepository.findByIsDelFalse(pageable);
+        } else {
+            issues = issueRepository.searchByKeyword(keyword.trim(), pageable);
+        }
+
+        return issues.map(this::toIssueListDto);
     }
 
     // 칸반 조회 - 진행중
-    public List<IssueListDto> getInProgress() {
-        return issueRepository.findInProgress()
+    public List<IssueListDto> getInProgress(String keyword) {
+        return issueRepository.findInProgressWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 미결
-    public List<IssueListDto> getDelayed() {
-        return issueRepository.findDelayed()
+    public List<IssueListDto> getDelayed(String keyword) {
+        return issueRepository.findDelayedWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 완료(최근 7일)
-    public List<IssueListDto> getCompleted() {
+    public List<IssueListDto> getCompleted(String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return issueRepository.findRecentCompleted(setDate)
+        return issueRepository.findRecentCompletedWithKeyword(setDate, keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
@@ -322,6 +328,11 @@ public class IssueService {
                 .map(this::toIssueListDto)
                 .toList();
     }
+
+//    검색 ==============================================================================================================
+
+
+
 
 
 }

@@ -42,11 +42,12 @@ public class IssueController {
 
     //칸반 전체
     @GetMapping("/kanban")
-    public ResponseEntity<?> getKanbanData() {
+    public ResponseEntity<?> getKanbanData(@RequestParam(value = "keyword", required = false) String keyword) {
+        String searchKw = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
 
-        var inProgress = issueService.getInProgress();       // 진행중 전체
-        var delayed = issueService.getDelayed();             // 미결 전체
-        var completed = issueService.getCompleted();         // 최근 7일 완료 전체
+        var inProgress = issueService.getInProgress(searchKw);       // 진행중 전체
+        var delayed = issueService.getDelayed(searchKw);             // 미결 전체
+        var completed = issueService.getCompleted(searchKw);         // 최근 7일 완료 전체
 
         return ResponseEntity.ok(
                 new KanbanResponse(inProgress, delayed, completed)
@@ -64,12 +65,13 @@ public class IssueController {
     // 리스트 전체조회()
     @GetMapping("/list")
     public ResponseEntity<?> getIssues(
+            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<IssueListDto> dtoList = issueService.findAll(pageable);
+            Page<IssueListDto> dtoList = issueService.findAll(keyword,pageable);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();

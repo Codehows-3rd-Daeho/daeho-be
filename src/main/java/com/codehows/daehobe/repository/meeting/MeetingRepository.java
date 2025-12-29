@@ -21,5 +21,15 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             LocalDateTime end
     );
 
-
+    @Query("SELECT DISTINCT mt FROM Meeting mt " +
+            "LEFT JOIN mt.category c " +
+            "LEFT JOIN mt.meetingMembers mtm ON mtm.isHost = true " +
+            "LEFT JOIN mtm.member m " +
+            "WHERE mt.isDel = false AND (" +
+            "   mt.title LIKE %:kw% " +
+            "   OR str(mt.status) LIKE %:kw% " +
+            "   OR c.name LIKE %:kw% " +
+            "   OR m.name LIKE %:kw%" +
+            ")")
+    Page<Meeting> searchByKeyword(@Param("kw") String keyword, Pageable pageable);
 }
