@@ -34,7 +34,7 @@ public class STT extends BaseEntity {
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
     @Column(name = "chunking_cnt")
-    private int chunkingCnt = 0;
+    private int chunkingCnt;
 
     public enum Status {
         RECORDING, PROCESSING, COMPLETED

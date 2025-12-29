@@ -266,8 +266,10 @@ public class STTService {
 
         STT newSTT = sttRepository.save(STT.builder()
                 .meeting(meeting)
+                .summary("")
                 .content("")
                 .status(STT.Status.RECORDING)
+                .chunkingCnt(0)
                 .build());
 
         String savedFileName = "stt-recording-" + UUID.randomUUID() + ".wav";
