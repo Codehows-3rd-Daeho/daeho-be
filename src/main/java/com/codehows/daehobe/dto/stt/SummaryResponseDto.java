@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.stt;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,9 @@ public class SummaryResponseDto {
     private String status;
     private int progress;
     private String title;
+    private boolean completed;
+    private String summaryText;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private List<Minute> minutes;
 
     public boolean isCompleted() {

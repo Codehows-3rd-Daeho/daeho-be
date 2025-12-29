@@ -143,26 +143,6 @@ public class STTService {
         }
     }
 
-
-    //1-2. rid로 stt 상태 확인
-    private STTResponseDto checkSTTStatus(String rid) {
-        System.out.println("==========================================");
-        System.out.println("checkSTTStatus 실행 확인");
-        System.out.println("==========================================");
-
-
-        STTResponseDto result = webClient.get()
-                .uri("/stt/v1/async/transcripts/{rid}", rid)
-                .retrieve()
-                .bodyToMono(STTResponseDto.class)
-                .block();
-
-        if (result == null) {
-            throw new RuntimeException("STT 상태 조회 실패. rid: " + rid);
-        }
-        return result;
-    }
-
     @Transactional(readOnly = true)
     //STT 조회
     public List<STTDto> getSTTById(Long meetingId, Long memberId) {
@@ -228,13 +208,20 @@ public class STTService {
 
     }
 
+    public STTResponseDto checkSTTStatus(String rid) {
+        STTResponseDto result = webClient.get()
+                .uri("/stt/v1/async/transcripts/{rid}", rid)
+                .retrieve()
+                .bodyToMono(STTResponseDto.class)
+                .block();
+        if (result == null) {
+            throw new RuntimeException("STT 상태 조회 실패. rid: " + rid);
+        }
+        return result;
+    }
 
     //2. rid로 stt 상태 확인
-    private SummaryResponseDto checkSummaryStatus(String rid) {
-        System.out.println("==========================================");
-        System.out.println("checkSummaryStatus 실행 확인");
-        System.out.println("==========================================");
-
+    public SummaryResponseDto checkSummaryStatus(String rid) {
         SummaryResponseDto result = webClient.get()
                 .uri("/nlp/v1/async/minutes/{rid}", rid)
                 .retrieve()
@@ -247,9 +234,6 @@ public class STTService {
         return result;
 
     }
-
-
-//==================================================삭제==================================================================
 
     @Transactional
     public void deleteSTT(Long id) {

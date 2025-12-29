@@ -2,6 +2,7 @@ package com.codehows.daehobe.dto.stt;
 
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.entity.meeting.Meeting;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,9 +18,12 @@ public class STTResponseDto {
 
     private String rid;
     private String status;
-
-    @JsonProperty("sttResults")
+    private Integer progress;
+    private boolean completed;
+    private String content;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private List<STTResult> sttResults;
+
 
     //변환완료인지 체크
     public boolean isCompleted() {

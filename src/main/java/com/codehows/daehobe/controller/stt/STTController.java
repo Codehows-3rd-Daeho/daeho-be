@@ -43,6 +43,24 @@ public class STTController {
         return ResponseEntity.ok(stts);
     }
 
+    @GetMapping("/check/stt/{rid}")
+    public ResponseEntity<?> checkSttProcessingStatus(@PathVariable String rid) {
+        try{
+            return ResponseEntity.ok(sttService.checkSTTStatus(rid));
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/check/summary/{rid}")
+    public ResponseEntity<?> checkSummaryProcessingStatus(@PathVariable String rid) {
+        try{
+            return ResponseEntity.ok(sttService.checkSummaryStatus(rid));
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PatchMapping("/{id}/summary")
     public ResponseEntity<?> updateSTTSummary(@PathVariable Long id, @RequestBody String content) {
         sttService.updateSummary(id, content);
