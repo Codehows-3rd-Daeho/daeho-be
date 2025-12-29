@@ -26,7 +26,7 @@ public class STT extends BaseEntity {
     @Column(name = "summary_rid", unique = true)
     private String summaryRid;
 
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     @Column(columnDefinition = "TEXT")

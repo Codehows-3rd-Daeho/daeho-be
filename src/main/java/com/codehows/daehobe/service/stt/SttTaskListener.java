@@ -18,6 +18,6 @@ public class SttTaskListener {
      */
     public void handleMessage(String message, String channel) {
         log.info("Received message: {} from channel: {}", message, channel);
-        sttTaskProcessor.processAllTasks();
+        sttTaskProcessor.startSmartLoop();
     }
 }

@@ -21,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -32,6 +34,7 @@ public class SttTaskProcessor {
     private final STTRepository sttRepository;
     private final STTService sttService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     @Lazy
     @Autowired
@@ -43,49 +46,52 @@ public class SttTaskProcessor {
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
 
     @Async
-    public void processAllTasks() {
-        if (!isProcessing.compareAndSet(false, true)) {
+    public void startSmartLoop() {
+        if (isProcessing.compareAndSet(false, true)) {
+            log.info("Starting STT smart-loop processor...");
+            scheduler.scheduleWithFixedDelay(this::processAllTasks, 0, 2, TimeUnit.SECONDS);
+        } else {
             log.info("Processing is already in progress.");
-            return;
+        }
+    }
+
+    private void processAllTasks() {
+        if (redisTemplate.opsForSet().size(STT_PROCESSING_SET) == 0 &&
+                        redisTemplate.opsForSet().size(STT_SUMMARIZING_SET) == 0){
+            log.info("Stopping STT smart-loop processor...");
+            scheduler.shutdownNow();
+            isProcessing.set(false);
         }
 
         try {
             log.info("loop processor started.");
-            while (!Thread.currentThread().isInterrupted() &&
-                   !(redisTemplate.opsForSet().size(STT_PROCESSING_SET) == 0 &&
-                     redisTemplate.opsForSet().size(STT_SUMMARIZING_SET) == 0)) {
-                log.info("Starting STT task processing cycle.");
-                // Process STT Queue
-                Set<String> processingSttIds = redisTemplate.opsForSet().members(STT_PROCESSING_SET);
-                if (processingSttIds != null && !processingSttIds.isEmpty()) {
-                    log.info("Processing {} tasks from STT queue.", processingSttIds.size());
-                    for (String sttIdObj : processingSttIds) {
-                        try {
-                            self.processSingleSttJob(Long.valueOf(sttIdObj));
-                        } catch (Exception e) {
-                            log.error("Error processing STT task for sttId: {}", sttIdObj, e);
-                        }
+            log.info("Starting STT task processing cycle.");
+            // Process STT Queue
+            Set<String> processingSttIds = redisTemplate.opsForSet().members(STT_PROCESSING_SET);
+            if (processingSttIds != null && !processingSttIds.isEmpty()) {
+                log.info("Processing {} tasks from STT queue.", processingSttIds.size());
+                for (String sttIdObj : processingSttIds) {
+                    try {
+                        self.processSingleSttJob(Long.valueOf(sttIdObj));
+                    } catch (Exception e) {
+                        log.error("Error processing STT task for sttId: {}", sttIdObj, e);
                     }
                 }
-
-                Set<String> summarizingSttIds = redisTemplate.opsForSet().members(STT_SUMMARIZING_SET);
-                if (summarizingSttIds != null && !summarizingSttIds.isEmpty()) {
-                    log.info("Processing {} tasks from summary queue.", summarizingSttIds.size());
-                    for (String sttIdObj : summarizingSttIds) {
-                        try {
-                            self.processSingleSummaryJob(Long.valueOf(sttIdObj));
-                        } catch (Exception e) {
-                            log.error("Error processing summary task for sttId: {}", sttIdObj, e);
-                        }
-                    }
-                }
-
-                log.info("Finished STT task processing cycle. Waiting for next interval.");
-//                Thread.sleep(2000); // Polling interval
             }
-//        } catch (InterruptedException e) {
-//            Thread.currentThread().interrupt();
-//            log.warn("Task processor was interrupted.");
+
+            Set<String> summarizingSttIds = redisTemplate.opsForSet().members(STT_SUMMARIZING_SET);
+            if (summarizingSttIds != null && !summarizingSttIds.isEmpty()) {
+                log.info("Processing {} tasks from summary queue.", summarizingSttIds.size());
+                for (String sttIdObj : summarizingSttIds) {
+                    try {
+                        self.processSingleSummaryJob(Long.valueOf(sttIdObj));
+                    } catch (Exception e) {
+                        log.error("Error processing summary task for sttId: {}", sttIdObj, e);
+                    }
+                }
+            }
+
+            log.info("Finished STT task processing cycle. Waiting for next interval.");
         } finally {
             isProcessing.set(false);
             log.info("All task queues are empty. Smart-loop processor going idle.");
