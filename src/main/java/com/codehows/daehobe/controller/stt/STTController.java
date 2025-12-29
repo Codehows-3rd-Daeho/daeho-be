@@ -30,7 +30,7 @@ public class STTController {
     @GetMapping("/status/{id}")
     public ResponseEntity<?> getSTT(@PathVariable Long id) {
         try{
-            STTDto res = sttService.getSTTById(id);
+            STTDto res = sttService.getDynamicSttStatus(id);
             return ResponseEntity.ok(res);
         }catch (RuntimeException e){
             return ResponseEntity.badRequest().body(e.getMessage());

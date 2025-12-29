@@ -1,5 +1,6 @@
 package com.codehows.daehobe.service.stt;
 
+import com.codehows.daehobe.config.webpush.RedisConfig;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
@@ -11,6 +12,8 @@ import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
+import com.codehows.daehobe.utils.DataSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +32,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static com.codehows.daehobe.service.stt.SttPollingService.STT_PROCESSING_SET;
+import static com.codehows.daehobe.config.webpush.RedisConfig.STT_TASK_CHANNEL;
+import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_PROCESSING_SET;
+import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_STATUS_HASH_PREFIX;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +44,8 @@ public class STTService {
     private final FileService fileService;
     private final DagloService dagloService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
+
 
     @Value("${file.location}")
     private String fileLocation;
@@ -48,6 +55,16 @@ public class STTService {
         STT stt = sttRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         File audioFile = fileService.getSTTFile(id);
         return STTDto.fromEntity(stt, FileDto.fromEntity(audioFile));
+    }
+
+    @Transactional(readOnly = true)
+    public STTDto getDynamicSttStatus(Long sttId) {
+        String hashKey = STT_STATUS_HASH_PREFIX + sttId;
+        STTDto cachedStatus = DataSerializer.deserialize(redisTemplate.opsForValue().get(hashKey), STTDto.class);
+        if (cachedStatus != null) {
+            return cachedStatus;
+        }
+        return getSTTById(sttId);
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +81,6 @@ public class STTService {
         List<File> files = fileService.getSTTFiles(sttIds);
         Map<Long, File> fileByTargetId = files.stream().collect(Collectors.toMap(File::getTargetId, file -> file));
 
-        // 엔티티 -> DTO
         return stts.stream()
                 .map(stt -> {
                     File file = fileByTargetId.get(stt.getId());
@@ -85,7 +101,7 @@ public class STTService {
         if (!sttRepository.existsById(id)) {
             throw new RuntimeException("STT가 존재하지 않습니다.");
         }
-        sttRepository.deleteById(id); // 완전 삭제
+        sttRepository.deleteById(id);
     }
 
     @Transactional
@@ -128,7 +144,10 @@ public class STTService {
                 .chunkingCnt(0)
                 .build());
         File savedFile = fileService.uploadFiles(savedStt.getId(), List.of(file), TargetType.STT).getFirst();
-        redisTemplate.opsForSet().add(STT_PROCESSING_SET, String.valueOf(savedStt.getId()));
+        
+        // Cache status and signal processor
+        cacheAndSignal(savedStt, savedFile);
+
         return STTDto.fromEntity(savedStt, FileDto.fromEntity(savedFile));
     }
 
@@ -140,19 +159,13 @@ public class STTService {
     }
 
     @Transactional
-    public STTResponseDto checkSTTStatus(Long id) {
-        STT stt = sttRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        STTResponseDto res = dagloService.checkSTTStatue(stt.getRid());
-        stt.updateProgerss(res.getProgress() == null ? 0 : res.getProgress());
-        return res;
+    public STTResponseDto checkSTTStatus(STT stt) {
+        return dagloService.checkSTTStatue(stt.getRid());
     }
 
     @Transactional
-    public SummaryResponseDto checkSummaryStatus(Long id) {
-        STT stt = sttRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        SummaryResponseDto res =  dagloService.checkSummaryStatue(stt.getSummaryRid());
-        stt.updateProgerss(res.getProgress() == null ? 0 : res.getProgress());
-        return res;
+    public SummaryResponseDto checkSummaryStatus(STT stt) {
+        return dagloService.checkSummaryStatue(stt.getSummaryRid());
     }
 
     @Transactional
@@ -160,7 +173,6 @@ public class STTService {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.setStatus(STT.Status.PROCESSING);
-        sttRepository.save(stt);
 
         File savedFile = fileService.getSTTFile(sttId);
         fileService.encodeAudioFile(savedFile);
@@ -172,9 +184,17 @@ public class STTService {
         stt.setRid(sttResponse.getRid());
         sttRepository.save(stt);
 
-        redisTemplate.opsForSet().add(STT_PROCESSING_SET, String.valueOf(stt.getId()));
+        // Cache status and signal processor
+        cacheAndSignal(stt, savedFile);
 
         return STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
+    }
+    
+    private void cacheAndSignal(STT stt, File file) {
+        STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(file));
+        redisTemplate.opsForValue().set(STT_STATUS_HASH_PREFIX + stt.getId(), DataSerializer.serialize(dto));
+        redisTemplate.opsForSet().add(STT_PROCESSING_SET, String.valueOf(stt.getId()));
+        redisTemplate.convertAndSend(STT_TASK_CHANNEL, "NEW_TASK");
     }
 
     private ByteArrayResource fileToByteArrayResource(Path filePath, String filename) {
