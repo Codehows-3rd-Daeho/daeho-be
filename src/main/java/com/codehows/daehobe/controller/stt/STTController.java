@@ -8,6 +8,7 @@ import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.stt.STTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,8 +31,9 @@ public class STTController {
     }
 
     @GetMapping("/meeting/{id}")
-    public ResponseEntity<?> getSTT(@PathVariable Long id) {
-        List<STTDto> stts = sttService.getSTTById(id);
+    public ResponseEntity<?> getSTT(@PathVariable Long id, Authentication authentication) {
+        Long memberId = Long.valueOf(authentication.getName());
+        List<STTDto> stts = sttService.getSTTById(id, memberId);
 
         // 데이터 없으면 404 반환
         if (stts.isEmpty()) {

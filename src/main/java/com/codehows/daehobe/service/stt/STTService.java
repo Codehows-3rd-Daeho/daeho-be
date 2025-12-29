@@ -165,8 +165,7 @@ public class STTService {
 
     @Transactional(readOnly = true)
     //STT 조회
-    public List<STTDto> getSTTById(Long meetingId) {
-
+    public List<STTDto> getSTTById(Long meetingId, Long memberId) {
         Meeting meeting = meetingRepository.findById(meetingId).orElseThrow(IllegalArgumentException::new);
 
         //1. meeting id로 존재 확인
@@ -175,7 +174,7 @@ public class STTService {
             return List.of(); // 빈 리스트 반환
         }
 
-        List<STT> stts = sttRepository.findByMeetingId(meetingId);
+        List<STT> stts = sttRepository.findByMeetingIdWithStatusCondition(meetingId, memberId);
         List<Long> sttIds = stts.stream().map(STT::getId).toList();
         List<File> files = fileService.getSTTFiles(sttIds);
         Map<Long, File> fileByTargetId = files.stream().collect(Collectors.toMap(File::getTargetId, file -> file));

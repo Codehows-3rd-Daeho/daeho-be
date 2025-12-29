@@ -163,7 +163,7 @@ public class MeetingService {
                 .map(MeetingMemberDto::fromEntity)
                 .toList();
 
-        String totalSummary = sttService.getSTTById(id)
+        String totalSummary = sttService.getSTTById(id, memberId)
                 .stream()
                 .map(STTDto::getSummary)
                 .filter(Objects::nonNull)
