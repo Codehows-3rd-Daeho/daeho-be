@@ -23,8 +23,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -35,6 +37,7 @@ public class SttTaskProcessor {
     private final STTService sttService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final AtomicReference<ScheduledFuture<?>> currentTask = new AtomicReference<>();
 
     @Lazy
     @Autowired
@@ -47,20 +50,39 @@ public class SttTaskProcessor {
 
     @Async
     public void startSmartLoop() {
-        if (isProcessing.compareAndSet(false, true)) {
-            log.info("Starting STT smart-loop processor...");
-            scheduler.scheduleWithFixedDelay(this::processAllTasks, 0, 2, TimeUnit.SECONDS);
-        } else {
-            log.info("Processing is already in progress.");
+        if (!isProcessing.compareAndSet(false, true)) {
+            log.info("STT processor already running");
+            return;
+        }
+
+        // 이전 태스크 안전 종료
+        cancelCurrentTask();
+
+        log.info("🚀 Starting STT smart-loop processor...");
+        ScheduledFuture<?> newTask = scheduler.scheduleWithFixedDelay(
+                this::processAllTasks, 0, 2, TimeUnit.SECONDS);
+        currentTask.set(newTask);
+    }
+
+    private void cancelCurrentTask() {
+        ScheduledFuture<?> task = currentTask.getAndSet(null);
+        if (task != null && !task.isCancelled()) {
+            task.cancel(false); // graceful cancel
         }
     }
 
     private void processAllTasks() {
+        if (!isProcessing.get()) {
+            log.debug("Processor stopped");
+            return;
+        }
+
         if (redisTemplate.opsForSet().size(STT_PROCESSING_SET) == 0 &&
                         redisTemplate.opsForSet().size(STT_SUMMARIZING_SET) == 0){
-            log.info("Stopping STT smart-loop processor...");
-            scheduler.shutdownNow();
+            log.info("🛑 Stopping STT processor...");
             isProcessing.set(false);
+            cancelCurrentTask();
+            return;
         }
 
         try {
