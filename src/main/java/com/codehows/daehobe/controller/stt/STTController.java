@@ -67,7 +67,11 @@ public class STTController {
 
     @PostMapping("/{sttId}/recording/finish")
     public ResponseEntity<STTDto> finishRecording(@PathVariable Long sttId) {
-        STTDto sttDto = sttService.finishRecording(sttId);
-        return ResponseEntity.ok(sttDto);
+        try{
+            STTDto sttDto = sttService.finishRecording(sttId);
+            return ResponseEntity.ok(sttDto);
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

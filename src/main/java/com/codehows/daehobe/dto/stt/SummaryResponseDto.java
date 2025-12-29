@@ -31,10 +31,10 @@ public class SummaryResponseDto {
         }
 
         for (Minute minute : minutes) {
-            sb.append("■ ").append(minute.getTitle()).append("\n");
+            sb.append("[").append(minute.getTitle()).append("]\n");
 
             for (Bullet bullet : minute.getBullets()) {
-                sb.append(bullet.isImportant() ? "⭐ " : "- ");
+                sb.append(bullet.isImportant() ? "-**" : "- ");
                 sb.append(bullet.getText()).append("\n");
             }
             sb.append("\n");

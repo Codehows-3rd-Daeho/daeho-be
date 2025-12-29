@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -33,26 +34,12 @@ public class AudioProcessingService {
             log.info("File size: {} bytes", Files.size(filePath));
             log.info("File exists: {}", Files.exists(filePath));
 
-            ProcessBuilder pb = new ProcessBuilder(
-                    ffmpegPath,
-                    "-i", inputPath,
-                    "-c:a", "pcm_s16le",     // Opus → 16비트 PCM (WAV 표준)
-                    "-ar", "48000",          // 샘플레이트 48kHz (Opus 표준)
-                    "-ac", "2",              // 스테레오
-                    "-vn",                    // 비디오 스트림 제거
-                    "-f", "wav",              // 출력 형식 명시적 WAV 지정
-                    "-map_metadata", "0",     // 메타데이터 복사
-                    "-y",                     // 덮어쓰기
-                    "-threads", "0",          // 모든 CPU 코어 사용
-                    outputPath
-            );
-
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
+            Process process = getProcess(inputPath, outputPath);
 
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8)
+            )) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
@@ -69,9 +56,9 @@ public class AudioProcessingService {
                 log.info("[FFmpeg] 메타데이터 수정 완료");
             } else {
                 log.error("[FFmpeg] 실행 실패 (exit code: {})", exitCode);
-                log.error("[FFmpeg] 전체 출력:\n{}", output.toString());
+                log.error("[FFmpeg] 전체 출력:\n{}", output);
                 Files.deleteIfExists(tempPath);
-                throw new RuntimeException("[FFmpeg] 처리 실패");
+                throw new RuntimeException("인코딩 실패");
             }
 
         } catch (Exception e) {
@@ -83,5 +70,25 @@ public class AudioProcessingService {
             }
             throw new RuntimeException("오디오 파일 처리 실패", e);
         }
+    }
+
+    private Process getProcess(String inputPath, String outputPath) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(
+                ffmpegPath,
+                "-i", inputPath,
+                "-c:a", "pcm_s16le",     // Opus → 16비트 PCM (WAV 표준)
+                "-ar", "48000",          // 샘플레이트 48kHz (Opus 표준)
+                "-ac", "2",              // 스테레오
+                "-vn",                    // 비디오 스트림 제거
+                "-f", "wav",              // 출력 형식 명시적 WAV 지정
+                "-map_metadata", "0",     // 메타데이터 복사
+                "-y",                     // 덮어쓰기
+                "-threads", "0",          // 모든 CPU 코어 사용
+                outputPath
+        );
+
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        return process;
     }
 }
