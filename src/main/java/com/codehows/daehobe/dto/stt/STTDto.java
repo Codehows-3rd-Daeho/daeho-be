@@ -19,6 +19,7 @@ private Long meetingId;
 private String status;
 private FileDto file;
 private Integer chunkingCnt;
+private Long memberId;
 
 public static STTDto fromEntity(STT stt) {
     return STTDto.builder()
@@ -32,6 +33,7 @@ public static STTDto fromEntity(STT stt) {
             )
             .chunkingCnt(stt.getChunkingCnt())
             .status(String.valueOf(stt.getStatus()))
+            .memberId(stt.getCreatedBy())
             .build();
 }
 
@@ -48,6 +50,7 @@ public static STTDto fromEntity(STT stt, FileDto audioFile) {
             .chunkingCnt(stt.getChunkingCnt())
             .status(String.valueOf(stt.getStatus()))
             .file(audioFile)
+            .memberId(stt.getCreatedBy())
             .build();
 }
 

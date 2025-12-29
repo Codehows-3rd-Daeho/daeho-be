@@ -184,6 +184,7 @@ public class STTService {
         return stts.stream()
                 .map(stt -> {
                     File file = fileByTargetId.get(stt.getId());
+                    if(file == null) return STTDto.fromEntity(stt);
                     return STTDto.fromEntity(stt, FileDto.fromEntity(file));
                 })
                 .toList();

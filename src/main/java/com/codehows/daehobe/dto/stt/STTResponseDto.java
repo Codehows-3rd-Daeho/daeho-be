@@ -32,6 +32,7 @@ public class STTResponseDto {
 
         StringBuilder sb = new StringBuilder();
         String prevSpeaker = null;
+        StringBuilder currentSpeakerText = new StringBuilder();
 
         for (STTResult result : sttResults) {
             if (result.getWords() == null) continue;
@@ -39,28 +40,41 @@ public class STTResponseDto {
             for (STTResult.Word word : result.getWords()) {
                 String speaker = word.getSpeaker();
 
-                // 화자가 바뀔 때만 speaker 표시
                 if (speaker != null && !speaker.equals(prevSpeaker)) {
-                    sb.append("\n(화자 ").append(speaker).append(")\n");
+                    // 이전 화자 내용 마무리
+                    if (prevSpeaker != null) {
+                        sb.append(renderSpeakerBlock(prevSpeaker, currentSpeakerText.toString().trim()));
+                    }
+                    currentSpeakerText = new StringBuilder();
                     prevSpeaker = speaker;
                 }
 
-                sb.append(word.getWord());
+                currentSpeakerText.append(word.getWord()).append(" ");
             }
         }
 
-        return sb.toString().trim();//trim(): 문자열 앞뒤 공백 제거
+        // 마지막 화자 처리
+        if (prevSpeaker != null) {
+            sb.append(renderSpeakerBlock(prevSpeaker, currentSpeakerText.toString().trim()));
+        }
+
+        return sb.toString();
+    }
+
+    private String renderSpeakerBlock(String speaker, String text) {
+        return String.format(
+                """
+                > **화자 %s**
+                > 
+                > %s
+                >
+                
+                """,
+                speaker.trim(), text.trim()
+        );
     }
 
 
-    public STT toEntity(Meeting meeting) {
-        STT stt = new STT();
-        stt.setMeeting(meeting);
-        // sttResults[0].transcript 값을 content에 넣음
-        stt.setContent(this.getContent());
-//        stt.setStatus(STT.Status.PROCESSING);
-        return stt;
-    }
 
     //응답 형태(객체 안의 객체 형태)
     @Getter
