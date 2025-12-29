@@ -85,8 +85,10 @@ public class MemberService {
         return member;
     }
 
-    public Page<MemberListDto> findAll(Pageable pageable) {
-        return memberRepository.findAll(pageable)
+    public Page<MemberListDto> findAll(Pageable pageable, String keyword) {
+        String searchKw = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+
+        return memberRepository.searchMembers(searchKw, pageable)
                 .map(MemberListDto::fromEntity);
     }
 
