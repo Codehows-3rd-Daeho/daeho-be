@@ -30,12 +30,11 @@ public class STT extends BaseEntity {
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
-    private Long recordingTime;
-
     @Enumerated(EnumType.STRING)
     private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
 
-    private int chunkingCnt;
+    @Column(name = "chunking_cnt")
+    private int chunkingCnt = 0;
 
     public enum Status {
         RECORDING, PROCESSING, COMPLETED
