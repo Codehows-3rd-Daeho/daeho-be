@@ -46,7 +46,6 @@ public class IssueService {
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
 
-
     @TrackChanges(type = ChangeType.CREATE, target = TargetType.ISSUE)
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles, String writerId) {
 
@@ -92,12 +91,11 @@ public class IssueService {
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
         if (issueMemberDtos != null && !issueMemberDtos.isEmpty() && settingdto.isIssueCreated()) {
             notificationService.notifyMembers(issueMemberDtos.stream()
-                            .map(IssueMemberDto::getId)
-                            .toList(),
+                    .map(IssueMemberDto::getId)
+                    .toList(),
                     Long.valueOf(writerId),
                     "새 이슈가 등록되었습니다 \n" + saveIssue.getTitle(),
-                    "/issue/" + saveIssue.getId()
-            );
+                    "/issue/" + saveIssue.getId());
         }
 
         return saveIssue;
@@ -116,17 +114,14 @@ public class IssueService {
                 .orElse(null);
 
         boolean isEditPermitted = issueMembers.stream()
-                .anyMatch(im ->
-                        im.getMember().getId().equals(memberId) && im.isPermitted()
-                );
+                .anyMatch(im -> im.getMember().getId().equals(memberId) && im.isPermitted());
 
         List<IssueMemberDto> participantList = issueMembers.stream()
                 .map(IssueMemberDto::fromEntity)
                 .toList();
 
         List<FileDto> fileDtoList = fileService.getIssueFiles(id);
-        List<String> departmentNames =
-                issueDepartmentService.getDepartmentName(issue);
+        List<String> departmentNames = issueDepartmentService.getDepartmentName(issue);
 
         return IssueDto.fromEntity(
                 issue,
@@ -134,8 +129,7 @@ public class IssueService {
                 departmentNames,
                 fileDtoList,
                 isEditPermitted,
-                participantList
-        );
+                participantList);
     }
 
     // 이슈 조회
@@ -175,7 +169,7 @@ public class IssueService {
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE)
     @TrackMemberChanges(target = TargetType.ISSUE)
     public Issue updateIssue(Long id, IssueFormDto issueFormDto, List<MultipartFile> newFiles,
-                             List<Long> removeFileIds, String writerId) {
+            List<Long> removeFileIds, String writerId) {
         Issue issue = getIssueById(id);
         Category category = categoryService.getCategoryById(issueFormDto.getCategoryId());
 
@@ -206,13 +200,12 @@ public class IssueService {
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
         if (!beforeStatus.equals(afterStatus) && issueMemberDtos != null && settingdto.isIssueStatus()) {
             notificationService.notifyMembers(issueMemberDtos.stream()
-                            .map(IssueMemberDto::getId)
-                            .toList(),
+                    .map(IssueMemberDto::getId)
+                    .toList(),
                     Long.valueOf(writerId),
                     "이슈 상태가 변경되었습니다 \n" +
                             beforeStatus.getLabel() + " → " + afterStatus.getLabel(),
-                    "/issue/" + issue.getId()
-            );
+                    "/issue/" + issue.getId());
         }
 
         return issue;
@@ -226,31 +219,37 @@ public class IssueService {
     }
 
     // 이슈 전체 조회(삭제X)
-    public Page<IssueListDto> findAll(Pageable pageable) {
-        return issueRepository.findByIsDelFalse(pageable)
-                .map(this::toIssueListDto);
+    public Page<IssueListDto> findAll(String keyword, Pageable pageable) {
+        Page<Issue> issues;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            issues = issueRepository.findByIsDelFalse(pageable);
+        } else {
+            issues = issueRepository.searchByKeyword(keyword.trim(), pageable);
+        }
+
+        return issues.map(this::toIssueListDto);
     }
 
     // 칸반 조회 - 진행중
-    public List<IssueListDto> getInProgress() {
-        return issueRepository.findInProgress()
+    public List<IssueListDto> getInProgress(String keyword) {
+        return issueRepository.findInProgressWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 미결
-    public List<IssueListDto> getDelayed() {
-        return issueRepository.findDelayed()
+    public List<IssueListDto> getDelayed(String keyword) {
+        return issueRepository.findDelayedWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 완료(최근 7일)
-    public List<IssueListDto> getCompleted() {
+    public List<IssueListDto> getCompleted(String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return issueRepository.findRecentCompleted(setDate)
+        return issueRepository.findRecentCompletedWithKeyword(setDate, keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
@@ -272,9 +271,10 @@ public class IssueService {
         return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
     }
 
-//    ================================================나의 업무=================================================================
+    // ================================================나의
+    // 업무=================================================================
 
-    //memberId가 참여한 이슈만 추출(공통 로직)
+    // memberId가 참여한 이슈만 추출(공통 로직)
     public List<IssueListDto> getIssuesForMember(Long memberId, List<Issue> issues) {
         return issues.stream()
                 .filter(issue -> issueMemberService.isParticipant(memberId, issue)) // 참여자만 필터
@@ -282,30 +282,29 @@ public class IssueService {
                 .toList();
     }
 
-
-    //진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getInProgressForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findInProgress());
+    // 진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getInProgressForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findInProgressWithKeyword(keyword));
     }
 
-    //지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getDelayedForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findDelayed());
+    // 지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getDelayedForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findDelayedWithKeyword(keyword));
     }
 
-    //완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getCompletedForMember(Long memberId) {
+    // 완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
+    public List<IssueListDto> getCompletedForMember(Long memberId, String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return getIssuesForMember(memberId, issueRepository.findRecentCompleted(setDate));
+        return getIssuesForMember(memberId, issueRepository.findRecentCompletedWithKeyword(setDate, keyword));
     }
 
-    //이슈 리스트
-    //퀴리로 참여자 필터 후 페이징
+    // 이슈 리스트
+    // 퀴리로 참여자 필터 후 페이징
     public List<IssueListDto> getIssuesForMember(Long memberId, Pageable pageable) {
 
         Page<IssueMember> issueMembers = issueMemberService.findByMemberId(memberId, pageable);
 
-        return issueMembers.getContent().stream()//stream으로 Page안의 객체를 매핑
+        return issueMembers.getContent().stream()// stream으로 Page안의 객체를 매핑
                 .map(IssueMember::getIssue)
                 .map(this::toIssueListDto)
                 .toList();

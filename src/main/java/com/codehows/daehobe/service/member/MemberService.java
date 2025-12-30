@@ -85,8 +85,10 @@ public class MemberService {
         return member;
     }
 
-    public Page<MemberListDto> findAll(Pageable pageable) {
-        return memberRepository.findAll(pageable)
+    public Page<MemberListDto> findAll(Pageable pageable, String keyword) {
+        String searchKw = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+
+        return memberRepository.searchMembers(searchKw, pageable)
                 .map(MemberListDto::fromEntity);
     }
 
@@ -192,14 +194,6 @@ public class MemberService {
     }
 
     //================================================나의 업무=================================================================
-    public Page<MeetingListDto> getMeetingsForMember(Long memberId, Pageable pageable) {
-
-        Page<MeetingMember> meetingMembers = meetingMemberService.findByMemberId(memberId, pageable);
-
-        return meetingMembers.map(mm ->
-                toMeetingListDto(mm.getMeeting())
-        );
-    }
 
     //Entity -> Dto, 주관자 정보, 부서 정보
     private MeetingListDto toMeetingListDto(Meeting meeting) {

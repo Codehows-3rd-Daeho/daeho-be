@@ -13,25 +13,52 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
-    Page<Meeting> findByIsDelFalse(Pageable pageable);
+        Page<Meeting> findByIsDelFalse(Pageable pageable);
 
-    Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
+        Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
 
-    List<Meeting> findByStartDateBetweenAndIsDelFalse(
-            LocalDateTime start,
-            LocalDateTime end
-    );
+        List<Meeting> findByStartDateBetweenAndIsDelFalse(
+                        LocalDateTime start,
+                        LocalDateTime end);
 
-    // 기존 상세 조회
-    @Query("""
-            SELECT DISTINCT m
-            FROM Meeting m
-            JOIN FETCH m.category c
-            LEFT JOIN FETCH m.meetingMembers mm
-            LEFT JOIN FETCH mm.member mem
-            LEFT JOIN FETCH mem.jobPosition jp
-            WHERE m.id = :meetingId
-            """)
-    Optional<Meeting> findDetailById(@Param("meetingId") Long meetingId);
+        // 기존 상세 조회
+        @Query("""
+                        SELECT DISTINCT m
+                        FROM Meeting m
+                        JOIN FETCH m.category c
+                        LEFT JOIN FETCH m.meetingMembers mm
+                        LEFT JOIN FETCH mm.member mem
+                        LEFT JOIN FETCH mem.jobPosition jp
+                        WHERE m.id = :meetingId
+                        """)
+        Optional<Meeting> findDetailById(@Param("meetingId") Long meetingId);
 
+        // 회의 검색
+        @Query("SELECT DISTINCT mt FROM Meeting mt " +
+                        "LEFT JOIN mt.category c " +
+                        "LEFT JOIN mt.meetingMembers mtm ON mtm.isHost = true " +
+                        "LEFT JOIN mtm.member m " +
+                        "WHERE mt.isDel = false AND (" +
+                        "   mt.title LIKE %:kw% " +
+                        "   OR str(mt.status) LIKE %:kw% " +
+                        "   OR c.name LIKE %:kw% " +
+                        "   OR m.name LIKE %:kw%" +
+                        ")")
+        Page<Meeting> searchByKeyword(@Param("kw") String keyword, Pageable pageable);
+
+        // 나의 회의 검색
+        @Query("SELECT DISTINCT m FROM Meeting m " +
+                        "JOIN m.meetingMembers mm " +
+                        "LEFT JOIN m.category c " +
+                        "LEFT JOIN m.meetingMembers hostMm ON hostMm.isHost = true " +
+                        "LEFT JOIN hostMm.member hostM " +
+                        "WHERE mm.member.id = :memberId " +
+                        "AND m.isDel = false " +
+                        "AND (:kw IS NULL OR :kw = '' OR (" +
+                        "   m.title LIKE %:kw% " +
+                        "   OR c.name LIKE %:kw% " +
+                        "   OR hostM.name LIKE %:kw%" +
+                        "))")
+        Page<Meeting> searchMyMeetings(@Param("memberId") Long memberId,
+                        @Param("kw") String keyword, Pageable pageable);
 }
