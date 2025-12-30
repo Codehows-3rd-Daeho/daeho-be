@@ -74,8 +74,10 @@ public class FileService {
     }
 
     public void encodeAudioFile(File recordingFile) {
-        Path path = Paths.get(fileLocation, recordingFile.getSavedName());
-        audioProcessingService.fixAudioMetadata(path);
+        synchronized (recordingFile.getSavedName().intern()) {
+            Path path = Paths.get(fileLocation, recordingFile.getSavedName());
+            audioProcessingService.fixAudioMetadata(path);
+        }
     }
 
     // 파일 업로드

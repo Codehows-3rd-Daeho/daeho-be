@@ -41,7 +41,7 @@ public class STTController {
     public ResponseEntity<?> createSTT(@PathVariable Long id,
                                        @RequestPart(value = "file", required = false) MultipartFile multipartFiles) {
         try{
-            STTDto res = sttService.uploadSTT(id, multipartFiles);
+            STTDto res = sttService.uploadAndTranslate(id, multipartFiles);
             return ResponseEntity.ok(res);
         }catch (RuntimeException e){
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -67,18 +67,22 @@ public class STTController {
     }
 
     @PostMapping("/{sttId}/chunk")
-    public ResponseEntity<?> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
-        STTDto sttDto = sttService.appendChunk(sttId, chunk);
+    public ResponseEntity<?> uploadChunk(
+            @PathVariable Long sttId,
+            @RequestPart("file") MultipartFile chunk,
+            @RequestPart(value = "finish", required = false) boolean finish
+    ) {
+        STTDto sttDto = sttService.appendChunk(sttId, chunk, finish);
         return ResponseEntity.ok(sttDto);
     }
 
     @PostMapping("/{sttId}/recording/finish")
-    public ResponseEntity<STTDto> finishRecording(@PathVariable Long sttId) {
+    public ResponseEntity<?> finishRecording(@PathVariable Long sttId) {
         try{
-            STTDto sttDto = sttService.finishRecording(sttId);
+            STTDto sttDto = sttService.startTranslateForRecorded(sttId);
             return ResponseEntity.ok(sttDto);
         }catch (RuntimeException e){
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }

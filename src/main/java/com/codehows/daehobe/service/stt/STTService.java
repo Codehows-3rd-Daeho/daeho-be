@@ -12,6 +12,7 @@ import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
+import com.codehows.daehobe.utils.AudioProcessingService;
 import com.codehows.daehobe.utils.DataSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -45,6 +46,7 @@ public class STTService {
     private final DagloService dagloService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final AudioProcessingService audioProcessingService;
 
 
     @Value("${file.location}")
@@ -123,16 +125,19 @@ public class STTService {
     }
 
     @Transactional
-    public STTDto appendChunk(Long sttId, MultipartFile chunk) {
+    public STTDto appendChunk(Long sttId, MultipartFile chunk, boolean finish) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-        File file = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
         stt.countChunk();
+        File file = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
+        if(finish) {
+            fileService.encodeAudioFile(file);
+        }
         return STTDto.fromEntity(stt, FileDto.fromEntity(file));
     }
 
     @Transactional
-    public STTDto uploadSTT(Long id, MultipartFile file) {
+    public STTDto uploadAndTranslate(Long id, MultipartFile file) {
         Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
         STTResponseDto response = dagloService.callDagloForSTT(file.getResource());
         STT savedStt = sttRepository.save(STT.builder()
@@ -169,22 +174,25 @@ public class STTService {
     }
 
     @Transactional
-    public STTDto finishRecording(Long sttId) {
+    public STTDto startTranslateForRecorded(Long sttId) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.setStatus(STT.Status.PROCESSING);
 
         File savedFile = fileService.getSTTFile(sttId);
-        fileService.encodeAudioFile(savedFile);
-
         Path filePath = Paths.get(fileLocation, savedFile.getSavedName());
+
+        AudioProcessingService.AudioValidationResult validationResult = audioProcessingService.validateAudioFile(filePath);
+        if (!validationResult.isValid()) {
+            fileService.encodeAudioFile(savedFile);
+        }
+
         ByteArrayResource resource = fileToByteArrayResource(filePath, savedFile.getSavedName());
 
         STTResponseDto sttResponse = dagloService.callDagloForSTT(resource);
         stt.setRid(sttResponse.getRid());
         sttRepository.save(stt);
 
-        // Cache status and signal processor
         cacheAndSignal(stt, savedFile);
 
         return STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
