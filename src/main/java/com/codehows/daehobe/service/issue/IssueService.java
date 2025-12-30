@@ -302,19 +302,19 @@ public class IssueService {
 
 
     //진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getInProgressForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findInProgress());
+    public List<IssueListDto> getInProgressForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findInProgressWithKeyword(keyword));
     }
 
     //지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getDelayedForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findDelayed());
+    public List<IssueListDto> getDelayedForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findDelayedWithKeyword(keyword));
     }
 
     //완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getCompletedForMember(Long memberId) {
+    public List<IssueListDto> getCompletedForMember(Long memberId, String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return getIssuesForMember(memberId, issueRepository.findRecentCompleted(setDate));
+        return getIssuesForMember(memberId, issueRepository.findRecentCompletedWithKeyword(setDate, keyword));
     }
 
     //이슈 리스트

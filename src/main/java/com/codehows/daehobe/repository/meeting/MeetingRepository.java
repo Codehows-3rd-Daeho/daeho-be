@@ -21,6 +21,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             LocalDateTime end
     );
 
+    // 회의 검색
     @Query("SELECT DISTINCT mt FROM Meeting mt " +
             "LEFT JOIN mt.category c " +
             "LEFT JOIN mt.meetingMembers mtm ON mtm.isHost = true " +
@@ -32,4 +33,20 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             "   OR m.name LIKE %:kw%" +
             ")")
     Page<Meeting> searchByKeyword(@Param("kw") String keyword, Pageable pageable);
+
+    // 나의 회의 검색
+    @Query("SELECT DISTINCT m FROM Meeting m " +
+            "JOIN m.meetingMembers mm " +
+            "LEFT JOIN m.category c " +
+            "LEFT JOIN m.meetingMembers hostMm ON hostMm.isHost = true " +
+            "LEFT JOIN hostMm.member hostM " +
+            "WHERE mm.member.id = :memberId " +
+            "AND m.isDel = false " +
+            "AND (:kw IS NULL OR :kw = '' OR (" +
+            "   m.title LIKE %:kw% " +
+            "   OR c.name LIKE %:kw% " +
+            "   OR hostM.name LIKE %:kw%" +
+            "))")
+    Page<Meeting> searchMyMeetings(@Param("memberId") Long memberId,
+                                   @Param("kw") String keyword, Pageable pageable);
 }

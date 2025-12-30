@@ -166,14 +166,14 @@ public class IssueController {
 
     //    나의 업무 칸반
     @GetMapping("/kanban/mytask/{id}")
-    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id
+    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id,@RequestParam(value = "keyword", required = false) String keyword
     ) {
         System.out.println(" =============================================================");
-
+        String searchKw = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
         System.out.println(" getKanbanDataById id: " + id);
-        var inProgress = issueService.getInProgressForMember(id);       // 진행중 전체
-        var delayed = issueService.getDelayedForMember(id);             // 미결 전체
-        var completed = issueService.getCompletedForMember(id);         // 최근 7일 완료 전체
+        var inProgress = issueService.getInProgressForMember(id, searchKw);       // 진행중 전체
+        var delayed = issueService.getDelayedForMember(id, searchKw);             // 미결 전체
+        var completed = issueService.getCompletedForMember(id, searchKw);         // 최근 7일 완료 전체
 
         return ResponseEntity.ok(
                 new KanbanResponse(inProgress, delayed, completed)
@@ -183,6 +183,7 @@ public class IssueController {
     //나의 업무 리스트
     @GetMapping("/list/mytask/{id}")
     public ResponseEntity<?> getIssuesById(@PathVariable Long id,
+                                           @RequestParam(value = "keyword", required = false) String keyword,
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size) {
 
