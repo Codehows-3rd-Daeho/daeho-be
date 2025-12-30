@@ -41,7 +41,7 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
         } else if (authException instanceof BadCredentialsException) {
             message = "아이디 또는 비밀번호가 올바르지 않습니다.";
         } else {
-            message = "아이디 또는 비밀번호가 올바르지 않습니다.";
+            message = "오류가 발생했습니다. 다시 로그인해주세요.";
         }
 
 
