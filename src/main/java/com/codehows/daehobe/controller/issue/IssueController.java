@@ -1,6 +1,7 @@
 package com.codehows.daehobe.controller.issue;
 
 import com.codehows.daehobe.dto.issue.IssueDto;
+import com.codehows.daehobe.dto.issue.IssueFilterDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
@@ -39,12 +40,10 @@ public class IssueController {
 
     //칸반 전체
     @GetMapping("/kanban")
-    public ResponseEntity<?> getKanbanData(@RequestParam(value = "keyword", required = false) String keyword) {
-        String searchKw = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-
-        var inProgress = issueService.getInProgress(searchKw);       // 진행중 전체
-        var delayed = issueService.getDelayed(searchKw);             // 미결 전체
-        var completed = issueService.getCompleted(searchKw);         // 최근 7일 완료 전체
+    public ResponseEntity<?> getKanbanData(@ModelAttribute IssueFilterDto filter) {
+        var inProgress = issueService.getInProgress(filter);       // 진행중 전체
+        var delayed = issueService.getDelayed(filter);             // 미결 전체
+        var completed = issueService.getCompleted(filter);         // 최근 7일 완료 전체
 
         return ResponseEntity.ok(
                 new KanbanResponse(inProgress, delayed, completed)
@@ -62,13 +61,14 @@ public class IssueController {
     // 리스트 전체조회()
     @GetMapping("/list")
     public ResponseEntity<?> getIssues(
-            @RequestParam(value = "keyword", required = false) String keyword,
+            @ModelAttribute IssueFilterDto filter,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
+            System.out.println("filter: " + filter);
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<IssueListDto> dtoList = issueService.findAll(keyword,pageable);
+            Page<IssueListDto> dtoList = issueService.findAll(filter, pageable);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();
@@ -163,14 +163,10 @@ public class IssueController {
 
     //    나의 업무 칸반
     @GetMapping("/kanban/mytask/{id}")
-    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id,@RequestParam(value = "keyword", required = false) String keyword
-    ) {
-        System.out.println(" =============================================================");
-        String searchKw = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-        System.out.println(" getKanbanDataById id: " + id);
-        var inProgress = issueService.getInProgressForMember(id, searchKw);       // 진행중 전체
-        var delayed = issueService.getDelayedForMember(id, searchKw);             // 미결 전체
-        var completed = issueService.getCompletedForMember(id, searchKw);         // 최근 7일 완료 전체
+    public ResponseEntity<?> getKanbanDataById(@PathVariable Long id, @ModelAttribute IssueFilterDto filter) {
+        var inProgress = issueService.getInProgressForMember(id, filter);       // 진행중 전체
+        var delayed = issueService.getDelayedForMember(id, filter);             // 미결 전체
+        var completed = issueService.getCompletedForMember(id, filter);         // 최근 7일 완료 전체
 
         return ResponseEntity.ok(
                 new KanbanResponse(inProgress, delayed, completed)
@@ -180,13 +176,13 @@ public class IssueController {
     //나의 업무 리스트
     @GetMapping("/list/mytask/{id}")
     public ResponseEntity<?> getIssuesById(@PathVariable Long id,
-                                           @RequestParam(value = "keyword", required = false) String keyword,
+                                           @ModelAttribute IssueFilterDto filter,
                                            @RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size) {
 
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            List<IssueListDto> memberIssues = issueService.getIssuesForMember(id, pageable);
+            List<IssueListDto> memberIssues = issueService.getIssuesForMember(id,filter, pageable);
             return ResponseEntity.ok(memberIssues);
         } catch (Exception e) {
             e.printStackTrace();
