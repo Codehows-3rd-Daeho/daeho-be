@@ -4,7 +4,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
-import com.codehows.daehobe.utils.AudioProcessingService;
+import com.codehows.daehobe.utils.AudioProcessor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +34,7 @@ public class FileService {
     @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
-    private final AudioProcessingService audioProcessingService;
+    private final AudioProcessor audioProcessor;
 
     public File createFile(String fileName, Long targetId, TargetType targetType) {
         String filePath = "/file/" + fileName;
@@ -76,7 +75,7 @@ public class FileService {
     public void encodeAudioFile(File recordingFile) {
         synchronized (recordingFile.getSavedName().intern()) {
             Path path = Paths.get(fileLocation, recordingFile.getSavedName());
-            audioProcessingService.fixAudioMetadata(path);
+            audioProcessor.fixAudioMetadata(path);
         }
     }
 

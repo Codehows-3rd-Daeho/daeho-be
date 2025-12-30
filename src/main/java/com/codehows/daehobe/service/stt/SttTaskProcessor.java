@@ -33,8 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @RequiredArgsConstructor
 public class SttTaskProcessor {
 
-    private final STTRepository sttRepository;
-    private final STTService sttService;
+    private final SttJobExecutor jobExecutor;
     private final RedisTemplate<String, String> redisTemplate;
 
     // 스케줄러를 데몬 스레드로 생성하여 앱 종료 시 자동 정리
@@ -46,10 +45,6 @@ public class SttTaskProcessor {
 
     private final AtomicReference<ScheduledFuture<?>> currentTask = new AtomicReference<>();
     private final ReentrantLock processorLock = new ReentrantLock();
-
-    @Lazy
-    @Autowired
-    private SttTaskProcessor self;
 
     public static final String STT_PROCESSING_SET = "stt:processing";
     public static final String STT_SUMMARIZING_SET = "stt:summarizing";
@@ -65,12 +60,8 @@ public class SttTaskProcessor {
         STOPPING    // 중지 중
     }
 
-    /**
-     * 스마트 루프 시작 - 중복 호출에 안전
-     */
     @Async
     public void startSmartLoop() {
-        // 분산 락으로 여러 인스턴스에서 동시 시작 방지 (선택사항)
         String lockKey = STT_PROCESSOR_LOCK;
         Boolean acquired = redisTemplate.opsForValue()
                 .setIfAbsent(lockKey, "locked", 5, TimeUnit.SECONDS);
@@ -129,9 +120,6 @@ public class SttTaskProcessor {
         }
     }
 
-    /**
-     * 프로세서 강제 중지
-     */
     public void stopProcessor() {
         processorLock.lock();
         try {
@@ -169,9 +157,6 @@ public class SttTaskProcessor {
         }
     }
 
-    /**
-     * 예외에 안전한 작업 처리 래퍼
-     */
     private void processAllTasksSafely() {
         // 상태가 RUNNING이 아니면 실행하지 않음
         if (state != ProcessorState.RUNNING) {
@@ -191,11 +176,9 @@ public class SttTaskProcessor {
         Long processingCount = redisTemplate.opsForSet().size(STT_PROCESSING_SET);
         Long summarizingCount = redisTemplate.opsForSet().size(STT_SUMMARIZING_SET);
 
-        // null 체크 추가
         processingCount = processingCount != null ? processingCount : 0L;
         summarizingCount = summarizingCount != null ? summarizingCount : 0L;
 
-        // 큐가 모두 비어있으면 자동 중지
         if (processingCount == 0 && summarizingCount == 0) {
             log.info("All task queues are empty. Auto-stopping processor.");
             stopProcessor();
@@ -204,32 +187,31 @@ public class SttTaskProcessor {
 
         log.debug("Processing cycle - STT: {}, Summary: {}", processingCount, summarizingCount);
 
-        // STT 처리
+        // STT 처리 - jobExecutor 사용
         Set<String> processingSttIds = redisTemplate.opsForSet().members(STT_PROCESSING_SET);
         if (processingSttIds != null && !processingSttIds.isEmpty()) {
             log.info("Processing {} STT tasks", processingSttIds.size());
             processingSttIds.forEach(sttIdStr -> {
                 try {
                     Long sttId = Long.valueOf(sttIdStr);
-                    self.processSingleSttJob(sttId);
+                    jobExecutor.processSingleSttJob(sttId);  // 변경
                 } catch (NumberFormatException e) {
                     log.error("Invalid sttId format: {}", sttIdStr);
                     redisTemplate.opsForSet().remove(STT_PROCESSING_SET, sttIdStr);
                 } catch (Exception e) {
                     log.error("Error processing STT task: {}", sttIdStr, e);
-                    // 에러가 발생해도 다음 작업 계속 진행
                 }
             });
         }
 
-        // 요약 처리
+        // 요약 처리 - jobExecutor 사용
         Set<String> summarizingSttIds = redisTemplate.opsForSet().members(STT_SUMMARIZING_SET);
         if (summarizingSttIds != null && !summarizingSttIds.isEmpty()) {
             log.info("Processing {} summary tasks", summarizingSttIds.size());
             summarizingSttIds.forEach(sttIdStr -> {
                 try {
                     Long sttId = Long.valueOf(sttIdStr);
-                    self.processSingleSummaryJob(sttId);
+                    jobExecutor.processSingleSummaryJob(sttId);  // 변경
                 } catch (NumberFormatException e) {
                     log.error("Invalid sttId format: {}", sttIdStr);
                     redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, sttIdStr);
@@ -240,147 +222,6 @@ public class SttTaskProcessor {
         }
     }
 
-    @Transactional
-    public void processSingleSttJob(Long sttId) {
-        try {
-            STT stt = sttRepository.findById(sttId).orElse(null);
-            if (stt == null) {
-                log.warn("STT not found: {}", sttId);
-                redisTemplate.opsForSet().remove(STT_PROCESSING_SET, String.valueOf(sttId));
-                return;
-            }
-
-            if (stt.getStatus() != STT.Status.PROCESSING) {
-                log.info("STT {} status changed to {}, removing from queue", sttId, stt.getStatus());
-                redisTemplate.opsForSet().remove(STT_PROCESSING_SET, String.valueOf(sttId));
-                return;
-            }
-
-            STTResponseDto result = sttService.checkSTTStatus(stt);
-            stt.updateContent(result.getContent());
-
-            STTDto cachedStt = STTDto.fromEntity(stt);
-            cachedStt.updateProgress(result.getProgress());
-            self.cacheSttStatus(cachedStt);
-
-            if (result.isCompleted()) {
-                log.info("STT {} completed, transitioning to SUMMARIZING", sttId);
-                stt.setStatus(STT.Status.SUMMARIZING);
-                stt.updateContent(result.getContent());
-                sttRepository.save(stt);
-
-                STTDto finalCachedStt = STTDto.fromEntity(stt);
-                finalCachedStt.updateProgress(result.getProgress());
-                self.cacheSttStatus(finalCachedStt);
-
-                // 큐 이동을 원자적으로 수행
-                redisTemplate.execute((RedisCallback<Object>) connection -> {
-                    connection.sRem(STT_PROCESSING_SET.getBytes(), String.valueOf(sttId).getBytes());
-                    connection.sAdd(STT_SUMMARIZING_SET.getBytes(), String.valueOf(sttId).getBytes());
-                    return null;
-                });
-
-                sttService.requestSummary(sttId);
-            }
-        } catch (Exception e) {
-            log.error("Failed to process STT job: {}", sttId, e);
-            // 심각한 오류 시 큐에서 제거하여 무한 재시도 방지
-            if (isUnrecoverableError(e)) {
-                redisTemplate.opsForSet().remove(STT_PROCESSING_SET, String.valueOf(sttId));
-            }
-        }
-    }
-
-    @Transactional
-    public void processSingleSummaryJob(Long sttId) {
-        try {
-            STT stt = sttRepository.findById(sttId).orElse(null);
-            if (stt == null) {
-                log.warn("STT not found: {}", sttId);
-                redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(sttId));
-                redisTemplate.delete(STT_STATUS_HASH_PREFIX + sttId);
-                return;
-            }
-
-            if (stt.getStatus() != STT.Status.SUMMARIZING) {
-                log.info("STT {} status changed to {}, removing from queue", sttId, stt.getStatus());
-                redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(sttId));
-                return;
-            }
-
-            if (stt.getSummaryRid() == null) {
-                log.warn("STT {} has no summaryRid", sttId);
-                redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(sttId));
-                return;
-            }
-
-            SummaryResponseDto result = sttService.checkSummaryStatus(stt);
-            stt.updateSummary(result.getSummaryText());
-
-            STTDto cachedStt = STTDto.fromEntity(stt);
-            cachedStt.updateProgress(result.getProgress());
-            self.cacheSttStatus(cachedStt);
-
-            if (result.isCompleted()) {
-                log.info("Summary {} completed", sttId);
-                stt.setStatus(STT.Status.COMPLETED);
-                stt.updateSummary(result.getSummaryText());
-                sttRepository.save(stt);
-
-                STTDto finalCachedStt = STTDto.fromEntity(stt);
-                finalCachedStt.updateProgress(result.getProgress());
-                self.cacheSttStatus(finalCachedStt);
-
-                redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(sttId));
-                redisTemplate.expire(STT_STATUS_HASH_PREFIX + sttId, 5, TimeUnit.MINUTES);
-            }
-        } catch (Exception e) {
-            log.error("Failed to process summary job: {}", sttId, e);
-            if (isUnrecoverableError(e)) {
-                redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(sttId));
-            }
-        }
-    }
-
-    public void cacheSttStatus(STTDto stt) {
-        try {
-            redisTemplate.opsForValue().set(
-                    STT_STATUS_HASH_PREFIX + stt.getId(),
-                    DataSerializer.serialize(stt),
-                    30,
-                    TimeUnit.MINUTES
-            );
-        } catch (Exception e) {
-            log.error("Failed to cache STT status: {}", stt.getId(), e);
-        }
-    }
-
-    /**
-     * 복구 불가능한 오류인지 판단
-     */
-    private boolean isUnrecoverableError(Exception e) {
-        // 일시적 네트워크 오류, 타임아웃 등은 재시도 가능
-        // 데이터 불일치, 유효하지 않은 상태 등은 복구 불가능
-        return e instanceof IllegalStateException
-                || e instanceof IllegalArgumentException
-                || e.getCause() instanceof NumberFormatException;
-    }
-
-    /**
-     * 현재 프로세서 상태 조회
-     */
-    public String getProcessorStatus() {
-        return String.format("State: %s, Task active: %s, Processing: %d, Summarizing: %d",
-                state,
-                currentTask.get() != null && !currentTask.get().isDone(),
-                redisTemplate.opsForSet().size(STT_PROCESSING_SET),
-                redisTemplate.opsForSet().size(STT_SUMMARIZING_SET)
-        );
-    }
-
-    /**
-     * 애플리케이션 종료 시 정리
-     */
     @PreDestroy
     public void shutdown() {
         log.info("Shutting down STT processor...");

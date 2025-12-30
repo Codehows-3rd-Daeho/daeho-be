@@ -1,6 +1,5 @@
 package com.codehows.daehobe.service.stt;
 
-import com.codehows.daehobe.config.webpush.RedisConfig;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
@@ -12,7 +11,7 @@ import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.service.file.FileService;
-import com.codehows.daehobe.utils.AudioProcessingService;
+import com.codehows.daehobe.utils.AudioProcessor;
 import com.codehows.daehobe.utils.DataSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -46,7 +45,7 @@ public class STTService {
     private final DagloService dagloService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
-    private final AudioProcessingService audioProcessingService;
+    private final AudioProcessor audioProcessor;
 
 
     @Value("${file.location}")
@@ -182,7 +181,7 @@ public class STTService {
         File savedFile = fileService.getSTTFile(sttId);
         Path filePath = Paths.get(fileLocation, savedFile.getSavedName());
 
-        AudioProcessingService.AudioValidationResult validationResult = audioProcessingService.validateAudioFile(filePath);
+        AudioProcessor.AudioValidationResult validationResult = audioProcessor.validateAudioFile(filePath);
         if (!validationResult.isValid()) {
             fileService.encodeAudioFile(savedFile);
         }

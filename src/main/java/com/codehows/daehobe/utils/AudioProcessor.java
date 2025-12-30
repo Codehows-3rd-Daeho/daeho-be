@@ -16,7 +16,7 @@ import java.nio.file.StandardCopyOption;
 
 @Service
 @Slf4j
-public class AudioProcessingService {
+public class AudioProcessor {
 
     @Value("${ffmpeg.path:/usr/bin/ffmpeg}")
     private String ffmpegPath;

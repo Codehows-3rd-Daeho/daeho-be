@@ -18,14 +18,14 @@ import java.util.Map;
 public class DagloService {
 
     private final WebClient webClient;
-    private final SttConfigService sttConfigService;
+    private final DagloSttConfigService dagloSttConfigService;
 
     public STTResponseDto callDagloForSTT(Resource file) {
         STTResponseDto response = webClient.post()
                 .uri("/stt/v1/async/transcripts")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData("file", file)
-                        .with("sttConfig", sttConfigService.toJson())
+                        .with("sttConfig", dagloSttConfigService.toJson())
                 )
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> switch (clientResponse.statusCode().value()) {

@@ -8,7 +8,7 @@ import java.util.Map;
 
 @Service
 @AllArgsConstructor
-public class SttConfigService {
+public class DagloSttConfigService {
 
     private final ObjectMapper objectMapper;
 
