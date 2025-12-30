@@ -70,7 +70,7 @@ public class STTController {
     public ResponseEntity<?> uploadChunk(
             @PathVariable Long sttId,
             @RequestPart("file") MultipartFile chunk,
-            @RequestPart(value = "finish", required = false) boolean finish
+            @RequestPart(value = "finish", required = false) Boolean finish
     ) {
         STTDto sttDto = sttService.appendChunk(sttId, chunk, finish);
         return ResponseEntity.ok(sttDto);

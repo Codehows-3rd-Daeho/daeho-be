@@ -125,12 +125,12 @@ public class STTService {
     }
 
     @Transactional
-    public STTDto appendChunk(Long sttId, MultipartFile chunk, boolean finish) {
+    public STTDto appendChunk(Long sttId, MultipartFile chunk, Boolean finish) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.countChunk();
         File file = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
-        if(finish) {
+        if(finish != null && finish) {
             fileService.encodeAudioFile(file);
         }
         return STTDto.fromEntity(stt, FileDto.fromEntity(file));
