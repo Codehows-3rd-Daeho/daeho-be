@@ -59,7 +59,7 @@ public class FileService {
             }
         }
 
-        if(fileId == null) {
+        if (fileId == null) {
             return fileRepository.save(File.builder()
                     .path(savedFilePath)
                     .originalName("recording-" + System.currentTimeMillis())
@@ -150,6 +150,7 @@ public class FileService {
     public File getFileById(Long fileId) {
         return fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("파일이 존재하지 않습니다."));
     }
+
     // 이슈 파일 찾기
     public List<FileDto> getIssueFiles(Long issueId) {
         return fileRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE)
@@ -172,5 +173,11 @@ public class FileService {
                 .stream()
                 .map(FileDto::fromEntity)
                 .toList();
+    }
+
+    //멤버 프로필 찾기
+    public File findFirstByTargetIdAndTargetType(Long id, TargetType targetType) {
+        return fileRepository.findFirstByTargetIdAndTargetType(id, targetType)
+                .orElse(null);
     }
 }

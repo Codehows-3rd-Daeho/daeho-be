@@ -11,6 +11,7 @@ import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.comment.Comment;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.commnet.CommentRepository;
@@ -148,11 +149,13 @@ public class CommentService {
                 ? writer.getJobPosition().getName()
                 : null;
 
+        File profile = fileService.findFirstByTargetIdAndTargetType(comment.getMember().getId(), TargetType.MEMBER);
+        FileDto profileDto = FileDto.fromEntity(profile);
         List<FileDto> fileList = fileService.getCommentFiles(comment.getId());
         List<CommentMentionDto> mentions =
                 mentionService.getMentionsByComment(comment);
 
-        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId(), mentions);
+        return CommentDto.fromComment(comment,writerName, writerJPName,profileDto, fileList, writer.getId(), mentions);
     }
 
     // 등록
