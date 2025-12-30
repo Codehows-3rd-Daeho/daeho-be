@@ -24,7 +24,6 @@ public class STTResponseDto {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private List<STTResult> sttResults;
 
-
     //변환완료인지 체크
     public boolean isCompleted() {
         return "transcribed".equalsIgnoreCase(status);

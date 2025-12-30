@@ -18,17 +18,34 @@ import lombok.NoArgsConstructor;
 public class STTDto {
     private Long id;
     private String rid;
+    private String summaryRid;
     private String content;
     private String summary;
     private Long meetingId;
-    private String status;
+    private STT.Status status;
     private FileDto file;
     private Integer chunkingCnt;
     private Long memberId;
     private Integer progress;
 
+    public void updateSummaryRid(String summaryRid) {
+        this.summaryRid = summaryRid;
+    }
+
     public void updateProgress(Integer progress) {
         this.progress = progress;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateSummary(String summary) {
+        this.summary = summary;
+    }
+
+    public void updateStatus(STT.Status status) {
+        this.status = status;
     }
 
     public static STTDto fromEntity(STT stt) {
@@ -43,8 +60,7 @@ public class STTDto {
                                 : null
                 )
                 .chunkingCnt(stt.getChunkingCnt())
-                .status(String.valueOf(stt.getStatus()))
-                .progress(stt.getProgress())
+                .status(stt.getStatus())
                 .memberId(stt.getCreatedBy())
                 .build();
     }
@@ -61,8 +77,7 @@ public class STTDto {
                                 : null
                 )
                 .chunkingCnt(stt.getChunkingCnt())
-                .status(String.valueOf(stt.getStatus()))
-                .progress(stt.getProgress())
+                .status(stt.getStatus())
                 .file(audioFile)
                 .memberId(stt.getCreatedBy())
                 .build();

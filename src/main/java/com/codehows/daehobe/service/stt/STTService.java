@@ -44,7 +44,6 @@ public class STTService {
     private final FileService fileService;
     private final DagloService dagloService;
     private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
     private final AudioProcessor audioProcessor;
 
 
@@ -148,28 +147,26 @@ public class STTService {
                 .chunkingCnt(0)
                 .build());
         File savedFile = fileService.uploadFiles(savedStt.getId(), List.of(file), TargetType.STT).getFirst();
-        
-        // Cache status and signal processor
+
         cacheAndSignal(savedStt, savedFile);
 
         return STTDto.fromEntity(savedStt, FileDto.fromEntity(savedFile));
     }
 
     @Transactional
-    public void requestSummary(Long sttId) {
-        STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-        SummaryResponseDto response = dagloService.callDagloForSummary(stt.getContent());
-        stt.setSummaryRid(response.getRid());
+    public String requestSummary(String content) {
+        SummaryResponseDto response = dagloService.callDagloForSummary(content);
+        return response.getRid();
     }
 
     @Transactional
-    public STTResponseDto checkSTTStatus(STT stt) {
-        return dagloService.checkSTTStatue(stt.getRid());
+    public STTResponseDto checkSTTStatus(String rid) {
+        return dagloService.checkSTTStatue(rid);
     }
 
     @Transactional
-    public SummaryResponseDto checkSummaryStatus(STT stt) {
-        return dagloService.checkSummaryStatue(stt.getSummaryRid());
+    public SummaryResponseDto checkSummaryStatus(String rid) {
+        return dagloService.checkSummaryStatue(rid);
     }
 
     @Transactional

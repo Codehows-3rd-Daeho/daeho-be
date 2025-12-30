@@ -1,5 +1,6 @@
 package com.codehows.daehobe.entity.stt;
 
+import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import jakarta.persistence.*;
@@ -39,8 +40,6 @@ public class STT extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Status status; // e.g., "RECORDING", "PROCESSING", "SUMMARIZING", "COMPLETED"
 
-    private Integer progress;
-
     @Column(name = "chunking_cnt")
     private int chunkingCnt;
 
@@ -56,11 +55,16 @@ public class STT extends BaseEntity {
         this.summary = summary;
     }
 
-    public void updateProgerss(Integer progress) {
-        this.progress = progress;
-    }
-
     public void countChunk() {
         this.chunkingCnt++;
+    }
+
+    public void updateFromDto(STTDto sttDto) {
+        this.rid = sttDto.getRid();
+        this.summaryRid = sttDto.getSummaryRid();
+        this.content = sttDto.getContent();
+        this.summary = sttDto.getSummary();
+        this.chunkingCnt = sttDto.getChunkingCnt();
+        this.status = sttDto.getStatus();
     }
 }

@@ -120,43 +120,6 @@ public class SttTaskProcessor {
         }
     }
 
-    public void stopProcessor() {
-        processorLock.lock();
-        try {
-            if (state == ProcessorState.STOPPED || state == ProcessorState.STOPPING) {
-                log.info("Processor already stopped or stopping");
-                return;
-            }
-
-            state = ProcessorState.STOPPING;
-            log.info("Stopping STT processor...");
-
-            cancelCurrentTaskSafely();
-
-            state = ProcessorState.STOPPED;
-            log.info("STT processor stopped successfully.");
-
-        } finally {
-            processorLock.unlock();
-        }
-    }
-
-    private void cancelCurrentTaskSafely() {
-        ScheduledFuture<?> task = currentTask.getAndSet(null);
-        if (task != null && !task.isCancelled()) {
-            task.cancel(false); // graceful cancel
-            try {
-                // 최대 5초 대기하여 현재 실행 중인 작업 완료 확인
-                task.get(5, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                log.warn("Current task did not finish within timeout");
-                task.cancel(true); // force cancel
-            } catch (Exception e) {
-                log.debug("Task cancellation completed: {}", e.getMessage());
-            }
-        }
-    }
-
     private void processAllTasksSafely() {
         // 상태가 RUNNING이 아니면 실행하지 않음
         if (state != ProcessorState.RUNNING) {
@@ -194,7 +157,7 @@ public class SttTaskProcessor {
             processingSttIds.forEach(sttIdStr -> {
                 try {
                     Long sttId = Long.valueOf(sttIdStr);
-                    jobExecutor.processSingleSttJob(sttId);  // 변경
+                    jobExecutor.processSingleSttJob(sttId);
                 } catch (NumberFormatException e) {
                     log.error("Invalid sttId format: {}", sttIdStr);
                     redisTemplate.opsForSet().remove(STT_PROCESSING_SET, sttIdStr);
@@ -211,7 +174,7 @@ public class SttTaskProcessor {
             summarizingSttIds.forEach(sttIdStr -> {
                 try {
                     Long sttId = Long.valueOf(sttIdStr);
-                    jobExecutor.processSingleSummaryJob(sttId);  // 변경
+                    jobExecutor.processSingleSummaryJob(sttId);
                 } catch (NumberFormatException e) {
                     log.error("Invalid sttId format: {}", sttIdStr);
                     redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, sttIdStr);
@@ -219,6 +182,43 @@ public class SttTaskProcessor {
                     log.error("Error processing summary task: {}", sttIdStr, e);
                 }
             });
+        }
+    }
+
+    public void stopProcessor() {
+        processorLock.lock();
+        try {
+            if (state == ProcessorState.STOPPED || state == ProcessorState.STOPPING) {
+                log.info("Processor already stopped or stopping");
+                return;
+            }
+
+            state = ProcessorState.STOPPING;
+            log.info("Stopping STT processor...");
+
+            cancelCurrentTaskSafely();
+
+            state = ProcessorState.STOPPED;
+            log.info("STT processor stopped successfully.");
+
+        } finally {
+            processorLock.unlock();
+        }
+    }
+
+    private void cancelCurrentTaskSafely() {
+        ScheduledFuture<?> task = currentTask.getAndSet(null);
+        if (task != null && !task.isCancelled()) {
+            task.cancel(false); // graceful cancel
+            try {
+                // 최대 5초 대기하여 현재 실행 중인 작업 완료 확인
+                task.get(5, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                log.warn("Current task did not finish within timeout");
+                task.cancel(true); // force cancel
+            } catch (Exception e) {
+                log.debug("Task cancellation completed: {}", e.getMessage());
+            }
         }
     }
 

@@ -6,6 +6,7 @@ import com.codehows.daehobe.dto.stt.SummaryResponseDto;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.repository.stt.STTRepository;
 import com.codehows.daehobe.utils.DataSerializer;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisCallback;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
+
+import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_STATUS_HASH_PREFIX;
 
 @Slf4j
 @Service
@@ -27,35 +30,33 @@ public class SttJobExecutor {
     @Transactional
     public void processSingleSttJob(Long sttId) {
         try {
-            STT stt = sttRepository.findById(sttId).orElse(null);
-            if (stt == null) {
+            String hashKey = STT_STATUS_HASH_PREFIX + sttId;
+            STTDto cachedStatus = DataSerializer.deserialize(redisTemplate.opsForValue().get(hashKey), STTDto.class);
+            if (cachedStatus == null) {
                 log.warn("STT not found: {}", sttId);
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_PROCESSING_SET, String.valueOf(sttId));
                 return;
             }
 
-            if (stt.getStatus() != STT.Status.PROCESSING) {
-                log.info("STT {} status changed to {}, removing from queue", sttId, stt.getStatus());
+            if (cachedStatus.getStatus() != STT.Status.PROCESSING) {
+                log.info("STT {} status changed to {}, removing from queue", sttId, cachedStatus.getStatus());
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_PROCESSING_SET, String.valueOf(sttId));
                 return;
             }
 
-            STTResponseDto result = sttService.checkSTTStatus(stt);
-            stt.updateContent(result.getContent());
-
-            STTDto cachedStt = STTDto.fromEntity(stt);
-            cachedStt.updateProgress(result.getProgress());
-            cacheSttStatus(cachedStt);
+            STTResponseDto result = sttService.checkSTTStatus(cachedStatus.getRid());
+            cachedStatus.updateContent(result.getContent());
+            cachedStatus.updateProgress(result.getProgress());
+            cacheSttStatus(cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("STT {} completed, transitioning to SUMMARIZING", sttId);
-                stt.setStatus(STT.Status.SUMMARIZING);
-                stt.updateContent(result.getContent());
-                sttRepository.save(stt);
-
-                STTDto finalCachedStt = STTDto.fromEntity(stt);
-                finalCachedStt.updateProgress(result.getProgress());
-                cacheSttStatus(finalCachedStt);
+                cachedStatus.updateStatus(STT.Status.SUMMARIZING);
+                cachedStatus.updateContent(result.getContent());
+                cachedStatus.updateProgress(result.getProgress());
+                String summaryRid = sttService.requestSummary(result.getContent());
+                cachedStatus.updateSummaryRid(summaryRid);
+                cacheSttStatus(cachedStatus);
 
                 redisTemplate.execute((RedisCallback<Object>) connection -> {
                     connection.sRem(SttTaskProcessor.STT_PROCESSING_SET.getBytes(), String.valueOf(sttId).getBytes());
@@ -63,7 +64,8 @@ public class SttJobExecutor {
                     return null;
                 });
 
-                sttService.requestSummary(sttId);
+                STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+                stt.updateFromDto(cachedStatus);
             }
         } catch (Exception e) {
             log.error("Failed to process STT job: {}", sttId, e);
@@ -76,45 +78,44 @@ public class SttJobExecutor {
     @Transactional
     public void processSingleSummaryJob(Long sttId) {
         try {
-            STT stt = sttRepository.findById(sttId).orElse(null);
-            if (stt == null) {
+            String hashKey = STT_STATUS_HASH_PREFIX + sttId;
+            STTDto cachedStatus = DataSerializer.deserialize(redisTemplate.opsForValue().get(hashKey), STTDto.class);
+            if (cachedStatus == null) {
                 log.warn("STT not found: {}", sttId);
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_SUMMARIZING_SET, String.valueOf(sttId));
                 redisTemplate.delete(SttTaskProcessor.STT_STATUS_HASH_PREFIX + sttId);
                 return;
             }
 
-            if (stt.getStatus() != STT.Status.SUMMARIZING) {
-                log.info("STT {} status changed to {}, removing from queue", sttId, stt.getStatus());
+            if (cachedStatus.getStatus() != STT.Status.SUMMARIZING) {
+                log.info("STT {} status changed to {}, removing from queue", sttId, cachedStatus.getStatus());
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_SUMMARIZING_SET, String.valueOf(sttId));
                 return;
             }
 
-            if (stt.getSummaryRid() == null) {
+            if (cachedStatus.getSummaryRid() == null) {
                 log.warn("STT {} has no summaryRid", sttId);
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_SUMMARIZING_SET, String.valueOf(sttId));
                 return;
             }
 
-            SummaryResponseDto result = sttService.checkSummaryStatus(stt);
-            stt.updateSummary(result.getSummaryText());
-
-            STTDto cachedStt = STTDto.fromEntity(stt);
-            cachedStt.updateProgress(result.getProgress());
-            cacheSttStatus(cachedStt);
+            SummaryResponseDto result = sttService.checkSummaryStatus(cachedStatus.getSummaryRid());
+            cachedStatus.updateSummary(result.getSummaryText());
+            cachedStatus.updateProgress(result.getProgress());
+            cacheSttStatus(cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("Summary {} completed", sttId);
-                stt.setStatus(STT.Status.COMPLETED);
-                stt.updateSummary(result.getSummaryText());
-                sttRepository.save(stt);
-
-                STTDto finalCachedStt = STTDto.fromEntity(stt);
-                finalCachedStt.updateProgress(result.getProgress());
-                cacheSttStatus(finalCachedStt);
+                cachedStatus.updateStatus(STT.Status.COMPLETED);
+                cachedStatus.updateSummary(result.getSummaryText());
+                cachedStatus.updateProgress(result.getProgress());
+                cacheSttStatus(cachedStatus);
 
                 redisTemplate.opsForSet().remove(SttTaskProcessor.STT_SUMMARIZING_SET, String.valueOf(sttId));
                 redisTemplate.expire(SttTaskProcessor.STT_STATUS_HASH_PREFIX + sttId, 5, TimeUnit.MINUTES);
+
+                STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+                stt.updateFromDto(cachedStatus);
             }
         } catch (Exception e) {
             log.error("Failed to process summary job: {}", sttId, e);
