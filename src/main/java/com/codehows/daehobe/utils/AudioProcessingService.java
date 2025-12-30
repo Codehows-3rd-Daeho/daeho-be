@@ -20,6 +20,8 @@ public class AudioProcessingService {
 
     @Value("${ffmpeg.path:/usr/bin/ffmpeg}")
     private String ffmpegPath;
+    @Value("${ffprobe.path:/usr/bin/ffprobe}")
+    private String ffprobePath;
 
     public void fixAudioMetadata(Path filePath) {
         String fileName = filePath.getFileName().toString();
@@ -119,7 +121,9 @@ public class AudioProcessingService {
     }
 
     private AudioInfo extractAudioInfo(Path filePath) throws IOException, InterruptedException {
-        Process process = getProcessForProbe(filePath);
+        Process process = getProcessForProbe(
+                filePath.toAbsolutePath().toString().replace("\\", "/")
+        );
 
         AudioInfo info = new AudioInfo();
         StringBuilder output = new StringBuilder();
@@ -200,16 +204,14 @@ public class AudioProcessingService {
         return true;
     }
 
-    private Process getProcessForProbe(Path filePath) throws IOException {
-        String inputPath = filePath.toAbsolutePath().toString().replace("\\", "/");
-
+    private Process getProcessForProbe(String filePath) throws IOException {
         ProcessBuilder pb = new ProcessBuilder(
-                ffmpegPath.replace("ffmpeg", "ffprobe"),
+                ffprobePath,
                 "-v", "error",
                 "-select_streams", "a:0",
                 "-show_entries", "stream=codec_name,sample_rate,channels,duration,bit_rate",
                 "-of", "default=noprint_wrappers=1",
-                inputPath
+                filePath
         );
 
         pb.redirectErrorStream(true);
