@@ -36,7 +36,6 @@ public class MeetingController {
 
         Meeting meeting = meetingService.createMeeting(meetingFormDto, multipartFiles,authentication.getName());
         return ResponseEntity.ok(meeting.getId());
-
     }
 
     // 회의 상세 조회
@@ -186,6 +185,12 @@ public class MeetingController {
         Page<MeetingListDto> memberMeetings = memberService.getMeetingsForMember(id, pageable);
 
         return ResponseEntity.ok(memberMeetings);
+    }
+
+    @GetMapping("/{id}/title")
+    public ResponseEntity<String> getMeetingTitle(@PathVariable Long id) {
+        Meeting meeting = meetingService.getMeetingById(id);
+        return ResponseEntity.ok(meeting.getTitle());
     }
 
 }

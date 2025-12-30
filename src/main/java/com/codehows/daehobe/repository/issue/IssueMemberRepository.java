@@ -35,4 +35,5 @@ public interface IssueMemberRepository extends JpaRepository<IssueMember,Long> {
     Page<IssueMember> findByMemberId(@Param("memberId") Long memberId, Pageable pageable);
 
 
+    Optional<IssueMember> findByIssueIdAndMemberId(Long id, Long memberId);
 }

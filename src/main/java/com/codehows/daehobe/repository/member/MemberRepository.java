@@ -24,8 +24,8 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
         jp.name            AS jobPositionName,
         d.name             AS departmentName
     FROM member m
-    JOIN job_position jp ON m.job_position_id = jp.job_position_id
-    JOIN department d    ON m.department_id = d.department_id
+    LEFT JOIN job_position jp ON m.job_position_id = jp.job_position_id
+    LEFT JOIN department d    ON m.department_id = d.department_id
     WHERE m.name LIKE CONCAT('%', :keyword, '%')
       AND m.is_employed = true
     LIMIT 10

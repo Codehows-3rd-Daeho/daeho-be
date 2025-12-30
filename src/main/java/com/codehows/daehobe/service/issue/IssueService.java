@@ -11,13 +11,10 @@ import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
 import com.codehows.daehobe.dto.issue.IssueMemberDto;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
-import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
-import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.entity.notification.SetNotification;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
@@ -93,48 +90,43 @@ public class IssueService {
 
         // 알림 발송
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
-        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isIssueCreated()) {
-            for (IssueMemberDto memberDto : issueMemberDtos) {
-                // 알림 발송
-                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("새 이슈가 등록되었습니다 \n" + saveIssue.getTitle());
-                messageDto.setUrl("/issue/" + saveIssue.getId()); // 클릭 시 이동할 URL
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty() && settingdto.isIssueCreated()) {
+            notificationService.notifyMembers(issueMemberDtos.stream()
+                            .map(IssueMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "새 이슈가 등록되었습니다 \n" + saveIssue.getTitle(),
+                    "/issue/" + saveIssue.getId()
+            );
         }
 
         return saveIssue;
     }
 
     public IssueDto getIssueDtl(Long id, Long memberId) {
-        // 이슈
-        Issue issue = getIssueById(id);
-        // 해당 이슈의 모든 참여자
-        List<IssueMember> issueMembers = issueMemberService.getMembers(issue);
-        // 주관자
+
+        Issue issue = issueRepository.findDetailById(id)
+                .orElseThrow(() -> new RuntimeException("이슈가 존재하지 않습니다."));
+
+        List<IssueMember> issueMembers = issue.getIssueMembers();
+
         IssueMember host = issueMembers.stream()
                 .filter(IssueMember::isHost)
                 .findFirst()
                 .orElse(null);
 
-        // 이슈 파일
-        List<FileDto> fileDtoList = fileService.getIssueFiles(id);
-        // 부서들
-        List<String> departmentNames = issueDepartmentService.getDepartmentName(issue);
-
-        // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
         boolean isEditPermitted = issueMembers.stream()
-                .filter(im -> im.getMember().getId().equals(memberId))
-                .anyMatch(IssueMember::isPermitted);
+                .anyMatch(im ->
+                        im.getMember().getId().equals(memberId) && im.isPermitted()
+                );
 
-        // 참여자
         List<IssueMemberDto> participantList = issueMembers.stream()
                 .map(IssueMemberDto::fromEntity)
                 .toList();
+
+        List<FileDto> fileDtoList = fileService.getIssueFiles(id);
+        List<String> departmentNames =
+                issueDepartmentService.getDepartmentName(issue);
 
         return IssueDto.fromEntity(
                 issue,
@@ -142,13 +134,13 @@ public class IssueService {
                 departmentNames,
                 fileDtoList,
                 isEditPermitted,
-                participantList);
-
+                participantList
+        );
     }
 
     // 이슈 조회
     public List<IssueFormDto> getIssueInMeeting() {
-        List<Issue> issues = issueRepository.findAllByIsDelFalse();
+        List<Issue> issues = issueRepository.findAllByIsDelFalseAndStatus(Status.IN_PROGRESS);
 
         return issues.stream()
                 .map(issue -> convertToDto(issue)) // 변환 메서드 호출
@@ -158,7 +150,7 @@ public class IssueService {
     // 선택된 이슈 조회
     public IssueFormDto getSelectedINM(Long id) {
         Issue issue = issueRepository.findByIdAndIsDelFalseAndStatus(id, Status.IN_PROGRESS)
-                .orElseThrow(() -> new RuntimeException("삭제되지 않은 이슈가 존재하지 않습니다."));
+                .orElseThrow(() -> new RuntimeException("삭제되지 않았거나 진행중인 이슈가 아닙니다."));
 
         return convertToDto(issue);
     }
@@ -173,9 +165,7 @@ public class IssueService {
     }
 
     public void updateReadStatus(Long id, Long memberId) {
-        Member member = memberService.getMemberById(memberId);
-        Issue issue = getIssueById(id);
-        IssueMember issueMember = issueMemberService.getMember(issue, member);
+        IssueMember issueMember = issueMemberService.findByIssueIdAndMemberId(id, memberId);
         if (issueMember.isRead()) {
             return;
         }
@@ -215,16 +205,14 @@ public class IssueService {
         // 상태 변경 알림
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
         if (!beforeStatus.equals(afterStatus) && issueMemberDtos != null && settingdto.isIssueStatus()) {
-            for (IssueMemberDto memberDto : issueMemberDtos) {
-                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("이슈 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
-                messageDto.setUrl("/issue/" + issue.getId());
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+            notificationService.notifyMembers(issueMemberDtos.stream()
+                            .map(IssueMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "이슈 상태가 변경되었습니다 \n" +
+                            beforeStatus.getLabel() + " → " + afterStatus.getLabel(),
+                    "/issue/" + issue.getId()
+            );
         }
 
         return issue;
@@ -322,6 +310,5 @@ public class IssueService {
                 .map(this::toIssueListDto)
                 .toList();
     }
-
 
 }

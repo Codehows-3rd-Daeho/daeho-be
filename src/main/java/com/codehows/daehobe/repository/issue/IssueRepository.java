@@ -57,4 +57,18 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     // 완료 (최근 7일)
     @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :setDate AND i.isDel = false ORDER BY i.endDate DESC")
     List<Issue> findRecentCompleted(@Param("setDate") LocalDate setDate);
+
+    List<Issue> findAllByIsDelFalseAndStatus(Status status);
+
+    // 이슈 상세 조회
+    @Query("""
+                SELECT DISTINCT i
+                FROM Issue i
+                JOIN FETCH i.category c
+                LEFT JOIN FETCH i.issueMembers im
+                LEFT JOIN FETCH im.member m
+                LEFT JOIN FETCH m.jobPosition jp
+                WHERE i.id = :issueId
+            """)
+    Optional<Issue> findDetailById(@Param("issueId") Long issueId);
 }

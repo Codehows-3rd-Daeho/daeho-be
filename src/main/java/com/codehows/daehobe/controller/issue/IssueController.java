@@ -1,8 +1,5 @@
 package com.codehows.daehobe.controller.issue;
 
-import com.codehows.daehobe.aop.TrackChanges;
-import com.codehows.daehobe.constant.ChangeType;
-import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.issue.IssueDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
@@ -192,6 +189,13 @@ public class IssueController {
             e.printStackTrace();
             return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
         }
+    }
+
+    // id로 제목 받기
+    @GetMapping("/{id}/title")
+    public ResponseEntity<String> getIssueTitle(@PathVariable Long id) {
+        Issue issue = issueService.getIssueById(id);
+        return ResponseEntity.ok(issue.getTitle());
     }
 
 }

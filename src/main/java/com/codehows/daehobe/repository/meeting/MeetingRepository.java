@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     Page<Meeting> findByIsDelFalse(Pageable pageable);
@@ -21,5 +22,16 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             LocalDateTime end
     );
 
+    // 기존 상세 조회
+    @Query("""
+            SELECT DISTINCT m
+            FROM Meeting m
+            JOIN FETCH m.category c
+            LEFT JOIN FETCH m.meetingMembers mm
+            LEFT JOIN FETCH mm.member mem
+            LEFT JOIN FETCH mem.jobPosition jp
+            WHERE m.id = :meetingId
+            """)
+    Optional<Meeting> findDetailById(@Param("meetingId") Long meetingId);
 
 }

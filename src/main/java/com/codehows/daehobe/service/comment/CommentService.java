@@ -46,7 +46,7 @@ public class CommentService {
 
     // 이슈 ==========================================
     // 이슈 댓글 호출
-    public  Page<CommentDto> getCommentsByIssueId(Long issueId, Pageable pageable) {
+    public Page<CommentDto> getCommentsByIssueId(Long issueId, Pageable pageable) {
         Page<Comment> comments = commentRepository.findByTargetIdAndTargetTypeAndIsDelFalse(issueId, TargetType.ISSUE, pageable);
         return comments.map(this::toCommentDto);
     }
@@ -67,16 +67,14 @@ public class CommentService {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
 
             // 멘션 알림 발송
-            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
-            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
-            mentionMessageDto.setUrl("/issue/" + issueId);
-
-            for (Long mentionedId : dto.getMentionedMemberIds()) {
-                if (!mentionedId.equals(memberId)) { // 작성자 제외
-                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
-                    // db에 저장
-                    notificationService.saveNotification(mentionedId, mentionMessageDto);
-                }
+            SetNotificationDto settingdto = setNotificationService.getSetting(); // 알림 설정
+            if (settingdto.isCommentMention()) {
+                notificationService.notifyMembers(
+                        dto.getMentionedMemberIds(),   // 멘션된 사람만
+                        memberId,                      // 작성자
+                        writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent(),
+                        "/issue/" + issueId
+                );
             }
         }
 
@@ -89,7 +87,7 @@ public class CommentService {
 
     // 회의 ==================================
     // 회의 댓글 호출
-    public  Page<CommentDto> getCommentsByMeetingId(Long meetingId, Pageable pageable) {
+    public Page<CommentDto> getCommentsByMeetingId(Long meetingId, Pageable pageable) {
         Page<Comment> comments = commentRepository.findByTargetIdAndTargetTypeAndIsDelFalse(meetingId, TargetType.MEETING, pageable);
         return comments.map(this::toCommentDto);
     }
@@ -106,21 +104,18 @@ public class CommentService {
                 dto.getContent(),
                 writer);
 
-        SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
-        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty() && settingdto.isCommentMention()) {
+        if (dto.getMentionedMemberIds() != null && !dto.getMentionedMemberIds().isEmpty()) {
             mentionService.saveMentions(saved, dto.getMentionedMemberIds());
 
             // 멘션 알림 발송
-            KafkaNotificationMessageDto mentionMessageDto = new KafkaNotificationMessageDto();
-            mentionMessageDto.setMessage(writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent());
-            mentionMessageDto.setUrl("/meeting/" + meetingId);
-
-            for (Long mentionedId : dto.getMentionedMemberIds()) {
-                if (!mentionedId.equals(memberId)) { // 작성자 제외
-                    notificationService.sendNotification(String.valueOf(mentionedId), mentionMessageDto);
-                    // db에 저장
-                    notificationService.saveNotification(mentionedId, mentionMessageDto);
-                }
+            SetNotificationDto settingdto = setNotificationService.getSetting(); // 알림 설정
+            if (settingdto.isCommentMention()) {
+                notificationService.notifyMembers(
+                        dto.getMentionedMemberIds(),   // 멘션된 사람만
+                        memberId,                      // 작성자
+                        writer.getName() + "님이 당신을 멘션했습니다 \n" + saved.getContent(),
+                        "/meeting/" + meetingId
+                );
             }
         }
 
@@ -132,7 +127,6 @@ public class CommentService {
     }
 
     // 수정
-
 
 
     // ==============================
@@ -152,7 +146,7 @@ public class CommentService {
         List<CommentMentionDto> mentions =
                 mentionService.getMentionsByComment(comment);
 
-        return CommentDto.fromComment(comment,writerName, writerJPName, fileList, writer.getId(), mentions);
+        return CommentDto.fromComment(comment, writerName, writerJPName, fileList, writer.getId(), mentions);
     }
 
     // 등록
