@@ -2,6 +2,8 @@ package com.codehows.daehobe.config.SpringSecurity;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -14,7 +16,7 @@ import java.io.IOException;
  *              커스텀 `AuthenticationEntryPoint` 구현체입니다.
  *              JWT 토큰 인증 실패 시 HTTP 401 Unauthorized 응답을 클라이언트에 반환합니다.
  */
-
+//인증 (401)
 @Component
 public class AuthEntryPoint implements AuthenticationEntryPoint {
     @Override
@@ -28,19 +30,26 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
 
-        String message =
-                authException.getMessage() != null
-                        ? authException.getMessage()
-                        : "인증에 실패했습니다.";
+        //UserDetailsServiceImpl의 진짜 예외
+        //Throwable: 던질 수 있는 모든 오류와 예외의 최상위 클래스
+        Throwable cause = authException.getCause();
+
+        String message;
+
+        if (cause instanceof DisabledException) {
+            message = "퇴사 처리된 계정입니다.";
+        } else if (authException instanceof BadCredentialsException) {
+            message = "아이디 또는 비밀번호가 올바르지 않습니다.";
+        } else {
+            message = "아이디 또는 비밀번호가 올바르지 않습니다.";
+        }
+
 
         response.getWriter().write("""
         {
           "message": "%s"
         }
         """.formatted(message));
-
-
-
 
 
     }
