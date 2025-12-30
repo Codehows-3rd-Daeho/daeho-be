@@ -22,8 +22,6 @@ public class STTController {
     public ResponseEntity<?> getSTTs(@PathVariable Long id, Authentication authentication) {
         Long memberId = Long.valueOf(authentication.getName());
         List<STTDto> stts = sttService.getSTTsByMeetingId(id, memberId);
-        if (stts.isEmpty())
-            return ResponseEntity.status(404).body("해당 회의에 STT가 존재하지 않습니다.");
         return ResponseEntity.ok(stts);
     }
 
