@@ -181,6 +181,10 @@ public class CommentService {
         // 1. 내용 업데이트
         comment.update(dto);
 
+        if (dto.getMentionedMemberIds() != null) {
+            mentionService.updateMentions(comment, dto.getMentionedMemberIds());
+        }
+
         // 3. 파일 수정
         if ((newFiles != null && !newFiles.isEmpty()) || (removeFileIds != null && !removeFileIds.isEmpty())) {
             fileService.updateFiles(id, newFiles, removeFileIds, TargetType.COMMENT);
