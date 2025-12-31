@@ -70,8 +70,20 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
       AND (:memberId IS NULL OR EXISTS (SELECT 1 FROM IssueMember im2 WHERE im2.issue = i AND im2.member.id = :memberId))
       
       /* 기간 필터 */
-      AND (:#{#filter.startDate} IS NULL OR i.startDate >= CAST(:#{#filter.startDate} AS timestamp))
-      AND (:#{#filter.endDate} IS NULL OR i.endDate <= CAST(:#{#filter.endDate} AS timestamp))
+     AND (
+            /* 1) 시작일, 종료일 둘 다 없는 경우 → 기간 조건 없이 전체 조회 */
+         (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NULL)
+            /* 2) 시작일만 있는 경우
+                → 검색 시작일 이후까지 진행되는 이슈만 조회 */
+         OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL AND i.endDate >= :#{#filter.startDate})
+            /* 3) 종료일만 있는 경우
+                → 검색 종료일 이전에 시작한 이슈만 조회 */
+         OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL AND i.startDate <= :#{#filter.endDate})
+            /* 4) 시작일과 종료일 모두 있는 경우
+                → 이슈 기간과 검색 기간이 하루라도 겹치면 포함 */
+         OR (i.startDate <= :#{#filter.endDate} AND i.endDate >= :#{#filter.startDate})
+     )
+     
     ORDER BY 
         CASE WHEN :status = 'COMPLETED' THEN i.endDate END DESC,
         CASE WHEN :status != 'COMPLETED' OR :status IS NULL THEN i.endDate END ASC
