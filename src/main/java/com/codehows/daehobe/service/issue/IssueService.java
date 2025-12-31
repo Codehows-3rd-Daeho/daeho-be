@@ -16,7 +16,6 @@ import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import com.codehows.daehobe.service.masterData.SetNotificationService;
-import com.codehows.daehobe.service.member.MemberService;
 import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -39,7 +38,6 @@ public class IssueService {
     private final IssueDepartmentService issueDepartmentService;
     private final IssueMemberService issueMemberService;
     private final CategoryService categoryService;
-    private final MemberService memberService;
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
 
@@ -215,38 +213,54 @@ public class IssueService {
         return issue;
     }
 
-    // 이슈 전체 조회(삭제X)
-    public Page<IssueListDto> findAll(IssueFilterDto filter, Pageable pageable
-    ) {
-        Page<Issue> issues = issueRepository.search(filter, pageable);
 
-        return issues.map(this::toIssueListDto);
+    // 1. 칸반: 진행중
+    public List<IssueListDto> getInProgress(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, null);
     }
 
-
-    // 칸반 조회 - 진행중
-    public List<IssueListDto> getInProgress(IssueFilterDto filter) {
-        return issueRepository.findInProgressWithFilter(filter)
-                .stream()
-                .map(this::toIssueListDto)
-                .toList();
+    // 2. 칸반: 미결
+    public List<IssueListDto> getDelayed(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, null);
     }
 
-    // 미결
-    public List<IssueListDto> getDelayed(IssueFilterDto filter) {
-        return issueRepository.findDelayedWithFilter(filter)
-                .stream()
-                .map(this::toIssueListDto)
-                .toList();
+    // 3. 칸반: 완료 (최근 7일)
+    public List<IssueListDto> getCompleted(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), null);
     }
 
-    // 완료(최근 7일)
-    public List<IssueListDto> getCompleted(IssueFilterDto filter) {
+    // 4. 일반 리스트 조회 (전체)
+    public Page<IssueListDto> findAll(FilterDto filter, Pageable pageable) {
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, null, pageable)
+                .map(this::toIssueListDto);
+    }
+
+    // ========================== 나의 업무 ==========================
+
+    // 1. 나의 업무 칸반: 진행중
+    public List<IssueListDto> getInProgressForMember(Long memberId, FilterDto filter) {
+        // memberId를 파라미터로 전달하여 해당 사용자가 참여한 이슈만 필터링
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId);
+    }
+
+    // 2. 나의 업무 칸반: 미결 (기한 만료)
+    public List<IssueListDto> getDelayedForMember(Long memberId, FilterDto filter) {
+        // isDelayed = true 로 전달하여 기한 지난 건만 필터링
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId);
+    }
+
+    // 3. 나의 업무 칸반: 완료 (최근 7일)
+    public List<IssueListDto> getCompletedForMember(Long memberId, FilterDto filter) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return issueRepository.findRecentCompletedWithFilter(setDate, filter)
-                .stream()
+        return getFilteredIssueList(filter, Status.COMPLETED, false, setDate, memberId);
+    }
+
+    // 4. 나의 업무 리스트 (페이징)
+    public List<IssueListDto> getIssuesForMember(Long memberId, FilterDto filter, Pageable pageable) {
+        // Repository의 통합 쿼리를 직접 호출하여 페이징 결과를 가져옴
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, pageable)
                 .map(this::toIssueListDto)
-                .toList();
+                .getContent();
     }
 
     // 리스트 공통부분(Entity -> Dto, 주관자 정보, 부서 정보 )
@@ -260,43 +274,17 @@ public class IssueService {
         return IssueListDto.fromEntity(issue, departmentName, hostName, hostJPName);
     }
 
+    // 공통 호출 메서드 (내부용)
+    private List<IssueListDto> getFilteredIssueList(FilterDto filter, Status status, boolean isDelayed, LocalDate setDate, Long memberId) {
+        return issueRepository.findIssuesWithFilter(filter, status, isDelayed, setDate, memberId, Pageable.unpaged())
+                .getContent()
+                .stream()
+                .map(this::toIssueListDto)
+                .toList();
+    }
+
     // issueId로 이슈 조회
     public Issue getIssueById(Long issueId) {
         return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
     }
-
-    // ================================================나의 업무=================================================================
-
-    // memberId가 참여한 이슈만 추출(공통 로직)
-    public List<IssueListDto> getIssuesForMember(Long memberId, List<Issue> issues) {
-        return issues.stream()
-                .filter(issue -> issueMemberService.isParticipant(memberId, issue)) // 참여자만 필터
-                .map(this::toIssueListDto) // DTO 변환
-                .toList();
-    }
-
-    // 진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getInProgressForMember(Long memberId, IssueFilterDto filter) {
-        return getIssuesForMember(memberId, issueRepository.findInProgressWithFilter(filter));
-    }
-
-    // 지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getDelayedForMember(Long memberId, IssueFilterDto filter) {
-        return getIssuesForMember(memberId, issueRepository.findDelayedWithFilter(filter));
-    }
-
-    // 완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getCompletedForMember(Long memberId, IssueFilterDto filter) {
-        LocalDate setDate = LocalDate.now().minusDays(7);
-        return getIssuesForMember(memberId, issueRepository.findRecentCompletedWithFilter(setDate, filter));
-    }
-
-    // 이슈 리스트
-    // 퀴리로 참여자 필터 후 페이징
-    public List<IssueListDto> getIssuesForMember(Long memberId, IssueFilterDto filter, Pageable pageable) {
-
-        Page<Issue> issues = issueRepository.findMyIssuesWithFilter(memberId, filter, pageable);
-        return issues.map(this::toIssueListDto).stream().toList();
-    }
-
 }

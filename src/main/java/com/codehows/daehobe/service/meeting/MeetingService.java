@@ -6,6 +6,7 @@ import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.dto.issue.FilterDto;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
@@ -261,14 +262,8 @@ public class MeetingService {
     }
 
     // 회의 조회
-    public Page<MeetingListDto> findAll(String keyword, Pageable pageable) {
-        Page<Meeting> meetings;
-        if (keyword == null || keyword.trim().isEmpty()) {
-            meetings = meetingRepository.findByIsDelFalse(pageable);
-        } else {
-            meetings = meetingRepository.searchByKeyword(keyword.trim(), pageable);
-        }
-
+    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable) {
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, null, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 
@@ -341,11 +336,8 @@ public class MeetingService {
     }
 
     // 나의 업무 회의 조회 + 검색
-    public Page<MeetingListDto> getMeetingsForMember(Long memberId, String keyword, Pageable pageable) {
-        String kw = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
-
-        Page<Meeting> meetings = meetingRepository.searchMyMeetings(memberId, kw, pageable);
-
+    public Page<MeetingListDto> getMeetingsForMember(Long memberId, FilterDto filter, Pageable pageable) {
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 }
