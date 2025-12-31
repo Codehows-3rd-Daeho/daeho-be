@@ -55,7 +55,7 @@ public class STTController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteSTT(@PathVariable Long id) {
         sttService.deleteSTT(id);
-        return ResponseEntity.noContent().build(); // 204 반환
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/recording/start")

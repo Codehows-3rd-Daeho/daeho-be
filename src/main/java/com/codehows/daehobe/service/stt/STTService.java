@@ -33,8 +33,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.codehows.daehobe.config.webpush.RedisConfig.STT_TASK_CHANNEL;
-import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_PROCESSING_SET;
-import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_STATUS_HASH_PREFIX;
+import static com.codehows.daehobe.service.stt.SttTaskProcessor.*;
 
 @Service
 @RequiredArgsConstructor
@@ -98,10 +97,13 @@ public class STTService {
 
     @Transactional
     public void deleteSTT(Long id) {
-        if (!sttRepository.existsById(id)) {
-            throw new RuntimeException("STT가 존재하지 않습니다.");
-        }
-        sttRepository.deleteById(id);
+        STT stt = sttRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        File savedFile = fileService.getSTTFile(stt.getId());
+        fileService.updateFiles(id, null, List.of(savedFile.getFileId()), TargetType.STT);
+        sttRepository.delete(stt);
+        redisTemplate.opsForSet().remove(STT_PROCESSING_SET, String.valueOf(id));
+        redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(id));
+        redisTemplate.delete(STT_STATUS_HASH_PREFIX + id);
     }
 
     @Transactional
