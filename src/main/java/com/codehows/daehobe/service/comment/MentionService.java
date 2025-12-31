@@ -58,5 +58,8 @@ public class MentionService {
         }
     }
 
+    public List<Long> getMentionedMemberIds(Long commentId) {
+        return mentionRepository.findMemberIdsByCommentId(commentId);
+    }
 
 }

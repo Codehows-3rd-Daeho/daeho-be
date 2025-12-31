@@ -30,7 +30,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -149,7 +151,7 @@ public class CommentService {
         List<CommentMentionDto> mentions =
                 mentionService.getMentionsByComment(comment);
 
-        return CommentDto.fromComment(comment,writerName, writerJPName,profileDto, fileList, writer.getId(), mentions);
+        return CommentDto.fromComment(comment, writerName, writerJPName, profileDto, fileList, writer.getId(), mentions);
     }
 
     // 등록
@@ -178,8 +180,42 @@ public class CommentService {
         // 1. 내용 업데이트
         comment.update(dto);
 
+        // 2. 멘션 처리
         if (dto.getMentionedMemberIds() != null) {
-            mentionService.updateMentions(comment, dto.getMentionedMemberIds());
+            // 2-1. 기존 멘션 조회
+            List<Long> beforeMentionIds =
+                    mentionService.getMentionedMemberIds(comment.getId());
+
+            List<Long> afterMentionIds = dto.getMentionedMemberIds();
+
+            // 2-2. 새로 추가된 멘션만 계산
+            Set<Long> newMentionIds = new HashSet<>(afterMentionIds);
+            newMentionIds.removeAll(beforeMentionIds);
+
+            // 2-3. 멘션 DB 갱신 (전체 삭제 → 재생성)
+            mentionService.updateMentions(comment, afterMentionIds);
+
+            // 2-4. 멘션 알림 발송
+            if (!newMentionIds.isEmpty()) {
+                SetNotificationDto settingdto = setNotificationService.getSetting();
+                if (settingdto.isCommentMention()) {
+                    Member writer = comment.getMember();
+                    String targetUrl =
+                            comment.getTargetType() == TargetType.ISSUE
+                                    ? "/issue/" + comment.getTargetId()
+                                    : "/meeting/" + comment.getTargetId();
+
+                    notificationService.notifyMembers(
+                            List.copyOf(newMentionIds),           // 새로 추가된 멘션만
+                            writer.getId(),                       // 작성자
+                            writer.getName() + "님이 당신을 멘션했습니다 \n"
+                                    + comment.getContent(),
+                            targetUrl
+                    );
+                }
+            }
+
+
         }
 
         // 3. 파일 수정
