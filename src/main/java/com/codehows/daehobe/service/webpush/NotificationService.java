@@ -27,6 +27,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+
 /**
  * @class NotificationService
  * @description 알림 메시지를 Kafka 토픽에 발행하는 서비스입니다.
@@ -90,6 +92,25 @@ public class NotificationService {
                 .isRead(false)
                 .build();
         notificationRepository.save(notification);
+    }
+
+    // 알림 전송 및 저장 공통 로직
+    public void notifyMembers(
+            Collection<Long> targetMemberIds,
+            Long writerId,
+            String message,
+            String url
+    ) {
+        KafkaNotificationMessageDto dto = new KafkaNotificationMessageDto();
+        dto.setMessage(message);
+        dto.setUrl(url);
+
+        for (Long targetId : targetMemberIds) {
+            if (targetId.equals(writerId)) continue; // 작성자 제외
+
+            saveNotification(targetId, dto); // 알림 저장
+            sendNotification(String.valueOf(targetId), dto); // 알림 발송
+        }
     }
 
     // 알림 조회 - 최신순

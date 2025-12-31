@@ -1,5 +1,6 @@
 package com.codehows.daehobe.dto.stt;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,8 +13,11 @@ public class SummaryResponseDto {
 
     private String rid;
     private String status;
-    private int progress;
+    private Integer progress;
     private String title;
+    private boolean completed;
+    private String summaryText;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private List<Minute> minutes;
 
     public boolean isCompleted() {
@@ -26,22 +30,33 @@ public class SummaryResponseDto {
 
         StringBuilder sb = new StringBuilder();
 
+        // 메인 제목 (## H2 레벨)
         if (title != null) {
-            sb.append(title).append("\n\n");
+            sb.append("## ").append(title).append("\n\n");
         }
 
         for (Minute minute : minutes) {
-            sb.append("■ ").append(minute.getTitle()).append("\n");
+            // 섹션 제목 (### H3 레벨)
+            String sectionTitle = minute.getTitle();
+            sb.append("### ").append(sectionTitle).append("\n\n");
 
             for (Bullet bullet : minute.getBullets()) {
-                sb.append(bullet.isImportant() ? "⭐ " : "- ");
-                sb.append(bullet.getText()).append("\n");
+                String text = bullet.getText();
+
+                if (bullet.isImportant()) {
+                    // 중요한 항목: 굵은 글씨 + 불릿
+                    sb.append("- **").append(text).append("**\n");
+                } else {
+                    // 일반 항목: 일반 불릿
+                    sb.append("- ").append(text).append("\n");
+                }
             }
-            sb.append("\n");
+            sb.append("\n"); // 섹션 간 여백
         }
 
         return sb.toString().trim();
     }
+
 
     @Getter
     @Setter

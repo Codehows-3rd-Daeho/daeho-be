@@ -11,4 +11,6 @@ public interface FileRepository extends JpaRepository<File,Long> {
     List<File> findByTargetIdAndTargetType(Long id, TargetType targetType);
 
     Optional<File> findFirstByTargetIdAndTargetType(Long id, TargetType targetType);
+
+    List<File> findByTargetIdInAndTargetType(List<Long> ids, TargetType targetType);
 }

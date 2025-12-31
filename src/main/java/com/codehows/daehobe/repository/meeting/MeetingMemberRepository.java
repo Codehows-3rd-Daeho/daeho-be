@@ -37,7 +37,8 @@ public interface MeetingMemberRepository extends JpaRepository<MeetingMember, Lo
 
     @Query("SELECT mm FROM MeetingMember mm " +
             "WHERE mm.meeting.startDate BETWEEN :start AND :end " +
-            "AND mm.member.id = :memberId")
+            "AND mm.member.id = :memberId " +
+            "AND mm.meeting.isDel = false")
     List<MeetingMember> findMeetingsByMemberAndDate(@Param("memberId") Long memberId,
                                               @Param("start") LocalDateTime start,
                                               @Param("end") LocalDateTime end);

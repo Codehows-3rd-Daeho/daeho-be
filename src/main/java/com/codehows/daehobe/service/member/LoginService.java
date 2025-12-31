@@ -1,10 +1,13 @@
 package com.codehows.daehobe.service.member;
 
 import com.codehows.daehobe.config.jwt.JwtService;
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.member.LoginDto;
 import com.codehows.daehobe.dto.member.LoginResponseDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.member.MemberRepository;
+import com.codehows.daehobe.service.file.FileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,6 +24,7 @@ public class LoginService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final MemberRepository memberRepository;
+    private final FileService fileService;
 
     /**
      * 로그인 처리 후 JWT 발급
@@ -51,10 +55,13 @@ public class LoginService {
                 .orElse(null);
 
         // 5. 최종 반환된 Authentication(인증된 유저 정보)를 기반으로 JWT TOKEN 발급
-        String jwtToken = "Bearer " + jwtService.generateToken(authentication.getName(),role);
+        String jwtToken = "Bearer " + jwtService.generateToken(authentication.getName(), role);
 
         Member member = memberRepository.findByLoginId(loginDto.getLoginId())
                 .orElseThrow(() -> new RuntimeException("회원 없음"));
+
+        File file = fileService.findFirstByTargetIdAndTargetType(member.getId(), TargetType.MEMBER);
+
 
         return LoginResponseDto.builder()
                 .token(jwtToken)
@@ -64,6 +71,11 @@ public class LoginService {
                         Optional.ofNullable(member.getJobPosition())
                                 .map(job -> job.getName())
                                 .orElse("") // null이면 빈 문자열로 대체
+                )
+                .profileUrl(
+                        Optional.ofNullable(file)
+                                .map(File::getPath)
+                                .orElse("")// null이면 빈 문자열로 대체
                 )
                 .role(String.valueOf(member.getRole()))
                 .build();

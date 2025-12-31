@@ -2,6 +2,7 @@ package com.codehows.daehobe.dto.comment;
 
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.comment.Comment;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.member.Member;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -44,11 +45,14 @@ public class CommentDto {
     // 멘션
     private List<CommentMentionDto> mentions;
 
+    //프로필
+    private String profileUrl;
+
 
     @JsonProperty("isDel")
     private Boolean del;
 
-    public static CommentDto fromComment(Comment comment,String writerName, String writerJPName, List<FileDto> fileList, Long writerMemberId, List<CommentMentionDto> mentions) {
+    public static CommentDto fromComment(Comment comment, String writerName, String writerJPName, FileDto profileDto, List<FileDto> fileList, Long writerMemberId, List<CommentMentionDto> mentions) {
 
 
         return CommentDto.builder()
@@ -60,6 +64,7 @@ public class CommentDto {
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
                 .mentions(mentions)
+                .profileUrl(profileDto != null ? profileDto.getPath() : null)
                 .fileList(fileList)
                 .del(comment.isDel())
                 .build();

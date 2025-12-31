@@ -1,7 +1,10 @@
 package com.codehows.daehobe.repository.member;
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.dto.comment.MentionMemberDto;
+import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.entity.member.Member;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +20,7 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
 
     int countByJobPositionId(Long id);
 
+    // 멘션 회원 검색
     @Query(value = """
     SELECT
         m.member_id        AS id,
@@ -24,8 +28,8 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
         jp.name            AS jobPositionName,
         d.name             AS departmentName
     FROM member m
-    JOIN job_position jp ON m.job_position_id = jp.job_position_id
-    JOIN department d    ON m.department_id = d.department_id
+    LEFT JOIN job_position jp ON m.job_position_id = jp.job_position_id
+    LEFT JOIN department d    ON m.department_id = d.department_id
     WHERE m.name LIKE CONCAT('%', :keyword, '%')
       AND m.is_employed = true
     LIMIT 10
@@ -35,4 +39,10 @@ public interface MemberRepository extends JpaRepository<Member,Long> {
     List<Member> findByIdIn(List<Long> memberIds);
 
     List<Member> findByIsEmployedTrue();
+
+    @Query("SELECT m FROM Member m " +
+            "JOIN FETCH m.department d " +
+            "JOIN FETCH m.jobPosition j " +
+            "WHERE (:kw IS NULL OR m.name LIKE %:kw% OR j.name LIKE %:kw% OR d.name LIKE %:kw%) ")
+    Page<Member> searchMembers(@Param("kw") String keyword, Pageable pageable);
 }

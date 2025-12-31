@@ -1,5 +1,6 @@
 package com.codehows.daehobe.entity.stt;
 
+import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.entity.BaseEntity;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import jakarta.persistence.*;
@@ -20,7 +21,13 @@ public class STT extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "rid", unique = true)
+    private String rid;
+
+    @Column(name = "summary_rid", unique = true)
+    private String summaryRid;
+
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     @Column(columnDefinition = "TEXT")
@@ -30,18 +37,34 @@ public class STT extends BaseEntity {
     @JoinColumn(name = "meeting_id", nullable = false)
     private Meeting meeting;
 
-    private Status status; // e.g., "RECORDING", "PROCESSING", "COMPLETED"
+    @Enumerated(EnumType.STRING)
+    private Status status; // e.g., "RECORDING", "PROCESSING", "SUMMARIZING", "COMPLETED"
 
-    private String tempFileName;
-
-    private Long fileId;
+    @Column(name = "chunking_cnt")
+    private int chunkingCnt;
 
     public enum Status {
-        RECORDING, PROCESSING, COMPLETED
+        RECORDING, PROCESSING, SUMMARIZING, COMPLETED
     }
 
-    //stt 변환 후 요약시 update로 값 추가
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     public void updateSummary(String summary) {
         this.summary = summary;
+    }
+
+    public void countChunk() {
+        this.chunkingCnt++;
+    }
+
+    public void updateFromDto(STTDto sttDto) {
+        this.rid = sttDto.getRid();
+        this.summaryRid = sttDto.getSummaryRid();
+        this.content = sttDto.getContent();
+        this.summary = sttDto.getSummary();
+        this.chunkingCnt = sttDto.getChunkingCnt();
+        this.status = sttDto.getStatus();
     }
 }

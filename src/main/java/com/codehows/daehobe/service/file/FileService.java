@@ -4,7 +4,7 @@ import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
-import com.codehows.daehobe.utils.AudioProcessingService;
+import com.codehows.daehobe.utils.AudioProcessor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.RandomAccessFile;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,21 +34,31 @@ public class FileService {
     @Value("${file.location}")
     private String fileLocation;
     private final FileRepository fileRepository;
-    private final AudioProcessingService audioProcessingService;
+    private final AudioProcessor audioProcessor;
 
-    public void encodeAudioFile(String savedFileName) {
-        String savedFilePath = "/" + savedFileName;
-        Path path = Paths.get(fileLocation, savedFilePath);
-        audioProcessingService.fixAudioMetadata(path);
+    public File createFile(String fileName, Long targetId, TargetType targetType) {
+        String filePath = "/file/" + fileName;
+        return fileRepository.save(File.builder()
+                .path(filePath)
+                .originalName(fileName)
+                .savedName(fileName)
+                .size(0L)
+                .targetId(targetId)
+                .targetType(targetType)
+                .build());
     }
 
-    public File appendChunk(Long targetId, String savedFileName, MultipartFile chunk, TargetType targetType, Long fileId) {
+    public File appendChunk(Long targetId, MultipartFile chunk, TargetType targetType) {
         java.io.File dir = new java.io.File(fileLocation);
-        if (!dir.exists()) dir.mkdirs();
+        if (!dir.exists() && !dir.mkdirs()) throw new RuntimeException("Unable to create directory: " + fileLocation);
 
-        String savedFilePath = "/" + savedFileName;
-        Path path = Paths.get(fileLocation, savedFilePath);
-        synchronized (savedFileName.intern()) {
+        List<File> recordingFiles = fileRepository.findByTargetIdAndTargetType(targetId, targetType);
+        if(recordingFiles.isEmpty()) {
+            throw new EntityNotFoundException("File not found");
+        }
+        File recordingFile = recordingFiles.getFirst();
+        Path path = Paths.get(fileLocation, recordingFile.getSavedName());
+        synchronized (recordingFile.getSavedName().intern()) {
             try (OutputStream os = Files.newOutputStream(path,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 os.write(chunk.getBytes());
@@ -58,21 +67,16 @@ public class FileService {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
         }
-
-        if(fileId == null) {
-            return fileRepository.save(File.builder()
-                    .path(savedFilePath)
-                    .originalName("recording-" + System.currentTimeMillis())
-                    .savedName(savedFileName)
-                    .size(chunk.getSize())
-                    .targetId(targetId)
-                    .targetType(targetType)
-                    .build());
-        }
-        File file = fileRepository.findById(fileId).orElseThrow(EntityNotFoundException::new);
-        Long size = file.addFileSize(chunk.getSize());
+        Long size = recordingFile.addFileSize(chunk.getSize());
         System.out.println("File size after chunk appended: " + size);
-        return fileRepository.save(file);
+        return fileRepository.save(recordingFile);
+    }
+
+    public void encodeAudioFile(File recordingFile) {
+        synchronized (recordingFile.getSavedName().intern()) {
+            Path path = Paths.get(fileLocation, recordingFile.getSavedName());
+            audioProcessor.fixAudioMetadata(path);
+        }
     }
 
     // 파일 업로드
@@ -150,6 +154,7 @@ public class FileService {
     public File getFileById(Long fileId) {
         return fileRepository.findById(fileId).orElseThrow(() -> new RuntimeException("파일이 존재하지 않습니다."));
     }
+
     // 이슈 파일 찾기
     public List<FileDto> getIssueFiles(Long issueId) {
         return fileRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE)
@@ -172,5 +177,19 @@ public class FileService {
                 .stream()
                 .map(FileDto::fromEntity)
                 .toList();
+    }
+
+    public File getSTTFile(Long sttId) {
+        return fileRepository.findByTargetIdAndTargetType(sttId, TargetType.STT).getFirst();
+    }
+
+    public List<File> getSTTFiles(List<Long> sttIds) {
+        return fileRepository.findByTargetIdInAndTargetType(sttIds, TargetType.STT);
+    }
+  
+    //멤버 프로필 찾기
+    public File findFirstByTargetIdAndTargetType(Long id, TargetType targetType) {
+        return fileRepository.findFirstByTargetIdAndTargetType(id, targetType)
+                .orElse(null);
     }
 }
