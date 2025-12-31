@@ -3,6 +3,7 @@ package com.codehows.daehobe.service.member;
 import com.codehows.daehobe.constant.Role;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.comment.MentionMemberDto;
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.member.MemberProfileDto;
 import com.codehows.daehobe.dto.member.PartMemberListDto;
@@ -48,7 +49,6 @@ public class MemberService {
     private final DepartmentService departmentService;
     private final PasswordEncoder passwordEncoder;
     private final FileService fileService;
-    private final FileRepository fileRepository;
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int PASSWORD_LENGTH = 8;
@@ -94,7 +94,7 @@ public class MemberService {
 
     public MemberDto getMemberDtl(Long id) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
-        File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
+        File profileFile = fileService.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER);
 
         return MemberDto.fromEntity(member, profileFile);
     }
@@ -102,8 +102,8 @@ public class MemberService {
     //마이페이지 회원 조회
     public MemberProfileDto getMemberProfile(Long id) {
         Member member = memberRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("회원이 존재하지 않습니다."));
-        File profileFile = fileRepository.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER).orElse(null);
-        ;
+        File profileFile = fileService.findFirstByTargetIdAndTargetType(id, TargetType.MEMBER);
+
         return MemberProfileDto.fromEntity(member, profileFile);
     }
 
