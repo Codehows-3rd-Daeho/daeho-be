@@ -6,23 +6,16 @@ import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
-import com.codehows.daehobe.dto.issue.IssueDto;
-import com.codehows.daehobe.dto.issue.IssueFormDto;
-import com.codehows.daehobe.dto.issue.IssueListDto;
-import com.codehows.daehobe.dto.issue.IssueMemberDto;
+import com.codehows.daehobe.dto.issue.*;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
-import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueDepartment;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.masterData.Category;
-import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.entity.notification.SetNotification;
 import com.codehows.daehobe.repository.issue.IssueRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import com.codehows.daehobe.service.masterData.SetNotificationService;
-import com.codehows.daehobe.service.member.MemberService;
 import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -45,10 +38,8 @@ public class IssueService {
     private final IssueDepartmentService issueDepartmentService;
     private final IssueMemberService issueMemberService;
     private final CategoryService categoryService;
-    private final MemberService memberService;
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
-
 
     @TrackChanges(type = ChangeType.CREATE, target = TargetType.ISSUE)
     public Issue createIssue(IssueFormDto issueFormDto, List<MultipartFile> multipartFiles, String writerId) {
@@ -93,48 +84,39 @@ public class IssueService {
 
         // 알림 발송
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
-        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isIssueCreated()) {
-            for (IssueMemberDto memberDto : issueMemberDtos) {
-                // 알림 발송
-                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("새 이슈가 등록되었습니다 \n" + saveIssue.getTitle());
-                messageDto.setUrl("/issue/" + saveIssue.getId()); // 클릭 시 이동할 URL
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+        if (issueMemberDtos != null && !issueMemberDtos.isEmpty() && settingdto.isIssueCreated()) {
+            notificationService.notifyMembers(issueMemberDtos.stream()
+                            .map(IssueMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "새 이슈가 등록되었습니다 \n" + saveIssue.getTitle(),
+                    "/issue/" + saveIssue.getId());
         }
 
         return saveIssue;
     }
 
     public IssueDto getIssueDtl(Long id, Long memberId) {
-        // 이슈
-        Issue issue = getIssueById(id);
-        // 해당 이슈의 모든 참여자
-        List<IssueMember> issueMembers = issueMemberService.getMembers(issue);
-        // 주관자
+
+        Issue issue = issueRepository.findDetailById(id)
+                .orElseThrow(() -> new RuntimeException("이슈가 존재하지 않습니다."));
+
+        List<IssueMember> issueMembers = issue.getIssueMembers();
+
         IssueMember host = issueMembers.stream()
                 .filter(IssueMember::isHost)
                 .findFirst()
                 .orElse(null);
 
-        // 이슈 파일
-        List<FileDto> fileDtoList = fileService.getIssueFiles(id);
-        // 부서들
-        List<String> departmentNames = issueDepartmentService.getDepartmentName(issue);
-
-        // 유저가 해당 게시글의 수정,삭제 권한을 갖고있는지.
         boolean isEditPermitted = issueMembers.stream()
-                .filter(im -> im.getMember().getId().equals(memberId))
-                .anyMatch(IssueMember::isPermitted);
+                .anyMatch(im -> im.getMember().getId().equals(memberId) && im.isPermitted());
 
-        // 참여자
         List<IssueMemberDto> participantList = issueMembers.stream()
                 .map(IssueMemberDto::fromEntity)
                 .toList();
+
+        List<FileDto> fileDtoList = fileService.getIssueFiles(id);
+        List<String> departmentNames = issueDepartmentService.getDepartmentName(issue);
 
         return IssueDto.fromEntity(
                 issue,
@@ -143,12 +125,11 @@ public class IssueService {
                 fileDtoList,
                 isEditPermitted,
                 participantList);
-
     }
 
     // 이슈 조회
     public List<IssueFormDto> getIssueInMeeting() {
-        List<Issue> issues = issueRepository.findAllByIsDelFalse();
+        List<Issue> issues = issueRepository.findAllByIsDelFalseAndStatus(Status.IN_PROGRESS);
 
         return issues.stream()
                 .map(issue -> convertToDto(issue)) // 변환 메서드 호출
@@ -158,7 +139,7 @@ public class IssueService {
     // 선택된 이슈 조회
     public IssueFormDto getSelectedINM(Long id) {
         Issue issue = issueRepository.findByIdAndIsDelFalseAndStatus(id, Status.IN_PROGRESS)
-                .orElseThrow(() -> new RuntimeException("삭제되지 않은 이슈가 존재하지 않습니다."));
+                .orElseThrow(() -> new RuntimeException("삭제되지 않았거나 진행중인 이슈가 아닙니다."));
 
         return convertToDto(issue);
     }
@@ -173,9 +154,7 @@ public class IssueService {
     }
 
     public void updateReadStatus(Long id, Long memberId) {
-        Member member = memberService.getMemberById(memberId);
-        Issue issue = getIssueById(id);
-        IssueMember issueMember = issueMemberService.getMember(issue, member);
+        IssueMember issueMember = issueMemberService.findByIssueIdAndMemberId(id, memberId);
         if (issueMember.isRead()) {
             return;
         }
@@ -215,16 +194,13 @@ public class IssueService {
         // 상태 변경 알림
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
         if (!beforeStatus.equals(afterStatus) && issueMemberDtos != null && settingdto.isIssueStatus()) {
-            for (IssueMemberDto memberDto : issueMemberDtos) {
-                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("이슈 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
-                messageDto.setUrl("/issue/" + issue.getId());
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+            notificationService.notifyMembers(issueMemberDtos.stream()
+                            .map(IssueMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "이슈 상태가 변경되었습니다 \n" +
+                            beforeStatus.getLabel() + " → " + afterStatus.getLabel(),
+                    "/issue/" + issue.getId());
         }
 
         return issue;
@@ -237,35 +213,54 @@ public class IssueService {
         return issue;
     }
 
-    // 이슈 전체 조회(삭제X)
-    public Page<IssueListDto> findAll(Pageable pageable) {
-        return issueRepository.findByIsDelFalse(pageable)
+
+    // 1. 칸반: 진행중
+    public List<IssueListDto> getInProgress(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, null);
+    }
+
+    // 2. 칸반: 미결
+    public List<IssueListDto> getDelayed(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, null);
+    }
+
+    // 3. 칸반: 완료 (최근 7일)
+    public List<IssueListDto> getCompleted(FilterDto filter) {
+        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), null);
+    }
+
+    // 4. 일반 리스트 조회 (전체)
+    public Page<IssueListDto> findAll(FilterDto filter, Pageable pageable) {
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, null, pageable)
                 .map(this::toIssueListDto);
     }
 
-    // 칸반 조회 - 진행중
-    public List<IssueListDto> getInProgress() {
-        return issueRepository.findInProgress()
-                .stream()
-                .map(this::toIssueListDto)
-                .toList();
+    // ========================== 나의 업무 ==========================
+
+    // 1. 나의 업무 칸반: 진행중
+    public List<IssueListDto> getInProgressForMember(Long memberId, FilterDto filter) {
+        // memberId를 파라미터로 전달하여 해당 사용자가 참여한 이슈만 필터링
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId);
     }
 
-    // 미결
-    public List<IssueListDto> getDelayed() {
-        return issueRepository.findDelayed()
-                .stream()
-                .map(this::toIssueListDto)
-                .toList();
+    // 2. 나의 업무 칸반: 미결 (기한 만료)
+    public List<IssueListDto> getDelayedForMember(Long memberId, FilterDto filter) {
+        // isDelayed = true 로 전달하여 기한 지난 건만 필터링
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId);
     }
 
-    // 완료(최근 7일)
-    public List<IssueListDto> getCompleted() {
+    // 3. 나의 업무 칸반: 완료 (최근 7일)
+    public List<IssueListDto> getCompletedForMember(Long memberId, FilterDto filter) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return issueRepository.findRecentCompleted(setDate)
-                .stream()
+        return getFilteredIssueList(filter, Status.COMPLETED, false, setDate, memberId);
+    }
+
+    // 4. 나의 업무 리스트 (페이징)
+    public List<IssueListDto> getIssuesForMember(Long memberId, FilterDto filter, Pageable pageable) {
+        // Repository의 통합 쿼리를 직접 호출하여 페이징 결과를 가져옴
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, pageable)
                 .map(this::toIssueListDto)
-                .toList();
+                .getContent();
     }
 
     // 리스트 공통부분(Entity -> Dto, 주관자 정보, 부서 정보 )
@@ -279,49 +274,17 @@ public class IssueService {
         return IssueListDto.fromEntity(issue, departmentName, hostName, hostJPName);
     }
 
-    // issueId로 이슈 조회
-    public Issue getIssueById(Long issueId) {
-        return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
-    }
-
-//    ================================================나의 업무=================================================================
-
-    //memberId가 참여한 이슈만 추출(공통 로직)
-    public List<IssueListDto> getIssuesForMember(Long memberId, List<Issue> issues) {
-        return issues.stream()
-                .filter(issue -> issueMemberService.isParticipant(memberId, issue)) // 참여자만 필터
-                .map(this::toIssueListDto) // DTO 변환
-                .toList();
-    }
-
-
-    //진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getInProgressForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findInProgress());
-    }
-
-    //지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getDelayedForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findDelayed());
-    }
-
-    //완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getCompletedForMember(Long memberId) {
-        LocalDate setDate = LocalDate.now().minusDays(7);
-        return getIssuesForMember(memberId, issueRepository.findRecentCompleted(setDate));
-    }
-
-    //이슈 리스트
-    //퀴리로 참여자 필터 후 페이징
-    public List<IssueListDto> getIssuesForMember(Long memberId, Pageable pageable) {
-
-        Page<IssueMember> issueMembers = issueMemberService.findByMemberId(memberId, pageable);
-
-        return issueMembers.getContent().stream()//stream으로 Page안의 객체를 매핑
-                .map(IssueMember::getIssue)
+    // 공통 호출 메서드 (내부용)
+    private List<IssueListDto> getFilteredIssueList(FilterDto filter, Status status, boolean isDelayed, LocalDate setDate, Long memberId) {
+        return issueRepository.findIssuesWithFilter(filter, status, isDelayed, setDate, memberId, Pageable.unpaged())
+                .getContent()
+                .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
-
+    // issueId로 이슈 조회
+    public Issue getIssueById(Long issueId) {
+        return issueRepository.findById(issueId).orElseThrow(() -> new EntityNotFoundException("이슈가 존재하지 않습니다."));
+    }
 }

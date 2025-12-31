@@ -51,6 +51,5 @@ public class AuthEntryPoint implements AuthenticationEntryPoint {
         }
         """.formatted(message));
 
-
     }
 }
