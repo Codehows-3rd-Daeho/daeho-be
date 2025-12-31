@@ -67,8 +67,6 @@ public class FileService {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
         }
-        Long size = recordingFile.addFileSize(chunk.getSize());
-        System.out.println("File size after chunk appended: " + size);
         return fileRepository.save(recordingFile);
     }
 
@@ -76,6 +74,12 @@ public class FileService {
         synchronized (recordingFile.getSavedName().intern()) {
             Path path = Paths.get(fileLocation, recordingFile.getSavedName());
             audioProcessor.fixAudioMetadata(path);
+            try {
+                long fileSize = Files.size(path);
+                recordingFile.updateFileSize(fileSize);
+            } catch (IOException e) {
+                log.error("Failed to get file size for: {}", recordingFile.getSavedName(), e);
+            }
         }
     }
 
