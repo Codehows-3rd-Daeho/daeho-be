@@ -144,7 +144,7 @@ public class CommentService {
                 : null;
 
         File profile = fileService.findFirstByTargetIdAndTargetType(comment.getMember().getId(), TargetType.MEMBER);
-        FileDto profileDto = FileDto.fromEntity(profile);
+        FileDto profileDto = profile == null ? null : FileDto.fromEntity(profile);
         List<FileDto> fileList = fileService.getCommentFiles(comment.getId());
         List<CommentMentionDto> mentions =
                 mentionService.getMentionsByComment(comment);
