@@ -238,31 +238,37 @@ public class IssueService {
     }
 
     // 이슈 전체 조회(삭제X)
-    public Page<IssueListDto> findAll(Pageable pageable) {
-        return issueRepository.findByIsDelFalse(pageable)
-                .map(this::toIssueListDto);
+    public Page<IssueListDto> findAll(String keyword, Pageable pageable) {
+        Page<Issue> issues;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            issues = issueRepository.findByIsDelFalse(pageable);
+        } else {
+            issues = issueRepository.searchByKeyword(keyword.trim(), pageable);
+        }
+
+        return issues.map(this::toIssueListDto);
     }
 
     // 칸반 조회 - 진행중
-    public List<IssueListDto> getInProgress() {
-        return issueRepository.findInProgress()
+    public List<IssueListDto> getInProgress(String keyword) {
+        return issueRepository.findInProgressWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 미결
-    public List<IssueListDto> getDelayed() {
-        return issueRepository.findDelayed()
+    public List<IssueListDto> getDelayed(String keyword) {
+        return issueRepository.findDelayedWithKeyword(keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
     }
 
     // 완료(최근 7일)
-    public List<IssueListDto> getCompleted() {
+    public List<IssueListDto> getCompleted(String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return issueRepository.findRecentCompleted(setDate)
+        return issueRepository.findRecentCompletedWithKeyword(setDate, keyword)
                 .stream()
                 .map(this::toIssueListDto)
                 .toList();
@@ -296,19 +302,19 @@ public class IssueService {
 
 
     //진행 중인 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getInProgressForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findInProgress());
+    public List<IssueListDto> getInProgressForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findInProgressWithKeyword(keyword));
     }
 
     //지연된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getDelayedForMember(Long memberId) {
-        return getIssuesForMember(memberId, issueRepository.findDelayed());
+    public List<IssueListDto> getDelayedForMember(Long memberId, String keyword) {
+        return getIssuesForMember(memberId, issueRepository.findDelayedWithKeyword(keyword));
     }
 
     //완료된 이슈 중에서 해당 멤버가 참여한 것만 추출
-    public List<IssueListDto> getCompletedForMember(Long memberId) {
+    public List<IssueListDto> getCompletedForMember(Long memberId, String keyword) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return getIssuesForMember(memberId, issueRepository.findRecentCompleted(setDate));
+        return getIssuesForMember(memberId, issueRepository.findRecentCompletedWithKeyword(setDate, keyword));
     }
 
     //이슈 리스트
@@ -322,6 +328,11 @@ public class IssueService {
                 .map(this::toIssueListDto)
                 .toList();
     }
+
+//    검색 ==============================================================================================================
+
+
+
 
 
 }

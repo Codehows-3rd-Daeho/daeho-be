@@ -265,10 +265,16 @@ public class MeetingService {
         meeting.saveMeetingMinutes(null);
     }
 
-    // 미팅 조회
-    public Page<MeetingListDto> findAll(Pageable pageable) {
-        return meetingRepository.findByIsDelFalse(pageable)
-                .map(this::toMeetingListDto);
+    // 회의 조회
+    public Page<MeetingListDto> findAll(String keyword, Pageable pageable) {
+        Page<Meeting> meetings;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            meetings = meetingRepository.findByIsDelFalse(pageable);
+        } else {
+            meetings = meetingRepository.searchByKeyword(keyword.trim(), pageable);
+        }
+
+        return meetings.map(this::toMeetingListDto);
     }
 
     //회의 캘린더 조회
@@ -338,5 +344,14 @@ public class MeetingService {
     // meetingId로 회의 조회
     public Meeting getMeetingById(Long meetingId) {
         return meetingRepository.findById(meetingId).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
+    }
+
+    // 나의 업무 회의 조회 + 검색
+    public Page<MeetingListDto> getMeetingsForMember(Long memberId, String keyword, Pageable pageable) {
+        String kw = (keyword == null || keyword.trim().isEmpty()) ? null : keyword.trim();
+
+        Page<Meeting> meetings = meetingRepository.searchMyMeetings(memberId, kw, pageable);
+
+        return meetings.map(this::toMeetingListDto);
     }
 }

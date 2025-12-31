@@ -119,19 +119,20 @@ public class MeetingController {
         }
     }
 
-    //회의 목록 조회(페이징)
+    //회의 목록 조회(페이징) + 검색
     @GetMapping("/list")
     public ResponseEntity<?> getMeetings(
+            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> dtoList = meetingService.findAll(pageable);
+            Page<MeetingListDto> dtoList = meetingService.findAll(keyword,pageable);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("이슈 조회 중 오류 발생");
+            return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
         }
     }
 
@@ -174,18 +175,22 @@ public class MeetingController {
     }
 
 
-    //나의 업무 회의 목록 조회(페이징)
+    //나의 업무 회의 목록 조회(페이징) + 검색
     @GetMapping("/mytask/{id}")
     public ResponseEntity<?> getMeetingsById(
             @PathVariable Long id,
+            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        Page<MeetingListDto> memberMeetings = memberService.getMeetingsForMember(id, pageable);
-
-        return ResponseEntity.ok(memberMeetings);
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+            Page<MeetingListDto> memberMeetings = meetingService.getMeetingsForMember(id, keyword, pageable);
+            return ResponseEntity.ok(memberMeetings);
+        } catch (Exception e) {
+                e.printStackTrace();
+                return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
+        }
     }
 
 }
