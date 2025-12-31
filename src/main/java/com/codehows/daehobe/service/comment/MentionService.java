@@ -50,5 +50,13 @@ public class MentionService {
                 .toList();
     }
 
+    public void updateMentions(Comment comment, List<Long> mentionedMemberIds) {
+        mentionRepository.deleteByComment(comment);
+
+        if (mentionedMemberIds != null && !mentionedMemberIds.isEmpty()) {
+            saveMentions(comment, mentionedMemberIds);
+        }
+    }
+
 
 }

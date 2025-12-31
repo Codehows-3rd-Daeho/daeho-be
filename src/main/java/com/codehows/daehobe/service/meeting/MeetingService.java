@@ -6,6 +6,7 @@ import com.codehows.daehobe.constant.ChangeType;
 import com.codehows.daehobe.constant.Status;
 import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.dto.file.FileDto;
+import com.codehows.daehobe.dto.issue.FilterDto;
 import com.codehows.daehobe.dto.masterData.SetNotificationDto;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
@@ -93,10 +94,10 @@ public class MeetingService {
 
         //회의 참여자
         //  1. DTO에서 참여자 이름 목록 (List<String>) 추출
-        List<MeetingMemberDto> issueMemberDtos = meetingFormDto.getMembers();
+        List<MeetingMemberDto> meetingMemberDtos = meetingFormDto.getMembers();
         //2. 참여자 저장 서비스 호출
-        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()) {
-            meetingMemberService.saveMeetingMember(saveMeeting.getId(), issueMemberDtos);
+        if (meetingMemberDtos != null && !meetingMemberDtos.isEmpty()) {
+            meetingMemberService.saveMeetingMember(saveMeeting.getId(), meetingMemberDtos);
 
         }
 
@@ -108,46 +109,55 @@ public class MeetingService {
 
         // 알림 발송
         SetNotificationDto settingdto = setNotificationService.getSetting();
-        if (issueMemberDtos != null && !issueMemberDtos.isEmpty()&& settingdto.isMeetingCreated()) {
-            for (MeetingMemberDto memberDto : issueMemberDtos) {
-                if (String.valueOf(memberDto.getId()).equals(writerId)) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("새 회의가 등록되었습니다 \n " + saveMeeting.getTitle());
-                messageDto.setUrl("/meeting/" + saveMeeting.getId());
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+        if (meetingMemberDtos != null && !meetingMemberDtos.isEmpty() && settingdto.isMeetingCreated()) {
+            notificationService.notifyMembers(meetingMemberDtos.stream()
+                            .map(MeetingMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "새 회의가 등록되었습니다 \n" + saveMeeting.getTitle(),
+                    "/meeting/" + saveMeeting.getId()
+            );
         }
 
         return saveMeeting;
     }
 
     public MeetingDto getMeetingDtl(Long id, Long memberId) {
-        // 회의
-        Meeting meeting = getMeetingById(id);
+        // Meeting 조회 (연관 엔티티 포함)
+        Meeting meeting = meetingRepository.findDetailById(id)
+                .orElseThrow(() -> new RuntimeException("회의가 존재하지 않습니다."));
+
         // 해당 회의의 모든 참여자
-        List<MeetingMember> meetingMembers = meetingMemberService.getMembers(meeting);
+        List<MeetingMember> meetingMembers = meeting.getMeetingMembers();
+
         // 주관자
         MeetingMember host = meetingMembers.stream()
                 .filter(MeetingMember::isHost)
                 .findFirst()
                 .orElse(null);
 
-        // 회의록
+        // 요청자의 수정 권한 여부
+        boolean isEditPermitted = meetingMembers.stream()
+                .anyMatch(mm -> mm.getMember().getId().equals(memberId) && mm.isPermitted());
+
+        // 참여자 DTO 변환
+        List<MeetingMemberDto> participantList = meetingMembers.stream()
+                .map(MeetingMemberDto::fromEntity)
+                .toList();
+
+        // 회의 파일
         File minutesFile = meeting.getFile();
         Long minutesFileId = (minutesFile != null) ? minutesFile.getFileId() : null;
-        // 회의록 파일 제외한 회의 파일 리스트
+
         List<FileDto> allFiles = fileService.getMeetingFiles(id);
         List<FileDto> fileList = allFiles.stream()
                 .filter(f -> !Objects.equals(f.getFileId(), minutesFileId))
                 .toList();
 
-        // 회의록
+        // 회의록 DTO
         FileDto meetingMinutes = (minutesFile != null) ? FileDto.fromEntity(minutesFile) : null;
 
-        // 부서들
+        // 부서 이름
         List<String> departmentNames = meetingDepartmentService.getDepartmentName(meeting);
 
         // 요청자의 수정 권한 여부
@@ -176,6 +186,7 @@ public class MeetingService {
                 totalSummary
         );
     }
+
 
     public void updateReadStatus(Long id, Long memberId) {
         Member member = memberService.getMemberById(memberId);
@@ -232,16 +243,14 @@ public class MeetingService {
         // 상태 변경 알림
         SetNotificationDto settingdto = setNotificationService.getSetting();// 알림 설정 가져오기
         if (!beforeStatus.equals(afterStatus) && meetingMemberDtos != null && settingdto.isMeetingStatus()) {
-            for (MeetingMemberDto memberDto : meetingMemberDtos) {
-                if (memberDto.getId().equals(Long.valueOf(writerId))) continue;
-                KafkaNotificationMessageDto messageDto = new KafkaNotificationMessageDto();
-                messageDto.setMessage("회의 상태가 변경되었습니다 \n" + beforeStatus.getLabel()+ " → " + afterStatus.getLabel());
-                messageDto.setUrl("/meeting/" + meeting.getId());
-                notificationService.sendNotification(String.valueOf(memberDto.getId()), messageDto);
-
-                // db에 저장
-                notificationService.saveNotification(memberDto.getId(), messageDto);
-            }
+            notificationService.notifyMembers(meetingMemberDtos.stream()
+                            .map(MeetingMemberDto::getId)
+                            .toList(),
+                    Long.valueOf(writerId),
+                    "회의 상태가 변경되었습니다 \n" +
+                            beforeStatus.getLabel() + " → " + afterStatus.getLabel(),
+                    "/meeting/" + meeting.getId()
+            );
         }
         return meeting;
     }
@@ -272,10 +281,10 @@ public class MeetingService {
         meeting.saveMeetingMinutes(null);
     }
 
-    // 미팅 조회
-    public Page<MeetingListDto> findAll(Pageable pageable) {
-        return meetingRepository.findByIsDelFalse(pageable)
-                .map(this::toMeetingListDto);
+    // 회의 조회
+    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable) {
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, null, pageable);
+        return meetings.map(this::toMeetingListDto);
     }
 
     //회의 캘린더 조회
@@ -283,8 +292,8 @@ public class MeetingService {
             int year, int month
     ) {
         //LocalDate로 변경
-        LocalDate startDate  = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
-        LocalDate endDate  = startDate.withDayOfMonth(startDate.lengthOfMonth()); //ex? 12월의 마지막 날을 일자 부분에 삽입 => 2025-12-31
+        LocalDate startDate = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
+        LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth()); //ex? 12월의 마지막 날을 일자 부분에 삽입 => 2025-12-31
 
         //LocalDateTime 으로 변경
         LocalDateTime startDateTime = startDate.atStartOfDay();
@@ -299,7 +308,7 @@ public class MeetingService {
     }
 
     //나의 업무 캘린더 조회
-    public List<MeetingListDto> findByDateBetweenForMember( Long memberId, int year, int month) {
+    public List<MeetingListDto> findByDateBetweenForMember(Long memberId, int year, int month) {
         LocalDateTime start = LocalDateTime.of(year, month, 1, 0, 0);
         LocalDateTime end = start.withDayOfMonth(start.toLocalDate().lengthOfMonth())
                 .withHour(23).withMinute(59).withSecond(59);
@@ -323,7 +332,6 @@ public class MeetingService {
     }
 
 
-
     // issueId로 관련 회의 조회
     public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {
         Issue issue = issueService.getIssueById(issueId);
@@ -345,5 +353,11 @@ public class MeetingService {
     // meetingId로 회의 조회
     public Meeting getMeetingById(Long meetingId) {
         return meetingRepository.findById(meetingId).orElseThrow(() -> new EntityNotFoundException("회의가 존재하지 않습니다."));
+    }
+
+    // 나의 업무 회의 조회 + 검색
+    public Page<MeetingListDto> getMeetingsForMember(Long memberId, FilterDto filter, Pageable pageable) {
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
+        return meetings.map(this::toMeetingListDto);
     }
 }

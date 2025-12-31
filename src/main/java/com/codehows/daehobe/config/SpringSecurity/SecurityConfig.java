@@ -4,7 +4,6 @@ import com.codehows.daehobe.config.jwt.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter; // JWT 토큰 생성 및 검증을 담당하는 제공자
     private final AuthEntryPoint authEntryPoint; // JWT 인증 실패 시 401 응답을 처리
+    private final AccessHandler accessHandler;// 인가, 403 응답 처리
 
     @Bean
     // Spring Security에서 보안 필터 체인을 수동 설정. HttpSecurity를 이용해서 요청 URL에 대한 보안 정책을 설정
@@ -40,7 +40,12 @@ public class SecurityConfig {
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // 인증되지 않은 사용자가 보호된 리소스에 접근할 때 JwtAuthenticationEntryPoint를 호출하여 401 Unauthorized 응답을 반환.
-                .exceptionHandling((ex) -> ex.authenticationEntryPoint(authEntryPoint))
+//                .exceptionHandling((ex) -> ex.authenticationEntryPoint(authEntryPoint))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authEntryPoint)      // 401: 인증 실패
+                        .accessDeniedHandler(accessHandler)       // 403: 인가 실패
+                )
+
 
                 // 요청 URL 별 접근 권한 설정
                 .authorizeHttpRequests(request -> request

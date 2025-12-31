@@ -54,7 +54,7 @@ public class MemberDto {
     // 프로필 이미지 url
     private String profileUrl;
 
-    public static MemberDto fromEntity(Member member, File profileFile) {
+    public static MemberDto fromEntity(Member member, File file) {
         return MemberDto.builder()
                 .id(member.getId())
                 .loginId(member.getLoginId())
@@ -65,8 +65,8 @@ public class MemberDto {
                 .email(member.getEmail())
                 .isEmployed(member.getIsEmployed())
                 .role(String.valueOf(member.getRole()))
-                .profileUrl(profileFile != null ? profileFile.getPath() : null)
-                .profileFileId(profileFile != null ? profileFile.getFileId() : null)
+                .profileUrl(file != null ? file.getPath() : null)
+                .profileFileId(file != null ? file.getFileId() : null)
                 .build();
     }
 }

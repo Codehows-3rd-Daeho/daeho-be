@@ -29,12 +29,13 @@ public class MemberController {
     // 목록 조회
     @GetMapping("/admin/member")
     public ResponseEntity<?> getMembers(
+            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MemberListDto> dtoList = memberService.findAll(pageable);
+            Page<MemberListDto> dtoList = memberService.findAll(pageable, keyword);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();

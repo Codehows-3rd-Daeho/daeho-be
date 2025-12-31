@@ -186,4 +186,10 @@ public class FileService {
     public List<File> getSTTFiles(List<Long> sttIds) {
         return fileRepository.findByTargetIdInAndTargetType(sttIds, TargetType.STT);
     }
+  
+    //멤버 프로필 찾기
+    public File findFirstByTargetIdAndTargetType(Long id, TargetType targetType) {
+        return fileRepository.findFirstByTargetIdAndTargetType(id, targetType)
+                .orElse(null);
+    }
 }

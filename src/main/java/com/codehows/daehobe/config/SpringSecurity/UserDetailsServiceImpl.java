@@ -53,7 +53,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         } else {
             // 3 DB에 유저가 존재하지 않으면 예외 발생
             // Spring Security는 이 예외를 받으면 인증 실패 처리
-            throw new UsernameNotFoundException("Member not found");
+            throw new UsernameNotFoundException("회원 없음");
         }
 
 

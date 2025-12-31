@@ -5,9 +5,9 @@ import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.issue.IssueMember;
 import com.codehows.daehobe.entity.member.Member;
 import com.codehows.daehobe.repository.issue.IssueMemberRepository;
-import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.repository.issue.IssueRepository;
-import jakarta.persistence.*;
+import com.codehows.daehobe.repository.member.MemberRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,7 +60,7 @@ public class IssueMemberService {
     }
 
     // 이슈, 멤버로 참여자 엔티티 찾기
-    public IssueMember getMember(Issue issue, Member member){
+    public IssueMember getMember(Issue issue, Member member) {
         return issueMemberRepository.findByIssueAndMember(issue, member).orElseThrow(EntityNotFoundException::new);
     }
 
@@ -73,12 +73,18 @@ public class IssueMemberService {
 //    ================================================나의 업무=================================================================
 
     //로그인 사용자 id로 해당 이슈의 참여자인지 확인
-    public boolean isParticipant(Long memberId, Issue issue ) {
+    public boolean isParticipant(Long memberId, Issue issue) {
         return getMembers(issue).stream() // issue의 모든 참여자 조회
                 .anyMatch(im -> im.getMember().getId().equals(memberId));
     }
 
     public Page<IssueMember> findByMemberId(Long memberId, Pageable pageable) {
         return issueMemberRepository.findByMemberId(memberId, pageable);
+    }
+
+    public IssueMember findByIssueIdAndMemberId(Long id, Long memberId) {
+        return issueMemberRepository.findByIssueIdAndMemberId(id, memberId)
+                .orElseThrow(() -> new EntityNotFoundException("이슈" + id + "에 참여자" + memberId + "가 존재하지 않습니다."));
+
     }
 }
