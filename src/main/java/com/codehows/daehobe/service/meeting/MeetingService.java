@@ -160,15 +160,6 @@ public class MeetingService {
         // 부서 이름
         List<String> departmentNames = meetingDepartmentService.getDepartmentName(meeting);
 
-        // 요청자의 수정 권한 여부
-        boolean isEditPermitted = meetingMembers.stream()
-                .filter(mm -> mm.getMember().getId().equals(memberId))
-                .anyMatch(MeetingMember::isPermitted);
-        // 참여자
-        List<MeetingMemberDto> participantList = meetingMembers.stream()
-                .map(MeetingMemberDto::fromEntity)
-                .toList();
-
         String totalSummary = sttService.getSTTsByMeetingId(id, memberId)
                 .stream()
                 .map(STTDto::getSummary)
