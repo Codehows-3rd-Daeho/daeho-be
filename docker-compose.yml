@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7.4
-    container_name: redis
+    container_name: redis-dh
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
@@ -19,7 +19,7 @@ services:
 
   kafka:
     image: apache/kafka:3.8.0
-    container_name: kafka
+    container_name: kafka-dh
     environment:
       # KRaft 모드 설정 (Zookeeper 없이 동작)
       KAFKA_NODE_ID: 1
@@ -28,15 +28,13 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       # 단일 브로커 설정
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_NUM_PARTITIONS: 3
-      # 클러스터 ID (선택사항, 자동 생성됨)
-      CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
     ports:
       - "9092:9092"
     volumes:
