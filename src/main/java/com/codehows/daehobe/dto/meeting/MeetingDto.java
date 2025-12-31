@@ -37,6 +37,7 @@ public class MeetingDto {
     private String categoryName;
     private List<String> departmentName;
     private FileDto meetingMinutes; // 회의록
+    private String totalSummary;
 
     @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
     private LocalDateTime createdAt;
@@ -58,7 +59,8 @@ public class MeetingDto {
             List<FileDto> fileList,
             FileDto meetingMinutes,
             boolean isEditPermitted,
-            List<MeetingMemberDto> participantList
+            List<MeetingMemberDto> participantList,
+            String totalSummary
     ) {
         // 관련 이슈 (삭제상태가 true면 null)
         Issue issue = meeting.getIssue();
@@ -91,6 +93,7 @@ public class MeetingDto {
                 .del(meeting.isDel())
                 .editPermitted(isEditPermitted)
                 .participantList(participantList)
+                .totalSummary(totalSummary)
                 .build();
     }
 

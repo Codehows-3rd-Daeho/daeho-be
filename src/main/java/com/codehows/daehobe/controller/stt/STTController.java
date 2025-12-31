@@ -6,69 +6,82 @@ import com.codehows.daehobe.dto.stt.StartRecordingRequest;
 import com.codehows.daehobe.service.stt.STTService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/stt")
 @RequiredArgsConstructor
 public class STTController {
-
     private final STTService sttService;
 
-    @PostMapping("/meeting/{id}")
-    public ResponseEntity<?> createSTT(@PathVariable Long id,
-            @RequestPart(value = "file", required = false) List<MultipartFile> multipartFiles) {
-
-        sttService.uploadSTT(id, multipartFiles);
-        return ResponseEntity.ok().build();
-
-    }
-
     @GetMapping("/meeting/{id}")
-    public ResponseEntity<?> getSTT(@PathVariable Long id) {
-        List<STTDto> stts = sttService.getSTTById(id);
-
-        // 데이터 없으면 404 반환
-        if (stts.isEmpty()) {
-            return ResponseEntity.status(404)
-                    .body("해당 회의에 STT가 존재하지 않습니다.");
-        }
+    public ResponseEntity<?> getSTTs(@PathVariable Long id, Authentication authentication) {
+        Long memberId = Long.valueOf(authentication.getName());
+        List<STTDto> stts = sttService.getSTTsByMeetingId(id, memberId);
         return ResponseEntity.ok(stts);
     }
 
-    @PostMapping("/{id}/summary")
-    public ResponseEntity<?> createSTTSummary(@PathVariable Long id,
-                                       @RequestBody String content) {
-        sttService.summarySTT(id, content);
-        return ResponseEntity.ok().build();
+    @GetMapping("/status/{id}")
+    public ResponseEntity<?> getSTT(@PathVariable Long id) {
+        try{
+            STTDto res = sttService.getDynamicSttStatus(id);
+            return ResponseEntity.ok(res);
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
+    @PostMapping("/upload/{id}")
+    public ResponseEntity<?> createSTT(@PathVariable Long id,
+                                       @RequestPart(value = "file", required = false) MultipartFile multipartFiles) {
+        try{
+            STTDto res = sttService.uploadAndTranslate(id, multipartFiles);
+            return ResponseEntity.ok(res);
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/summary")
+    public ResponseEntity<?> updateSTTSummary(@PathVariable Long id, @RequestBody String content) {
+        sttService.updateSummary(id, content);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteSTT(@PathVariable Long id) {
         sttService.deleteSTT(id);
-        return ResponseEntity.noContent().build(); // 204 반환
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/recording/start")
-    public ResponseEntity<Map<String, Long>> startRecording(@RequestBody StartRecordingRequest request) {
-        Long sttId = sttService.startRecording(request.getMeetingId());
-        return ResponseEntity.ok(Map.of("sttId", sttId));
+    public ResponseEntity<?> startRecording(@RequestBody StartRecordingRequest request) {
+        STTDto sttDto = sttService.startRecording(request.getMeetingId());
+        return ResponseEntity.ok(sttDto);
     }
 
     @PostMapping("/{sttId}/chunk")
-    public ResponseEntity<Void> uploadChunk(@PathVariable Long sttId, @RequestParam("file") MultipartFile chunk) {
-        sttService.appendChunk(sttId, chunk);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> uploadChunk(
+            @PathVariable Long sttId,
+            @RequestPart("file") MultipartFile chunk,
+            @RequestPart(value = "finish", required = false) String finish
+    ) {
+        Boolean isFinish = Boolean.parseBoolean(finish);
+        STTDto sttDto = sttService.appendChunk(sttId, chunk, isFinish);
+        return ResponseEntity.ok(sttDto);
     }
 
     @PostMapping("/{sttId}/recording/finish")
-    public ResponseEntity<STTDto> finishRecording(@PathVariable Long sttId) {
-        STTDto sttDto = sttService.finishRecording(sttId);
-        return ResponseEntity.ok(sttDto);
+    public ResponseEntity<?> finishRecording(@PathVariable Long sttId) {
+        try{
+            STTDto sttDto = sttService.startTranslateForRecorded(sttId);
+            return ResponseEntity.ok(sttDto);
+        }catch (RuntimeException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }

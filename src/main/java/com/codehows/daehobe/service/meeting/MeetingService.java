@@ -12,6 +12,8 @@ import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.dto.meeting.MeetingMemberDto;
+import com.codehows.daehobe.dto.stt.STTDto;
+import com.codehows.daehobe.dto.webpush.KafkaNotificationMessageDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.issue.Issue;
 import com.codehows.daehobe.entity.masterData.Category;
@@ -24,6 +26,7 @@ import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import com.codehows.daehobe.service.masterData.SetNotificationService;
 import com.codehows.daehobe.service.member.MemberService;
+import com.codehows.daehobe.service.stt.STTService;
 import com.codehows.daehobe.service.webpush.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -37,6 +40,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -52,6 +56,7 @@ public class MeetingService {
     private final MemberService memberService;
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
+    private final STTService sttService;
 
 
     @TrackChanges(type = ChangeType.CREATE, target = TargetType.MEETING)
@@ -155,7 +160,21 @@ public class MeetingService {
         // 부서 이름
         List<String> departmentNames = meetingDepartmentService.getDepartmentName(meeting);
 
-        // DTO 변환 및 반환
+        // 요청자의 수정 권한 여부
+        boolean isEditPermitted = meetingMembers.stream()
+                .filter(mm -> mm.getMember().getId().equals(memberId))
+                .anyMatch(MeetingMember::isPermitted);
+        // 참여자
+        List<MeetingMemberDto> participantList = meetingMembers.stream()
+                .map(MeetingMemberDto::fromEntity)
+                .toList();
+
+        String totalSummary = sttService.getSTTsByMeetingId(id, memberId)
+                .stream()
+                .map(STTDto::getSummary)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining("\n\n"));
+
         return MeetingDto.fromEntity(
                 meeting,
                 host,
@@ -163,7 +182,8 @@ public class MeetingService {
                 fileList,
                 meetingMinutes,
                 isEditPermitted,
-                participantList
+                participantList,
+                totalSummary
         );
     }
 
