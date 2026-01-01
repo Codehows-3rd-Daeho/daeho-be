@@ -80,11 +80,11 @@ public class SttJobExecutor {
         String sttIdStr = String.valueOf(sttId);
         try {
             log.info("Starting encoding job for STT ID: {}", sttId);
-            File sttFile = fileService.getSTTFile(sttId);
-            fileService.encodeAudioFile(sttFile);
+            com.codehows.daehobe.entity.file.File originalFile = fileService.getSTTFile(sttId);
+            com.codehows.daehobe.entity.file.File encodedFile = fileService.encodeAudioFile(originalFile);
 
             // 파일 서빙 가능 여부 확인
-            boolean isFileReady = isFileReadyToBeServed(sttFile);
+            boolean isFileReady = isFileReadyToBeServed(encodedFile);
             if (!isFileReady) {
                 log.error("File for STT {} is not ready after encoding and retries.", sttId);
                 throw new RuntimeException("Encoded file not available for serving.");
@@ -92,9 +92,9 @@ public class SttJobExecutor {
 
             STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
             stt.setStatus(STT.Status.ENCODED);
-            sttRepository.save(stt);
+            // stt 엔티티는 파일 정보를 직접 들고 있지 않으므로 save 불필요.
 
-            STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(sttFile));
+            STTDto dto = STTDto.fromEntity(stt, com.codehows.daehobe.dto.file.FileDto.fromEntity(encodedFile));
             cacheSttStatus(dto);
 
             redisTemplate.opsForSet().remove(SttTaskProcessor.STT_ENCODING_SET, sttIdStr);
