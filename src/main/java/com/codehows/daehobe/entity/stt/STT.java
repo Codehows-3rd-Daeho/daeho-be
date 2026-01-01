@@ -44,7 +44,7 @@ public class STT extends BaseEntity {
     private int chunkingCnt;
 
     public enum Status {
-        RECORDING, ENCODING, PROCESSING, SUMMARIZING, COMPLETED
+        RECORDING, ENCODING, ENCODED, PROCESSING, SUMMARIZING, COMPLETED
     }
 
     public void updateContent(String content) {

@@ -72,7 +72,7 @@ public class SttJobExecutor {
                 fileService.encodeAudioFile(sttFile);
     
                 STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-                stt.setStatus(STT.Status.RECORDING);
+                stt.setStatus(STT.Status.ENCODED);
                 sttRepository.save(stt);
     
                 STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(sttFile));
