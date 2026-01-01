@@ -70,16 +70,38 @@ public class FileService {
         return fileRepository.save(recordingFile);
     }
 
-    public void encodeAudioFile(File recordingFile) {
-        synchronized (recordingFile.getSavedName().intern()) {
-            Path path = Paths.get(fileLocation, recordingFile.getSavedName());
-            audioProcessor.fixAudioMetadata(path);
+    public File encodeAudioFile(File originalFile) {
+        Path originalPath = Paths.get(fileLocation, originalFile.getSavedName());
+        String newSavedName = "encoded-" + UUID.randomUUID() + ".wav";
+        Path newPath = Paths.get(fileLocation, newSavedName);
+
+        synchronized (originalFile.getSavedName().intern()) {
+            audioProcessor.fixAudioMetadata(originalPath, newPath);
+        }
+
+        try {
+            long newSize = Files.size(newPath);
+            File newFile = File.builder()
+                    .path("/file/" + newSavedName)
+                    .originalName(originalFile.getOriginalName())
+                    .savedName(newSavedName)
+                    .size(newSize)
+                    .targetId(originalFile.getTargetId())
+                    .targetType(originalFile.getTargetType())
+                    .build();
+            
+            fileRepository.save(newFile);
+            deleteFiles(List.of(originalFile)); // DB에서 originalFile 삭제 및 실제 파일 삭제
+
+            return newFile;
+        } catch (IOException e) {
+            // 새 파일 생성 실패 시 롤백 (생성된 새 파일 삭제)
             try {
-                long fileSize = Files.size(path);
-                recordingFile.updateFileSize(fileSize);
-            } catch (IOException e) {
-                log.error("Failed to get file size for: {}", recordingFile.getSavedName(), e);
+                Files.deleteIfExists(newPath);
+            } catch (IOException ex) {
+                log.error("Failed to delete temporary encoded file: {}", newSavedName, ex);
             }
+            throw new RuntimeException("Failed to create encoded file record", e);
         }
     }
 
