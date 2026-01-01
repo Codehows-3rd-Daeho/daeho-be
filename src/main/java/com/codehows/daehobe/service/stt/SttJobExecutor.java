@@ -1,10 +1,13 @@
 package com.codehows.daehobe.service.stt;
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.repository.stt.STTRepository;
+import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.utils.DataSerializer;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +28,63 @@ public class SttJobExecutor {
 
     private final STTRepository sttRepository;
     private final STTService sttService;
+    private final FileService fileService;
     private final RedisTemplate<String, String> redisTemplate;
 
+    private static final long ABNORMAL_TERMINATION_TIMEOUT_MS = 30000; // 30초
+
+    @Transactional
+    public void handleAbnormalTermination(Long sttId) {
+        Object lastChunkTimestampObj = redisTemplate.opsForHash().get(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+        if (lastChunkTimestampObj == null) {
+            return;
+        }
+
+        long lastChunkTimestamp = Long.parseLong((String) lastChunkTimestampObj);
+        if (System.currentTimeMillis() - lastChunkTimestamp > ABNORMAL_TERMINATION_TIMEOUT_MS) {
+            log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
+
+            STT stt = sttRepository.findById(sttId).orElse(null);
+            if (stt == null) {
+                log.error("STT entity not found for abnormally terminated session: {}", sttId);
+                // Clean up Redis to prevent reprocessing
+                redisTemplate.opsForSet().remove(SttTaskProcessor.STT_RECORDING_SET, String.valueOf(sttId));
+                redisTemplate.opsForHash().delete(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+                return;
+            }
+
+            stt.setStatus(STT.Status.ENCODING);
+            STTDto dto = STTDto.fromEntity(stt);
+            cacheSttStatus(dto);
+
+            redisTemplate.opsForSet().move(SttTaskProcessor.STT_RECORDING_SET, String.valueOf(sttId), SttTaskProcessor.STT_ENCODING_SET);
+            redisTemplate.opsForHash().delete(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+
+            log.info("Moved STT {} from recording to encoding queue for recovery.", sttId);
+        }
+    }
+
+        @Transactional
+        public void processSingleEncodingJob(Long sttId) {
+            try {
+                log.info("Starting encoding job for STT ID: {}", sttId);
+                File sttFile = fileService.getSTTFile(sttId);
+                fileService.encodeAudioFile(sttFile);
+    
+                STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+                stt.setStatus(STT.Status.RECORDING);
+                sttRepository.save(stt);
+    
+                STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(sttFile));
+                cacheSttStatus(dto);
+    
+                redisTemplate.opsForSet().remove(SttTaskProcessor.STT_ENCODING_SET, String.valueOf(sttId));
+                log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
+            } catch (Exception e) {
+                log.error("Failed to process encoding job for STT: {}", sttId, e);
+                redisTemplate.opsForSet().remove(SttTaskProcessor.STT_ENCODING_SET, String.valueOf(sttId));
+            }
+        }
     @Transactional
     public void processSingleSttJob(Long sttId) {
         try {
