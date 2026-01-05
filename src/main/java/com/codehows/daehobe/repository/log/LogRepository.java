@@ -21,12 +21,14 @@ public interface LogRepository extends CrudRepository<Log, Long> {
     @Query("""
     select l from Log l
     where (l.targetType = :parentType and l.targetId = :parentId)
-       or (l.targetType = com.codehows.daehobe.constant.TargetType.COMMENT and l.targetId in :commentIds)
+       or (l.targetType = com.codehows.daehobe.constant.TargetType.COMMENT 
+           and l.targetId in (
+               select c.id from Comment c 
+               where c.targetId = :parentId 
+               and c.targetType = :parentType
+           ))
 """)
-    Page<Log> findAllByParentAndCommentIds(
-            @Param("parentType") TargetType parentType,
-            @Param("parentId") Long parentId,
-            @Param("commentIds") List<Long> commentIds,
-            Pageable pageable
-    );
+    Page<Log> findAllLogsIncludingDeleted(@Param("parentType") TargetType parentType,
+                                          @Param("parentId") Long parentId,
+                                          Pageable pageable);
 }
