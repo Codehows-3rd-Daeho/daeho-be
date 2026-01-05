@@ -20,30 +20,18 @@ import java.util.List;
 public class LogService {
 
     private final LogRepository logRepository;
-    private final CommentService commentService;
+
 
     public Page<LogDto> getIssueLogs(Long issueId, Pageable pageable) {
-        // 1. 부모 댓글 ID 조회
-        List<Long> commentIds = commentService.getCommentsByIssueId(issueId, Pageable.unpaged())
-                .getContent()
-                .stream()
-                .map(CommentDto::getId)
-                .toList();
 
-        // 2. 부모 로그 + 댓글 로그 조회
-        Page<Log> logs = logRepository.findAllByParentAndCommentIds(TargetType.ISSUE, issueId, commentIds, pageable);
+        Page<Log> logs = logRepository.findAllLogsIncludingDeleted(TargetType.ISSUE, issueId, pageable);
 
         return logs.map(LogDto::fromEntity);
     }
 
     public Page<LogDto> getMeetingLogs(Long meetingId, Pageable pageable) {
-        List<Long> commentIds = commentService.getCommentsByMeetingId(meetingId, Pageable.unpaged())
-                .getContent()
-                .stream()
-                .map(CommentDto::getId)
-                .toList();
 
-        Page<Log> logs = logRepository.findAllByParentAndCommentIds(TargetType.MEETING, meetingId, commentIds, pageable);
+        Page<Log> logs = logRepository.findAllLogsIncludingDeleted(TargetType.MEETING, meetingId, pageable);
 
         return logs.map(LogDto::fromEntity);
     }

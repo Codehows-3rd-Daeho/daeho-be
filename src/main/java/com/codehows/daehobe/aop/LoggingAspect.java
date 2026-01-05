@@ -49,15 +49,19 @@ public class LoggingAspect {
         Auditable<?> before = null;
 
         // 2. UPDATE면 BEFORE 스냅샷 생성
-        if (trackChanges.type() == ChangeType.UPDATE) {
+        if (trackChanges.type() == ChangeType.UPDATE || trackChanges.type() == ChangeType.DELETE) {
             Object[] args = joinPoint.getArgs();
             if (args.length > 0 && args[0] instanceof Long id) {
                 Class<?> entityClass = ((org.aspectj.lang.reflect.MethodSignature) joinPoint.getSignature()).getReturnType();
-                Object found = entityManager.find(entityClass, id);
 
-                if (found instanceof Auditable<?>) {
-                    entityManager.detach(found);
-                    before = (Auditable<?>) found;
+                try {
+                    Object found = entityManager.find(entityClass, id);
+                    if (found instanceof Auditable<?>) {
+                        entityManager.detach(found);
+                        before = (Auditable<?>) found;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Snapshot failed: " + e.getMessage());
                 }
             }
         }
@@ -111,9 +115,25 @@ public class LoggingAspect {
     // 로그 저장 공통 로직
     private void saveLog(Auditable<?> after, TrackChanges trackChanges, String fieldName, String message, String memberName) {
         String targetTitle = after.getTitle();
+        Long parentId = null;
+        String parentType = null;
+
+        if (trackChanges.target() == com.codehows.daehobe.constant.TargetType.COMMENT) {
+            try {
+                // 부모 ID 추출 (이미 작성하신 코드)
+                java.lang.reflect.Method getTargetIdMethod = after.getClass().getMethod("getTargetId");
+                parentId = (Long) getTargetIdMethod.invoke(after);
+                java.lang.reflect.Method getTargetTypeMethod = after.getClass().getMethod("getTargetType");
+                parentType = getTargetTypeMethod.invoke(after).toString();
+            } catch (Exception e) {
+                System.out.println("부모 정보 추출 실패: " + e.getMessage());
+            }
+        }
 
         logRepository.save(Log.builder()
                 .targetId((Long) after.getId())
+                .parentId(parentId)
+                .parentType(parentType)
                 .title(targetTitle)
                 .targetType(trackChanges.target())
                 .changeType(trackChanges.type())

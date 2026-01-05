@@ -227,6 +227,7 @@ public class CommentService {
     }
 
 
+    @TrackChanges(type = ChangeType.DELETE, target = TargetType.COMMENT)
     public Comment deleteComment(Long id) {
         Comment comment = getCommentById(id);
         comment.delete();

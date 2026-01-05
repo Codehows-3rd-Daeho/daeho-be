@@ -42,4 +42,10 @@ public class Log extends BaseEntity {
 
     @Column(name = "title")
     private String title;
+
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    @Column(name = "parent_type")
+    private String parentType;
 }
