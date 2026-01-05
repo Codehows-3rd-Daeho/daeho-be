@@ -1,35 +1,44 @@
 package com.codehows.daehobe.dto.file;
 
+import com.codehows.daehobe.constant.TargetType;
 import com.codehows.daehobe.entity.file.File;
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 
 @Getter
-@NoArgsConstructor
+@Setter
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class FileDto {
     private Long fileId;
-    private String path;
     private String originalName;
+    private String savedName;
+    private String path;
     private String size;
+    private Long targetId;
+    private TargetType targetType;
     @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
     private LocalDateTime createdAt;
+    private String createdBy;
+    @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
+    private LocalDateTime updatedAt;
 
-    //Entity -> Dto
     public static FileDto fromEntity(File file) {
         return FileDto.builder()
                 .fileId(file.getFileId())
-                .path(file.getPath())
                 .originalName(file.getOriginalName())
+                .savedName(file.getSavedName())
+                .path(file.getPath())
                 .size(formatSize(file.getSize()))
+                .targetId(file.getTargetId())
+                .targetType(file.getTargetType())
                 .createdAt(file.getCreatedAt())
+                .createdBy(String.valueOf(file.getCreatedBy()))
+                .updatedAt(file.getUpdatedAt())
                 .build();
     }
 

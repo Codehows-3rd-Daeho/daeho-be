@@ -1,10 +1,13 @@
 package com.codehows.daehobe.service.stt;
 
+import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.dto.stt.STTDto;
 import com.codehows.daehobe.dto.stt.STTResponseDto;
 import com.codehows.daehobe.dto.stt.SummaryResponseDto;
+import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.entity.stt.STT;
 import com.codehows.daehobe.repository.stt.STTRepository;
+import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.utils.DataSerializer;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +17,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import static com.codehows.daehobe.service.stt.SttTaskProcessor.STT_STATUS_HASH_PREFIX;
@@ -25,8 +34,99 @@ public class SttJobExecutor {
 
     private final STTRepository sttRepository;
     private final STTService sttService;
+    private final FileService fileService;
     private final RedisTemplate<String, String> redisTemplate;
 
+    private static final long ABNORMAL_TERMINATION_TIMEOUT_MS = 30000; // 30초
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(1))
+            .build();
+
+
+    @Transactional
+    public void handleAbnormalTermination(Long sttId) {
+        Object lastChunkTimestampObj = redisTemplate.opsForHash().get(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+        if (lastChunkTimestampObj == null) {
+            return;
+        }
+
+        long lastChunkTimestamp = Long.parseLong((String) lastChunkTimestampObj);
+        if (System.currentTimeMillis() - lastChunkTimestamp > ABNORMAL_TERMINATION_TIMEOUT_MS) {
+            log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
+
+            STT stt = sttRepository.findById(sttId).orElse(null);
+            if (stt == null) {
+                log.error("STT entity not found for abnormally terminated session: {}", sttId);
+                // Clean up Redis to prevent reprocessing
+                redisTemplate.opsForSet().remove(SttTaskProcessor.STT_RECORDING_SET, String.valueOf(sttId));
+                redisTemplate.opsForHash().delete(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+                return;
+            }
+
+            stt.setStatus(STT.Status.ENCODING);
+            STTDto dto = STTDto.fromEntity(stt);
+            cacheSttStatus(dto);
+
+            redisTemplate.opsForSet().move(SttTaskProcessor.STT_RECORDING_SET, String.valueOf(sttId), SttTaskProcessor.STT_ENCODING_SET);
+            redisTemplate.opsForHash().delete(SttTaskProcessor.STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+
+            log.info("Moved STT {} from recording to encoding queue for recovery.", sttId);
+        }
+    }
+
+    @Transactional
+    public void processSingleEncodingJob(Long sttId) {
+        String sttIdStr = String.valueOf(sttId);
+        try {
+            log.info("Starting encoding job for STT ID: {}", sttId);
+            com.codehows.daehobe.entity.file.File originalFile = fileService.getSTTFile(sttId);
+            com.codehows.daehobe.entity.file.File encodedFile = fileService.encodeAudioFile(originalFile);
+
+            // 파일 서빙 가능 여부 확인
+            boolean isFileReady = isFileReadyToBeServed(encodedFile);
+            if (!isFileReady) {
+                log.error("File for STT {} is not ready after encoding and retries.", sttId);
+                throw new RuntimeException("Encoded file not available for serving.");
+            }
+
+            STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+            stt.setStatus(STT.Status.ENCODED);
+            // stt 엔티티는 파일 정보를 직접 들고 있지 않으므로 save 불필요.
+
+            STTDto dto = STTDto.fromEntity(stt, com.codehows.daehobe.dto.file.FileDto.fromEntity(encodedFile));
+            cacheSttStatus(dto);
+
+            redisTemplate.opsForSet().remove(SttTaskProcessor.STT_ENCODING_SET, sttIdStr);
+            log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
+        } catch (Exception e) {
+            log.error("Failed to process encoding job for STT: {}", sttId, e);
+            redisTemplate.opsForSet().remove(SttTaskProcessor.STT_ENCODING_SET, sttIdStr);
+        }
+    }
+
+    private boolean isFileReadyToBeServed(File sttFile) throws InterruptedException {
+        String fileUrl = "http://localhost:8080" + sttFile.getPath();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(fileUrl))
+                .method("HEAD", HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        for (int i = 0; i < 10; i++) {
+            try {
+                HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+                if (response.statusCode() == 200) {
+                    log.info("File {} is ready to be served. (Attempt: {})", fileUrl, i + 1);
+                    return true;
+                }
+                log.warn("File {} not ready yet. Status: {}. Retrying... (Attempt: {})", fileUrl, response.statusCode(), i + 1);
+            } catch (IOException e) {
+                log.warn("HEAD request for {} failed. Retrying... (Attempt: {})", fileUrl, i + 1, e);
+            }
+            Thread.sleep(300); // 300ms 대기
+        }
+        return false;
+    }
     @Transactional
     public void processSingleSttJob(Long sttId) {
         try {

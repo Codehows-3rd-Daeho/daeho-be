@@ -48,7 +48,10 @@ public class SttTaskProcessor {
 
     public static final String STT_PROCESSING_SET = "stt:processing";
     public static final String STT_SUMMARIZING_SET = "stt:summarizing";
+    public static final String STT_ENCODING_SET = "stt:encoding";
+    public static final String STT_RECORDING_SET = "stt:recording";
     public static final String STT_STATUS_HASH_PREFIX = "stt:status:";
+    public static final String STT_LAST_CHUNK_TIMESTAMP_HASH = "stt:lastChunkTimestamp";
     public static final String STT_PROCESSOR_LOCK = "stt:processor:lock";
 
     private volatile ProcessorState state = ProcessorState.STOPPED;
@@ -136,19 +139,50 @@ public class SttTaskProcessor {
     }
 
     private void processAllTasks() {
+        Long recordingCount = redisTemplate.opsForSet().size(STT_RECORDING_SET);
+        Long encodingCount = redisTemplate.opsForSet().size(STT_ENCODING_SET);
         Long processingCount = redisTemplate.opsForSet().size(STT_PROCESSING_SET);
         Long summarizingCount = redisTemplate.opsForSet().size(STT_SUMMARIZING_SET);
 
+        recordingCount = recordingCount != null ? recordingCount : 0L;
+        encodingCount = encodingCount != null ? encodingCount : 0L;
         processingCount = processingCount != null ? processingCount : 0L;
         summarizingCount = summarizingCount != null ? summarizingCount : 0L;
 
-        if (processingCount == 0 && summarizingCount == 0) {
+        if (recordingCount == 0 && encodingCount == 0 && processingCount == 0 && summarizingCount == 0) {
             log.info("All task queues are empty. Auto-stopping processor.");
             stopProcessor();
             return;
         }
 
-        log.debug("Processing cycle - STT: {}, Summary: {}", processingCount, summarizingCount);
+        log.debug("Processing cycle - Recording: {}, Encoding: {}, STT: {}, Summary: {}", recordingCount, encodingCount, processingCount, summarizingCount);
+
+        // 비정상 종료 감지
+        Set<String> recordingSttIds = redisTemplate.opsForSet().members(STT_RECORDING_SET);
+        if (recordingSttIds != null && !recordingSttIds.isEmpty()) {
+            recordingSttIds.forEach(sttIdStr -> {
+                try {
+                    Long sttId = Long.valueOf(sttIdStr);
+                    jobExecutor.handleAbnormalTermination(sttId);
+                } catch (Exception e) {
+                    log.error("Error processing recording task for abnormal termination: {}", sttIdStr, e);
+                }
+            });
+        }
+
+        // 인코딩 처리
+        Set<String> encodingSttIds = redisTemplate.opsForSet().members(STT_ENCODING_SET);
+        if (encodingSttIds != null && !encodingSttIds.isEmpty()) {
+            log.info("Processing {} encoding tasks", encodingSttIds.size());
+            encodingSttIds.forEach(sttIdStr -> {
+                try {
+                    Long sttId = Long.valueOf(sttIdStr);
+                    jobExecutor.processSingleEncodingJob(sttId);
+                } catch (Exception e) {
+                    log.error("Error processing encoding task: {}", sttIdStr, e);
+                }
+            });
+        }
 
         // STT 처리 - jobExecutor 사용
         Set<String> processingSttIds = redisTemplate.opsForSet().members(STT_PROCESSING_SET);

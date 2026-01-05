@@ -103,6 +103,9 @@ public class STTService {
         sttRepository.delete(stt);
         redisTemplate.opsForSet().remove(STT_PROCESSING_SET, String.valueOf(id));
         redisTemplate.opsForSet().remove(STT_SUMMARIZING_SET, String.valueOf(id));
+        redisTemplate.opsForSet().remove(STT_ENCODING_SET, String.valueOf(id));
+        redisTemplate.opsForSet().remove(STT_RECORDING_SET, String.valueOf(id));
+        redisTemplate.opsForHash().delete(STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(id));
         redisTemplate.delete(STT_STATUS_HASH_PREFIX + id);
     }
 
@@ -119,6 +122,7 @@ public class STTService {
                 .chunkingCnt(0)
                 .build());
 
+        redisTemplate.opsForSet().add(STT_RECORDING_SET, String.valueOf(newSTT.getId()));
         String savedFileName = "stt-recording-" + UUID.randomUUID() + ".wav";
         File newFile = fileService.createFile(savedFileName, newSTT.getId(), TargetType.STT);
         return STTDto.fromEntity(newSTT, FileDto.fromEntity(newFile));
@@ -129,9 +133,18 @@ public class STTService {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
         stt.countChunk();
+
+        redisTemplate.opsForHash().put(STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId), String.valueOf(System.currentTimeMillis()));
+
         File file = fileService.appendChunk(stt.getId(), chunk, TargetType.STT);
+
         if(finish != null && finish) {
-            fileService.encodeAudioFile(file);
+            stt.setStatus(STT.Status.ENCODING);
+            STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(file));
+            redisTemplate.opsForValue().set(STT_STATUS_HASH_PREFIX + sttId, DataSerializer.serialize(dto));
+            redisTemplate.opsForSet().move(STT_RECORDING_SET, String.valueOf(sttId), STT_ENCODING_SET);
+            redisTemplate.opsForHash().delete(STT_LAST_CHUNK_TIMESTAMP_HASH, String.valueOf(sttId));
+            redisTemplate.convertAndSend(STT_TASK_CHANNEL, "NEW_ENCODING_TASK");
         }
         return STTDto.fromEntity(stt, FileDto.fromEntity(file));
     }
@@ -179,11 +192,6 @@ public class STTService {
 
         File savedFile = fileService.getSTTFile(sttId);
         Path filePath = Paths.get(fileLocation, savedFile.getSavedName());
-
-        AudioProcessor.AudioValidationResult validationResult = audioProcessor.validateAudioFile(filePath);
-        if (!validationResult.isValid()) {
-            fileService.encodeAudioFile(savedFile);
-        }
 
         ByteArrayResource resource = fileToByteArrayResource(filePath, savedFile.getSavedName());
 
