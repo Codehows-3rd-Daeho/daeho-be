@@ -109,7 +109,7 @@ public class LoggingAspect {
             }
         }
 
-        return result; // 👈 반드시 비즈니스 로직 결과값을 반환해야 합니다.
+        return result;
     }
 
     // 로그 저장 공통 로직
@@ -120,7 +120,6 @@ public class LoggingAspect {
 
         if (trackChanges.target() == com.codehows.daehobe.constant.TargetType.COMMENT) {
             try {
-                // 부모 ID 추출 (이미 작성하신 코드)
                 java.lang.reflect.Method getTargetIdMethod = after.getClass().getMethod("getTargetId");
                 parentId = (Long) getTargetIdMethod.invoke(after);
                 java.lang.reflect.Method getTargetTypeMethod = after.getClass().getMethod("getTargetType");
