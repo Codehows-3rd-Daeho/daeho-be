@@ -23,6 +23,10 @@ public class LogDto {
 
     private TargetType targetType;
 
+    private Long parentId;
+
+    private String parentType;
+
     private ChangeType changeType;
 
     private String message;
@@ -39,6 +43,8 @@ public class LogDto {
         return LogDto.builder()
                 .id(log.getId())
                 .targetId(log.getTargetId())
+                .parentId(log.getParentId())
+                .parentType(log.getParentType())
                 .title(log.getTitle())
                 .targetType(log.getTargetType())
                 .changeType(log.getChangeType())
