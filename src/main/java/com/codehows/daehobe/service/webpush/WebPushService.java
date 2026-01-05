@@ -91,6 +91,13 @@ public class WebPushService {
         try {
             // JSON 문자열을 PushSubscriptionDto 객체로 역직렬화합니다.
             PushSubscriptionDto subDto = objectMapper.readValue(subscriptionJson, PushSubscriptionDto.class);
+
+            log.info("=== Push Notification Debug ===");
+            log.info("Member ID: {}", memberId);
+            log.info("Endpoint: {}", subDto.getEndpoint());
+            log.info("Is iOS (Apple): {}", subDto.getEndpoint().contains("web.push.apple.com"));
+            log.info("Is Android (FCM): {}", subDto.getEndpoint().contains("fcm.googleapis.com"));
+
             // PushService 라이브러리에서 사용하는 Subscription 객체로 변환합니다.
             Subscription subscription = new Subscription(subDto.getEndpoint(), new Subscription.Keys(subDto.getKeys().getP256dh(), subDto.getKeys().getAuth()));
 
@@ -106,17 +113,20 @@ public class WebPushService {
             // Notification 객체를 생성. 직렬화된 JSON 문자열과 Urgency를 Notification 객체에 담아 전송합니다.
             Notification notification = new Notification(subscription, payloadJson, nl.martijndwars.webpush.Urgency.HIGH);
 
-            // PushService를 통해 알림을 전송하고 응답을 받습니다.
+            log.info("Sending push notification...");
             HttpResponse response = pushService.send(notification);
             int statusCode = response.getStatusLine().getStatusCode();
 
-            // HTTP 상태 코드에 따른 후처리 로직
-            if (statusCode == 410) { // GONE (410): 구독이 더 이상 유효하지 않음 (만료 또는 사용자 해지)
-                log.info("Subscription for member {} expired or invalid. Removing.", memberId);
-                redisTemplate.opsForHash().delete(REDIS_SUBSCRIPTION_HASH_KEY, memberId); // Redis에서 해당 구독 정보 삭제
-            } else if (statusCode != 201) { // 201 CREATED: 성공적으로 알림이 전송되었음을 의미
+            log.info("Push response status: {}", statusCode);
+
+            if (statusCode == 410) {
+                log.warn("Subscription expired for member {}. Removing from Redis.", memberId);
+                redisTemplate.opsForHash().delete(REDIS_SUBSCRIPTION_HASH_KEY, memberId);
+            } else if (statusCode == 201) {
+                log.info("✅ Push sent successfully to member {}", memberId);
+            } else {
                 String responseBody = EntityUtils.toString(response.getEntity());
-                log.warn("Failed to send push notification to member {}. Status: {}, Response: {}", memberId, statusCode, responseBody);
+                log.error("❌ Push failed. Status: {}, Response: {}", statusCode, responseBody);
             }
 
         } catch (JsonProcessingException e) {

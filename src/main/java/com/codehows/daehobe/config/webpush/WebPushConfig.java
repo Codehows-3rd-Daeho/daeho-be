@@ -58,6 +58,6 @@ public class WebPushConfig {
         }
 
         // VAPID 공개 키와 개인 키를 사용하여 PushService를 초기화하고 빈으로 반환합니다.
-        return new PushService(vapidPublicKey, vapidPrivateKey);
+        return new PushService(vapidPublicKey, vapidPrivateKey, "mailto:sodanhyun@gmail.com");
     }
 }
