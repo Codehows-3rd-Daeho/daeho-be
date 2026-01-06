@@ -1,10 +1,12 @@
 package com.codehows.daehobe.controller.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
+import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.service.masterData.DepartmentService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,6 +59,25 @@ public class DepartmentController {
             // 그 외
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("부서 삭제 중 알 수 없는 오류 발생");
+        }
+    }
+
+    @PatchMapping("/admin/department/{id}")
+    public ResponseEntity<?> updateDpt(@PathVariable Long id, @RequestBody MasterDataDto masterDataDto) {
+        try {
+            Department department = departmentService.updateDpt(id, masterDataDto);
+            return ResponseEntity.ok(department);
+        } catch (DataIntegrityViolationException e) {
+            // DB unique 제약조건 위반
+            return ResponseEntity.badRequest().body("이미 등록된 부서가 있습니다.");
+
+        }catch (IllegalArgumentException e) {
+            // 중복
+            return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("부서 수정 중 오류 발생");
         }
     }
 }

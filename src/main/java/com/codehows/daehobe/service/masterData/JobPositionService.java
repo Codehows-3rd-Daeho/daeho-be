@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
+import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.masterData.JobPosition;
 import com.codehows.daehobe.repository.masterData.JobPositionRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
@@ -60,5 +61,11 @@ public class JobPositionService {
         // JobPosition ID를 사용하여 해당 직급을 참조하는 Member 수를 카운트
         int memberCount = memberRepository.countByJobPositionId(jobPosition.getId());
         jobPositionRepository.delete(jobPosition);
+    }
+
+    public JobPosition updatePos(Long id, MasterDataDto masterDataDto) {
+        JobPosition jobPosition = jobPositionRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        jobPosition.changeName(masterDataDto.getName());
+        return jobPosition;
     }
 }
