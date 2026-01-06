@@ -16,10 +16,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DummyDataLoader implements CommandLineRunner {
 
-    private final MemberRepository memberRepository;
     private final DepartmentRepository departmentRepository;
     private final JobPositionRepository jobPositionRepository;
-    private final PasswordEncoder passwordEncoder; // 비밀번호 인코딩
     private final CategoryRepository categoryRepository;
     private final AllowedExtensionRepository allowedExtensionRepository;
     private final MaxFileSizeRepository maxFileSizeRepository;
@@ -75,35 +73,6 @@ public class DummyDataLoader implements CommandLineRunner {
 
             System.out.println("✔ JobPosition 더미 데이터 생성 완료");
         }
-
-        // ================= 회원 20명 =================
-        Department defaultDept = departmentRepository.findByName("경영")
-                .orElseThrow(() -> new IllegalStateException("기본 부서 없음"));
-
-        JobPosition defaultPos = jobPositionRepository.findByName("사원")
-                .orElseThrow(() -> new IllegalStateException("기본 직급 없음"));
-
-        for (long i = 1; i <= 20; i++) {
-            String loginId = "user" + i;
-
-            if (memberRepository.findByLoginId(loginId).isEmpty()) {
-                Member member = Member.builder()
-                        .loginId(loginId)
-                        .password(passwordEncoder.encode("12341234"))
-                        .name("회원 " + i)
-                        .department(defaultDept)
-                        .jobPosition(defaultPos)
-                        .phone("010-0000-" + String.format("%04d", i))
-                        .email("user" + i + "@example.com")
-                        .isEmployed(i % 2 == 0)
-                        .role(Role.USER)
-                        .build();
-
-                memberRepository.save(member);
-            }
-        }
-
-        System.out.println("✔ 더미 회원 20명 저장 완료");
 
         // ================= 허용 확장자 =================
         if (allowedExtensionRepository.count() == 0) {
