@@ -50,4 +50,15 @@ public class CategoryController {
             return ResponseEntity.status(500).body("카테고리 삭제 중 오류 발생");
         }
     }
+
+    @PatchMapping("/admin/category/{id}")
+    public ResponseEntity<?> createCategory(@PathVariable Long id, @RequestBody MasterDataDto masterDataDto) {
+        try {
+            Category category = categoryService.updateCategory(id, masterDataDto);
+            return ResponseEntity.ok(category);
+        }  catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("카테고리 수정 중 오류 발생");
+        }
+    }
 }

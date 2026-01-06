@@ -19,4 +19,11 @@ public class Category extends BaseEntity {
     // 카테고리명
     @Column(unique = true)
     private String name;
+
+    public void changeName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("카테고리 이름은 필수입니다.");
+        }
+        this.name = name;
+    }
 }

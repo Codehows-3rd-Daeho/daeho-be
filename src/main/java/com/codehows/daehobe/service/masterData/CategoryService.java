@@ -21,7 +21,7 @@ public class CategoryService {
     public Category getCategoryById(Long id) {
         return id == null ? null :
                 categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
+                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
     }
 
     public List<MasterDataDto> findAll() {
@@ -55,6 +55,12 @@ public class CategoryService {
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         categoryRepository.delete(category);
+    }
+
+    public Category updateCategory(Long id, MasterDataDto masterDataDto) {
+        Category category = categoryRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        category.changeName(masterDataDto.getName());
+        return category;
     }
 
 
