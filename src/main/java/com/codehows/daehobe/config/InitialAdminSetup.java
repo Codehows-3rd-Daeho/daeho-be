@@ -22,19 +22,11 @@ public class InitialAdminSetup {
 
     private final MemberRepository memberRepository;
 
-    private final DepartmentRepository departmentRepository;
-
-    private final JobPositionRepository jobPositionRepository;
-
-
     @Bean
     public CommandLineRunner initAdminUser() {
         return args -> {
             final String ADMIN_LOGIN_ID = "admin";
             final String ADMIN_PASSWORD = "12341234";
-
-            final String YZOO_LOGIN_ID = "yzoo";
-
 
 
             // 1. 관리자 계정 존재 여부 확인
@@ -48,24 +40,10 @@ public class InitialAdminSetup {
                         .loginId(ADMIN_LOGIN_ID)
                         .password(encodedPassword)
                         .name("관리자")
-//                        .department(defaultDept)
-//                        .jobPosition(defaultPos)
                         .phone("010-0000-0000")
                         .email("admin@example.com")
                         .isEmployed(true)
                         .role(Role.ADMIN)
-                        .build());
-
-                memberRepository.save(Member.builder()
-                        .loginId(YZOO_LOGIN_ID)
-                        .password(encodedPassword)
-                        .name("윤예주")
-//                        .department(1)
-//                        .jobPosition(1)  // 객체 연결
-                        .phone("010-1111-1111")
-                        .email("yyy@example.com")
-                        .isEmployed(true)
-                        .role(Role.USER)
                         .build());
 
                 System.out.println("--- 초기 관리자 계정 생성 완료 (ID: " + ADMIN_LOGIN_ID + ", PW: " + ADMIN_PASSWORD + ") ---");
