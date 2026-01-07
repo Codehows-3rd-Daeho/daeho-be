@@ -56,6 +56,7 @@ public class IssueService {
                 .startDate(issueFormDto.getStartDate())
                 .endDate(issueFormDto.getEndDate())
                 .isDel(issueFormDto.getIsDel())
+                .isPrivate(issueFormDto.getIsPrivate())
                 .build();
 
         // 이슈 먼저 저장 후 id를 파일 엔티티에 저장 가능
@@ -100,6 +101,14 @@ public class IssueService {
 
         Issue issue = issueRepository.findDetailById(id)
                 .orElseThrow(() -> new RuntimeException("이슈가 존재하지 않습니다."));
+
+        if (issue.isPrivate()) {
+            boolean isParticipant = issue.getIssueMembers().stream()
+                    .anyMatch(im -> im.getMember().getId().equals(memberId));
+            if (!isParticipant) {
+                throw new RuntimeException("권한이 없는 비밀글입니다.");
+            }
+        }
 
         List<IssueMember> issueMembers = issue.getIssueMembers();
 
@@ -215,23 +224,23 @@ public class IssueService {
 
 
     // 1. 칸반: 진행중
-    public List<IssueListDto> getInProgress(FilterDto filter) {
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, null);
+    public List<IssueListDto> getInProgress(FilterDto filter, Long memberId) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId);
     }
 
     // 2. 칸반: 미결
-    public List<IssueListDto> getDelayed(FilterDto filter) {
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, null);
+    public List<IssueListDto> getDelayed(FilterDto filter, Long memberId) {
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId);
     }
 
     // 3. 칸반: 완료 (최근 7일)
-    public List<IssueListDto> getCompleted(FilterDto filter) {
-        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), null);
+    public List<IssueListDto> getCompleted(FilterDto filter, Long memberId) {
+        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), memberId);
     }
 
     // 4. 일반 리스트 조회 (전체)
-    public Page<IssueListDto> findAll(FilterDto filter, Pageable pageable) {
-        return issueRepository.findIssuesWithFilter(filter, null, false, null, null, pageable)
+    public Page<IssueListDto> findAll(FilterDto filter, Pageable pageable, Long memberId) {
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, pageable)
                 .map(this::toIssueListDto);
     }
 

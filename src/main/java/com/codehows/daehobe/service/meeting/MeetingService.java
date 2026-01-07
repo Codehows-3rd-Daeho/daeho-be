@@ -80,6 +80,7 @@ public class MeetingService {
                 .endDate(meetingFormDto.getEndDate())
                 .category(categoryId)
                 .isDel(meetingFormDto.getIsDel())
+                .isPrivate(meetingFormDto.getIsPrivate())
                 .build();
 
         meetingRepository.save(saveMeeting);

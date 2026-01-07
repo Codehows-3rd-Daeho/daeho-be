@@ -39,6 +39,9 @@ public class IssueDto {
     @JsonProperty("isDel")
     private boolean del;
 
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;
+
     @JsonProperty("isEditPermitted")
     private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
@@ -72,6 +75,7 @@ public class IssueDto {
                 .createdAt(issue.getCreatedAt())
                 .updatedAt(issue.getUpdatedAt())
                 .del(issue.isDel())
+                .isPrivate(issue.isPrivate())
                 .editPermitted(isEditPermitted)
                 .participantList(participantList)
                 .build();

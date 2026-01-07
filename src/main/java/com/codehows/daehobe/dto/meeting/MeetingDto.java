@@ -47,6 +47,9 @@ public class MeetingDto {
     @JsonProperty("isDel")
     private boolean del;
 
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;
+
     @JsonProperty("isEditPermitted")
     private boolean editPermitted; // 요청자가 수정, 삭제 권한자인지
 
@@ -91,6 +94,7 @@ public class MeetingDto {
                 .createdAt(meeting.getCreatedAt())
                 .updatedAt(meeting.getUpdatedAt())
                 .del(meeting.isDel())
+                .isPrivate(meeting.isPrivate())
                 .editPermitted(isEditPermitted)
                 .participantList(participantList)
                 .totalSummary(totalSummary)

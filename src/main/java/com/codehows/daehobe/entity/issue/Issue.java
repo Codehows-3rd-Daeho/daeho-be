@@ -58,6 +58,9 @@ public class Issue extends BaseEntity implements Auditable<Long>, Loggable {
     @Column(name = "is_del", nullable = false)
     private boolean isDel;
 
+    @Column(name = "is_private", nullable = false)
+    private boolean isPrivate; // 비밀글 여부
+
     @AuditableField(name="참여자")
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IssueMember> issueMembers = new ArrayList<>();
@@ -69,6 +72,7 @@ public class Issue extends BaseEntity implements Auditable<Long>, Loggable {
         this.startDate = issueFormDto.getStartDate();
         this.endDate = issueFormDto.getEndDate();
         this.status = Status.valueOf(issueFormDto.getStatus());
+        this.isPrivate = issueFormDto.getIsPrivate();
     }
 
     public void delete(){

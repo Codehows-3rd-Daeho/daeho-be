@@ -19,10 +19,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     Optional<Issue> findByIdAndIsDelFalseAndStatus(Long id, Status status);
 
-    // 완료 (최근 7일)
-    @Query("SELECT i FROM Issue i WHERE i.status = 'COMPLETED' AND i.endDate >= :setDate AND i.isDel = false ORDER BY i.endDate DESC")
-    List<Issue> findRecentCompleted(@Param("setDate") LocalDate setDate);
-
     List<Issue> findAllByIsDelFalseAndStatus(Status status);
 
     // 이슈 상세 조회
@@ -46,6 +42,19 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     LEFT JOIN IssueDepartment idpt ON idpt.issue = i
     LEFT JOIN idpt.department d
     WHERE i.isDel = false
+      
+    /* 비밀글 */
+      AND (
+                /* 1. 전체 조회 시 (:memberId 가 NULL): 비밀글이 아닌 것만 노출 */
+                 i.isPrivate = false
+                OR
+                /* 2. 내 업무 조회 시 (:memberId 가 NOT NULL): 내가 참여한 글이면 비밀글여부 상관없이 노출 */
+                (:memberId IS NOT NULL AND EXISTS (
+                            SELECT 1 FROM IssueMember im3
+                            WHERE im3.issue = i AND im3.member.id = :memberId
+                        ))
+            )
+     
       /* 상태 필터 (단일 상태 혹은 리스트 처리) */
       AND (:status IS NULL OR i.status = :status)
       AND (:#{#filter.statuses} IS NULL OR i.status IN :#{#filter.statuses})
@@ -67,7 +76,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
       AND (:#{#filter.participantIds} IS NULL OR (im.isHost = false AND m.id IN :#{#filter.participantIds}))
       
       /* 특정 멤버 업무 조회 시 사용 */
-      AND (:memberId IS NULL OR EXISTS (SELECT 1 FROM IssueMember im2 WHERE im2.issue = i AND im2.member.id = :memberId))
+      /*AND (:memberId IS NULL OR EXISTS (SELECT 1 FROM IssueMember im2 WHERE im2.issue = i AND im2.member.id = :memberId))*/
       
       /* 기간 필터 */
      AND (
