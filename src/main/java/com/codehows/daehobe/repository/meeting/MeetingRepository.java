@@ -74,14 +74,11 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 WHERE m.isDel = false
                             
                                         /* 비밀글 */
-                 AND (
-                             (m.isPrivate = false OR m.isPrivate IS NULL)
-                             OR
-                             (:memberId IS NOT NULL AND EXISTS (
-                                 SELECT 1 FROM MeetingMember mm3
-                                 WHERE mm3.meeting = m AND mm3.member.id = :memberId
-                             ))
-                         )
+                 AND EXISTS (
+                                      SELECT 1 FROM MeetingMember mm2
+                                      WHERE mm2.meeting = m
+                                      AND mm2.member.id = :memberId
+                                  )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
