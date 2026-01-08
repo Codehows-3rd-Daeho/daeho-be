@@ -225,17 +225,17 @@ public class IssueService {
 
     // 1. 칸반: 진행중
     public List<IssueListDto> getInProgress(FilterDto filter, Long memberId) {
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId);
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId, false);
     }
 
     // 2. 칸반: 미결
     public List<IssueListDto> getDelayed(FilterDto filter, Long memberId) {
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId);
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId, false);
     }
 
     // 3. 칸반: 완료 (최근 7일)
     public List<IssueListDto> getCompleted(FilterDto filter, Long memberId) {
-        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), memberId);
+        return getFilteredIssueList(filter, Status.COMPLETED, false, LocalDate.now().minusDays(7), memberId, false);
     }
 
     // 4. 일반 리스트 조회 (전체)
@@ -249,19 +249,19 @@ public class IssueService {
     // 1. 나의 업무 칸반: 진행중
     public List<IssueListDto> getInProgressForMember(Long memberId, FilterDto filter) {
         // memberId를 파라미터로 전달하여 해당 사용자가 참여한 이슈만 필터링
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId);
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, false, null, memberId, true);
     }
 
     // 2. 나의 업무 칸반: 미결 (기한 만료)
     public List<IssueListDto> getDelayedForMember(Long memberId, FilterDto filter) {
         // isDelayed = true 로 전달하여 기한 지난 건만 필터링
-        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId);
+        return getFilteredIssueList(filter, Status.IN_PROGRESS, true, null, memberId, true);
     }
 
     // 3. 나의 업무 칸반: 완료 (최근 7일)
     public List<IssueListDto> getCompletedForMember(Long memberId, FilterDto filter) {
         LocalDate setDate = LocalDate.now().minusDays(7);
-        return getFilteredIssueList(filter, Status.COMPLETED, false, setDate, memberId);
+        return getFilteredIssueList(filter, Status.COMPLETED, false, setDate, memberId, true);
     }
 
     // 4. 나의 업무 리스트 (페이징)
