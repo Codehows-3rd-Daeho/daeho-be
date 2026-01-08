@@ -87,12 +87,12 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
-                    :#{#filter.keyword} IS NULL 
-                    OR :#{#filter.keyword} = '' 
+                    :#{#filter.keyword} IS NULL
+                    OR :#{#filter.keyword} = ''
                     OR (
-                        m.title LIKE %:#{#filter.keyword}% 
-                        OR c.name LIKE %:#{#filter.keyword}% 
-                        OR mem.name LIKE %:#{#filter.keyword}% 
+                        m.title LIKE %:#{#filter.keyword}%
+                        OR c.name LIKE %:#{#filter.keyword}%
+                        OR mem.name LIKE %:#{#filter.keyword}%
                         OR d.name LIKE %:#{#filter.keyword}%
                     )
                 )
