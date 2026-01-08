@@ -76,14 +76,14 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                                         /* 비밀글 */
                  AND (
                  /* 1. 공개글이면 누구나 볼 수 있음 */
-                             (m.isPrivate = false OR m.isPrivate IS NULL)
-                             OR
-                             /* 2. 비밀글인 경우: 로그인한 사용자(memberId)가 참여자 명단에 존재해야 함 */
-                             (:memberId IS NOT NULL AND EXISTS (
-                                 SELECT 1 FROM MeetingMember mm2
-                                 WHERE mm2.meeting = m
-                                 AND mm2.member.id = :memberId
-                                 ))
+                             AND (
+                                     (m.isPrivate = false OR m.isPrivate IS NULL)
+                                     OR
+                                     (:memberId IS NOT NULL AND EXISTS (
+                                         SELECT 1 FROM MeetingMember mm3
+                                         WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                                     ))
+                                 )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
@@ -133,7 +133,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                  (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NULL)
          
                  /* 2) 시작일만 있는 경우: 회의 종료일이 시작일 이후이거나, 종료일이 없더라도 회의 시작일이 필터 시작일 이후인 경우 */
-                 OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL\s
+                 OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL
                      AND (
                          (m.endDate IS NOT NULL AND m.endDate >= :#{#filter.startDate?.atStartOfDay()})
                          OR (m.endDate IS NULL AND m.startDate >= :#{#filter.startDate?.atStartOfDay()})
@@ -141,14 +141,14 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                  )
          
                  /* 3) 종료일만 있는 경우: 회의 시작일이 필터 종료일 이전인 경우 */
-                 OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL\s
+                 OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL
                      AND m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                  )
          
                  /* 4) 시작일 + 종료일 모두 있는 경우: 기간 겹침 */
                  OR (m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                      AND (
-                         m.endDate IS NULL\s
+                         m.endDate IS NULL
                          OR m.endDate >= :#{#filter.startDate?.atStartOfDay()}
                      )
                  )
