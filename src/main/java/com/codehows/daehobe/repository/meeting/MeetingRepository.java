@@ -75,15 +75,15 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                             
                                         /* 비밀글 */
                  AND (
-                         /* 1. 전체 조회 시: 비밀글이 아니거나 설정되지 않은 것 */
-                         (m.isPrivate = false OR m.isPrivate IS NULL)
-                         OR
-                         /* 2. 내 업무 조회 시: 내가 참여한 글이면 노출 */
-                         (:memberId IS NOT NULL AND EXISTS (
-                                 SELECT 1 FROM MeetingMember mm3
-                                 WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                             /* 1. 공개글이면 누구나 볼 수 있음 */
+                             (m.isPrivate = false OR m.isPrivate IS NULL)
+                             OR
+                             /* 2. 비밀글인 경우: 로그인한 사용자(memberId)가 참여자 명단에 존재해야 함 */
+                             (:memberId IS NOT NULL AND EXISTS (
+                                 SELECT 1 FROM MeetingMember mm2
+                                 WHERE mm2.meeting = m
+                                 AND mm2.member.id = :memberId
                              ))
-                     )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
