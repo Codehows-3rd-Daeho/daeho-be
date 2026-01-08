@@ -155,6 +155,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             @Param("memberId") Long memberId,
             @Param("startDt") LocalDateTime startDt,
             @Param("endDt") LocalDateTime endDt,
+            @Param("isMyWork") boolean isMyWork,
             Pageable pageable
     );
 }

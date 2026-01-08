@@ -280,7 +280,7 @@ public class MeetingService {
         LocalDateTime endDt = (filter.getEndDate() != null) ?
                 filter.getEndDate().atTime(23, 59, 59) : null;
 
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId,startDt, endDt, pageable);
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId,startDt, endDt,false, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 
@@ -359,7 +359,7 @@ public class MeetingService {
         LocalDateTime endDt = (filter.getEndDate() != null) ?
                 filter.getEndDate().atTime(23, 59, 59) : null;
 
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, startDt, endDt,pageable);
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, startDt, endDt,true, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 }
