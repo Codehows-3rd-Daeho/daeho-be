@@ -240,7 +240,7 @@ public class IssueService {
 
     // 4. 일반 리스트 조회 (전체)
     public Page<IssueListDto> findAll(FilterDto filter, Pageable pageable, Long memberId) {
-        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, pageable)
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, false, pageable)
                 .map(this::toIssueListDto);
     }
 
@@ -267,7 +267,7 @@ public class IssueService {
     // 4. 나의 업무 리스트 (페이징)
     public List<IssueListDto> getIssuesForMember(Long memberId, FilterDto filter, Pageable pageable) {
         // Repository의 통합 쿼리를 직접 호출하여 페이징 결과를 가져옴
-        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, pageable)
+        return issueRepository.findIssuesWithFilter(filter, null, false, null, memberId, true,pageable)
                 .map(this::toIssueListDto)
                 .getContent();
     }

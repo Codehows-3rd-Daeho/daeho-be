@@ -45,16 +45,22 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
       
     /* 비밀글 */
       AND (
-                /* 1. 전체 조회 시 (:memberId 가 NULL): 비밀글이 아닌 것만 노출 */
-                 i.isPrivate = false
-                OR
-                /* 2. 내 업무 조회 시 (:memberId 가 NOT NULL): 내가 참여한 글이면 비밀글여부 상관없이 노출 */
-                (:memberId IS NOT NULL AND EXISTS (
-                            SELECT 1 FROM IssueMember im3
-                            WHERE im3.issue = i AND im3.member.id = :memberId
-                        ))
-            )
-     
+            
+             (:isMyWork = false AND (
+             i.isPrivate = false
+             OR i.isPrivate IS NULL
+             OR (:memberId IS NOT NULL AND EXISTS (
+                 SELECT 1 FROM IssueMember im3
+                 WHERE im3.issue = i AND im3.member.id = :memberId
+             ))
+         ))
+         OR
+         
+         (:isMyWork = true AND :memberId IS NOT NULL AND EXISTS (
+             SELECT 1 FROM IssueMember im3
+             WHERE im3.issue = i AND im3.member.id = :memberId
+         ))
+     )
       /* 상태 필터 (단일 상태 혹은 리스트 처리) */
       AND (:status IS NULL OR i.status = :status)
       AND (:#{#filter.statuses} IS NULL OR i.status IN :#{#filter.statuses})
@@ -103,6 +109,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             @Param("isDelayed") boolean isDelayed,
             @Param("setDate") LocalDate setDate,
             @Param("memberId") Long memberId,
+            @Param("isMyWork") boolean isMyWork,
             Pageable pageable
     );
 }
