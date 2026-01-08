@@ -284,8 +284,8 @@ public class IssueService {
     }
 
     // 공통 호출 메서드 (내부용)
-    private List<IssueListDto> getFilteredIssueList(FilterDto filter, Status status, boolean isDelayed, LocalDate setDate, Long memberId) {
-        return issueRepository.findIssuesWithFilter(filter, status, isDelayed, setDate, memberId, Pageable.unpaged())
+    private List<IssueListDto> getFilteredIssueList(FilterDto filter, Status status, boolean isDelayed, LocalDate setDate, Long memberId, boolean isMyWork) {
+        return issueRepository.findIssuesWithFilter(filter, status, isDelayed, setDate, memberId, isMyWork,Pageable.unpaged())
                 .getContent()
                 .stream()
                 .map(this::toIssueListDto)
