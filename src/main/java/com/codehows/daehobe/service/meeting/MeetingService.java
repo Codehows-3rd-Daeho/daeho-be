@@ -79,8 +79,8 @@ public class MeetingService {
                 .startDate(meetingFormDto.getStartDate())
                 .endDate(meetingFormDto.getEndDate())
                 .category(categoryId)
-                .isDel(meetingFormDto.getIsDel())
-                .isPrivate(meetingFormDto.getIsPrivate())
+                .isDel(Boolean.TRUE.equals(meetingFormDto.getIsDel()))
+                .isPrivate(Boolean.TRUE.equals(meetingFormDto.getIsPrivate()))
                 .build();
 
         meetingRepository.save(saveMeeting);
@@ -274,14 +274,14 @@ public class MeetingService {
     }
 
     // 회의 조회
-    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable) {
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, null, pageable);
+    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable, Long memberId) {
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 
     //회의 캘린더 조회
     public List<MeetingListDto> findByDateBetween(
-            int year, int month
+            Long memberId,int year, int month
     ) {
         //LocalDate로 변경
         LocalDate startDate = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
@@ -291,7 +291,7 @@ public class MeetingService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(startDateTime, endDateTime);
+        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(memberId, startDateTime, endDateTime);
 
         return meetings.stream()
                 .map(this::toMeetingListDto)

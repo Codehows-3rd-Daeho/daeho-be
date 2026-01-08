@@ -55,8 +55,8 @@ public class IssueService {
                 .category(categoryId)
                 .startDate(issueFormDto.getStartDate())
                 .endDate(issueFormDto.getEndDate())
-                .isDel(issueFormDto.getIsDel())
-                .isPrivate(issueFormDto.getIsPrivate())
+                .isDel(Boolean.TRUE.equals(issueFormDto.getIsDel()))
+                .isPrivate(Boolean.TRUE.equals(issueFormDto.getIsPrivate()))
                 .build();
 
         // 이슈 먼저 저장 후 id를 파일 엔티티에 저장 가능

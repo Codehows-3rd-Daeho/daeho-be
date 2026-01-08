@@ -100,6 +100,7 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
         this.startDate = meetingFormDto.getStartDate();
         this.endDate = meetingFormDto.getEndDate();
         this.status = Status.valueOf(meetingFormDto.getStatus());
+        this.isPrivate = meetingFormDto.getIsPrivate();
     }
 
     public void updateEndDate() {

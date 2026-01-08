@@ -19,6 +19,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
 
     List<Meeting> findByStartDateBetweenAndIsDelFalse(
+            Long memberId,
             LocalDateTime start,
             LocalDateTime end);
 
@@ -47,6 +48,18 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 LEFT JOIN m.meetingMembers hostMm ON hostMm.isHost = true
                 LEFT JOIN hostMm.member hostM
                 WHERE m.isDel = false
+                            
+                                        /* 비밀글 */
+                 AND (
+                        /* 1. 전체 조회 시 (:memberId 가 NULL): 비밀글이 아닌 것만 노출 */
+                         m.isPrivate = false
+                         OR
+                        /* 2. 내 업무 조회 시 (:memberId 가 NOT NULL): 내가 참여한 글이면 비밀글여부 상관없이 노출 */
+                        (:memberId IS NOT NULL AND EXISTS (
+                                    SELECT 1 FROM MeetingMember mm3
+                                    WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                                ))
+                 )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
@@ -91,10 +104,10 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 )
             
                 /* 특정 멤버 기준 조회 (나의 회의 등) */
-                AND (
+                /*AND (
                     :memberId IS NULL 
                     OR mm.member.id = :memberId
-                )
+                )*/
                             
             /* 기간 필터  */
              AND (

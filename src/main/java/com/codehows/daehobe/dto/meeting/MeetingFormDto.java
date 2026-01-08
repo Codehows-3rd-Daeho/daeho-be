@@ -27,5 +27,5 @@ public class MeetingFormDto {
     private List<Long> departmentIds;
     private List<MeetingMemberDto> members;
     private Boolean  isDel;
-    private Boolean isPrivate;
+    private Boolean isPrivate = false;
 }
