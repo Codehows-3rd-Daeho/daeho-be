@@ -18,10 +18,34 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
 
-    List<Meeting> findByStartDateBetweenAndIsDelFalse(
+    List<Meeting> findByMeetingMembers_Member_IdAndStartDateBetweenAndIsDelFalse(
             Long memberId,
             LocalDateTime start,
             LocalDateTime end);
+
+    // 전체 회의 일정표 조회 본인 미참여 비밀글 제외
+    @Query("""
+    SELECT DISTINCT m
+    FROM Meeting m
+    WHERE m.isDel = false
+    AND m.startDate <= :end 
+    AND (m.endDate IS NULL OR m.endDate >= :start)
+    AND (
+        /* 1. 공개글이거나 설정값이 없는 경우 전체 노출 */
+        (m.isPrivate = false OR m.isPrivate IS NULL)
+        OR
+        /* 2. 비밀글이라도 내가 참여자라면 노출 */
+        (:memberId IS NOT NULL AND EXISTS (
+            SELECT 1 FROM MeetingMember mm 
+            WHERE mm.meeting = m AND mm.member.id = :memberId
+        ))
+    )
+""")
+    List<Meeting> findCalendarMeetings(
+            @Param("memberId") Long memberId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
     // 기존 상세 조회
     @Query("""
@@ -51,15 +75,15 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                             
                                         /* 비밀글 */
                  AND (
-                        /* 1. 전체 조회 시 (:memberId 가 NULL): 비밀글이 아닌 것만 노출 */
-                         m.isPrivate = false
+                         /* 1. 전체 조회 시: 비밀글이 아니거나 설정되지 않은 것 */
+                         (m.isPrivate = false OR m.isPrivate IS NULL)
                          OR
-                        /* 2. 내 업무 조회 시 (:memberId 가 NOT NULL): 내가 참여한 글이면 비밀글여부 상관없이 노출 */
-                        (:memberId IS NOT NULL AND EXISTS (
-                                    SELECT 1 FROM MeetingMember mm3
-                                    WHERE mm3.meeting = m AND mm3.member.id = :memberId
-                                ))
-                 )
+                         /* 2. 내 업무 조회 시: 내가 참여한 글이면 노출 */
+                         (:memberId IS NOT NULL AND EXISTS (
+                                 SELECT 1 FROM MeetingMember mm3
+                                 WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                             ))
+                     )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
@@ -102,12 +126,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                     :#{#filter.statuses} IS NULL 
                     OR m.status IN :#{#filter.statuses}
                 )
-            
-                /* 특정 멤버 기준 조회 (나의 회의 등) */
-                /*AND (
-                    :memberId IS NULL 
-                    OR mm.member.id = :memberId
-                )*/
                             
             /* 기간 필터  */
              AND (
