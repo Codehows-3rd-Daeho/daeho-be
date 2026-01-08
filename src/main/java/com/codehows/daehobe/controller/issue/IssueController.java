@@ -148,11 +148,12 @@ public class IssueController {
 
     @GetMapping("/{id}/meeting")
     public ResponseEntity<?> getMeetingRelatedIssue(@PathVariable Long id,
+                                                    @RequestParam(value = "memberId", required = false) Long memberId,
                                                     @RequestParam(defaultValue = "0") int page,
                                                     @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, pageable);
+            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, memberId, pageable);
             return ResponseEntity.ok(meetingListDtos);
         } catch (Exception e) {
             e.printStackTrace();

@@ -330,9 +330,9 @@ public class MeetingService {
 
 
     // issueId로 관련 회의 조회
-    public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {
+    public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Long memberId,Pageable pageable) {
         Issue issue = issueService.getIssueById(issueId);
-        return meetingRepository.findByIssueAndIsDelFalse(issue, pageable)
+        return meetingRepository.findByIssueAndMemberId(issue, memberId, pageable)
                 .map(this::toMeetingListDto);
     }
 

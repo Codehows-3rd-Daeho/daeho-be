@@ -16,7 +16,23 @@ import java.util.Optional;
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     Page<Meeting> findByIsDelFalse(Pageable pageable);
 
-    Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
+//    Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
+
+    @Query("""
+    SELECT m FROM Meeting m
+    WHERE m.issue = :issue
+    AND m.isDel = false
+    AND (
+        m.isPrivate = false
+        OR EXISTS (
+            SELECT 1 FROM MeetingMember mm
+            WHERE mm.meeting = m AND mm.member.id = :memberId
+        )
+    )
+""")
+    Page<Meeting> findByIssueAndMemberId(@Param("issue") Issue issue,
+                                         @Param("memberId") Long memberId,
+                                         Pageable pageable);
 
     List<Meeting> findByMeetingMembers_Member_IdAndStartDateBetweenAndIsDelFalse(
             Long memberId,
