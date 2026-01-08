@@ -82,7 +82,7 @@ public class JwtFilter extends OncePerRequestFilter {
             } catch (Exception e) {
                 //token 검증 실패시 Authentication 객체 제거
                 SecurityContextHolder.clearContext();
-                throw new RuntimeException("유효하지 않은 토큰입니다.");
+                throw new RuntimeException("유효하지 않은 토큰입니다.다시 로그인해주세요.");
             }
         }
         // 다음 필터로 요청을 전달
