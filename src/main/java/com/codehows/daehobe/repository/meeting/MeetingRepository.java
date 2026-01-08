@@ -75,27 +75,25 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                             
                                         /* 비밀글 */
                  AND (
-                 /* 1. 공개글이면 누구나 볼 수 있음 */
-                             AND (
-                                     (m.isPrivate = false OR m.isPrivate IS NULL)
-                                     OR
-                                     (:memberId IS NOT NULL AND EXISTS (
-                                         SELECT 1 FROM MeetingMember mm3
-                                         WHERE mm3.meeting = m AND mm3.member.id = :memberId
-                                     ))
-                                 )
+                             (m.isPrivate = false OR m.isPrivate IS NULL)
+                             OR
+                             (:memberId IS NOT NULL AND EXISTS (
+                                 SELECT 1 FROM MeetingMember mm3
+                                 WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                             ))
+                         )
             
                 /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
                 AND (
-                    :#{#filter.keyword} IS NULL
-                    OR :#{#filter.keyword} = ''
-                    OR (
-                        m.title LIKE %:#{#filter.keyword}%
-                        OR c.name LIKE %:#{#filter.keyword}%
-                        OR mem.name LIKE %:#{#filter.keyword}%
-                        OR d.name LIKE %:#{#filter.keyword}%
-                    )
-                )
+                             :#{#filter.keyword} IS NULL
+                             OR :#{#filter.keyword} = ''
+                             OR (
+                                 m.title LIKE %:#{#filter.keyword}%
+                                 OR c.name LIKE %:#{#filter.keyword}%
+                                 OR mem.name LIKE %:#{#filter.keyword}%
+                                 OR d.name LIKE %:#{#filter.keyword}%
+                             )
+                         )
             
                 /* 부서 필터 */
                 AND (
@@ -158,6 +156,8 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     findMeetingsWithFilter(
             @Param("filter") FilterDto filter,
             @Param("memberId") Long memberId,
+            @Param("startDt") LocalDateTime startDt,
+            @Param("endDt") LocalDateTime endDt,
             Pageable pageable
     );
 }

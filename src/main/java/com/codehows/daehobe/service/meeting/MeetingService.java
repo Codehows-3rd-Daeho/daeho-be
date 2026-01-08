@@ -275,7 +275,12 @@ public class MeetingService {
 
     // 회의 조회
     public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable, Long memberId) {
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
+        LocalDateTime startDt = (filter.getStartDate() != null) ?
+                filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDt = (filter.getEndDate() != null) ?
+                filter.getEndDate().atTime(23, 59, 59) : null;
+
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId,startDt, endDt, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 
@@ -349,7 +354,12 @@ public class MeetingService {
 
     // 나의 업무 회의 조회 + 검색
     public Page<MeetingListDto> getMeetingsForMember(Long memberId, FilterDto filter, Pageable pageable) {
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
+        LocalDateTime startDt = (filter.getStartDate() != null) ?
+                filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDt = (filter.getEndDate() != null) ?
+                filter.getEndDate().atTime(23, 59, 59) : null;
+
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, startDt, endDt,pageable);
         return meetings.map(this::toMeetingListDto);
     }
 }
