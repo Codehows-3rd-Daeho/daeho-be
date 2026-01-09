@@ -40,10 +40,10 @@ public class IssueController {
 
     //칸반 전체
     @GetMapping("/kanban")
-    public ResponseEntity<?> getKanbanData(@ModelAttribute FilterDto filter) {
-        var inProgress = issueService.getInProgress(filter);       // 진행중 전체
-        var delayed = issueService.getDelayed(filter);             // 미결 전체
-        var completed = issueService.getCompleted(filter);         // 최근 7일 완료 전체
+    public ResponseEntity<?> getKanbanData(@ModelAttribute FilterDto filter, @RequestParam(value = "memberId", required = false) Long memberId) {
+        var inProgress = issueService.getInProgress(filter, memberId);       // 진행중 전체
+        var delayed = issueService.getDelayed(filter, memberId);             // 미결 전체
+        var completed = issueService.getCompleted(filter, memberId);         // 최근 7일 완료 전체
 
         return ResponseEntity.ok(
                 new KanbanResponse(inProgress, delayed, completed)
@@ -62,13 +62,14 @@ public class IssueController {
     @GetMapping("/list")
     public ResponseEntity<?> getIssues(
             @ModelAttribute FilterDto filter,
+            @RequestParam(value = "memberId", required = false) Long memberId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
             System.out.println("filter: " + filter);
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<IssueListDto> dtoList = issueService.findAll(filter, pageable);
+            Page<IssueListDto> dtoList = issueService.findAll(filter, pageable, memberId);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();
@@ -147,11 +148,12 @@ public class IssueController {
 
     @GetMapping("/{id}/meeting")
     public ResponseEntity<?> getMeetingRelatedIssue(@PathVariable Long id,
+                                                    @RequestParam(value = "memberId", required = false) Long memberId,
                                                     @RequestParam(defaultValue = "0") int page,
                                                     @RequestParam(defaultValue = "10") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, pageable);
+            Page<MeetingListDto> meetingListDtos = meetingService.getMeetingRelatedIssue(id, memberId, pageable);
             return ResponseEntity.ok(meetingListDtos);
         } catch (Exception e) {
             e.printStackTrace();

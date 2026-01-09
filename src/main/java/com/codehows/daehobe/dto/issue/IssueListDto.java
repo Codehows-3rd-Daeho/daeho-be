@@ -31,6 +31,8 @@ public class IssueListDto {
 
     @JsonProperty("isDel")
     private boolean del;               // 삭제 여부
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;
 
 
     // 주관자 부서명 빠진버전
@@ -44,6 +46,7 @@ public class IssueListDto {
                 .endDate(issue.getEndDate())
                 .categoryName(issue.getCategory().getName())
                 .del(issue.isDel())
+                .isPrivate(issue.isPrivate())
                 .departmentName(departmentName)
                 .hostName(hostName)
                 .hostJPName(hostJPName)

@@ -123,12 +123,13 @@ public class MeetingController {
     @GetMapping("/list")
     public ResponseEntity<?> getMeetings(
             @ModelAttribute FilterDto filter,
+            @RequestParam(value = "memberId", required = false) Long memberId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-            Page<MeetingListDto> dtoList = meetingService.findAll(filter,pageable);
+            Page<MeetingListDto> dtoList = meetingService.findAll(filter,pageable,memberId);
             return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             e.printStackTrace();
@@ -139,13 +140,14 @@ public class MeetingController {
     //회의 캘린더 조회
     @GetMapping("/scheduler")
     public ResponseEntity<?> getMeetingByMonth(
+            @RequestParam(value = "memberId", required = false) Long memberId,
             @RequestParam int year,
             @RequestParam int month
     ) {
 
         try {
             List<MeetingListDto> meetings =
-                    meetingService.findByDateBetween(year, month);
+                    meetingService.findByDateBetween(memberId, year, month);
 
             return ResponseEntity.ok(meetings);
         } catch (Exception e) {
