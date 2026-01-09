@@ -4,6 +4,7 @@ import com.codehows.daehobe.dto.masterData.MasterDataDto;
 import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.service.masterData.CategoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,6 +49,25 @@ public class CategoryController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("카테고리 삭제 중 오류 발생");
+        }
+    }
+
+    @PatchMapping("/admin/category/{id}")
+    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody MasterDataDto masterDataDto) {
+        try {
+            Category category = categoryService.updateCategory(id, masterDataDto);
+            return ResponseEntity.ok(category);
+        }catch (DataIntegrityViolationException e) {
+            // DB unique 제약조건 위반
+            return ResponseEntity.badRequest().body("이미 등록된 카테고리가 있습니다.");
+
+        } catch (IllegalArgumentException e) {
+            // 중복
+            return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("카테고리 수정 중 오류 발생");
         }
     }
 }
