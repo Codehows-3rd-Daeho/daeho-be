@@ -19,4 +19,11 @@ public class Department extends BaseEntity {
     // 부서명
     @Column(unique = true)
     private String name;
+
+    public void changeName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("부서 이름은 필수입니다.");
+        }
+        this.name = name;
+    }
 }

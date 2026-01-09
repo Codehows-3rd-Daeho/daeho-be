@@ -21,4 +21,10 @@ public class JobPosition extends BaseEntity {
     @Column(unique = true, nullable = false)
     private String name;
 
+    public void changeName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("직급 이름은 필수입니다.");
+        }
+        this.name = name;
+    }
 }

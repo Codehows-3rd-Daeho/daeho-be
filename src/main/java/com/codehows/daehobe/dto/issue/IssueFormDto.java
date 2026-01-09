@@ -25,6 +25,7 @@ public class IssueFormDto {
     private List<Long> departmentIds;
     private List<IssueMemberDto> members;
     private Boolean isDel;
+    private Boolean isPrivate;
 
     public static IssueFormDto fromEntity(
             Issue issue,
@@ -47,6 +48,7 @@ public class IssueFormDto {
                                 .toList()
                 )
                 .isDel(issue.isDel())
+                .isPrivate(issue.isPrivate())
                 .build();
     }
 

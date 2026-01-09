@@ -77,6 +77,9 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
     @Column(name = "is_del", nullable = false)
     private boolean isDel;
 
+    @Column(name = "is_private", nullable = false)
+    private boolean isPrivate;
+
     @AuditableField(name="참여자")
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingMember> meetingMembers = new ArrayList<>();
@@ -97,6 +100,7 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
         this.startDate = meetingFormDto.getStartDate();
         this.endDate = meetingFormDto.getEndDate();
         this.status = Status.valueOf(meetingFormDto.getStatus());
+        this.isPrivate = meetingFormDto.getIsPrivate();
     }
 
     public void updateEndDate() {

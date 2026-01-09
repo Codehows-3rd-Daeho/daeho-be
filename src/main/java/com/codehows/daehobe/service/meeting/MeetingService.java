@@ -79,7 +79,8 @@ public class MeetingService {
                 .startDate(meetingFormDto.getStartDate())
                 .endDate(meetingFormDto.getEndDate())
                 .category(categoryId)
-                .isDel(meetingFormDto.getIsDel())
+                .isDel(Boolean.TRUE.equals(meetingFormDto.getIsDel()))
+                .isPrivate(Boolean.TRUE.equals(meetingFormDto.getIsPrivate()))
                 .build();
 
         meetingRepository.save(saveMeeting);
@@ -273,14 +274,19 @@ public class MeetingService {
     }
 
     // 회의 조회
-    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable) {
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, null, pageable);
+    public Page<MeetingListDto> findAll(FilterDto filter, Pageable pageable, Long memberId) {
+        LocalDateTime startDt = (filter.getStartDate() != null) ?
+                filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDt = (filter.getEndDate() != null) ?
+                filter.getEndDate().atTime(23, 59, 59) : null;
+
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId,startDt, endDt,false, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 
     //회의 캘린더 조회
     public List<MeetingListDto> findByDateBetween(
-            int year, int month
+            Long memberId,int year, int month
     ) {
         //LocalDate로 변경
         LocalDate startDate = LocalDate.of(year, month, 1);//시작 날짜 ex) 2025-12-01
@@ -290,7 +296,7 @@ public class MeetingService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        List<Meeting> meetings = meetingRepository.findByStartDateBetweenAndIsDelFalse(startDateTime, endDateTime);
+        List<Meeting> meetings = meetingRepository.findCalendarMeetings(memberId, startDateTime, endDateTime);
 
         return meetings.stream()
                 .map(this::toMeetingListDto)
@@ -324,9 +330,9 @@ public class MeetingService {
 
 
     // issueId로 관련 회의 조회
-    public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Pageable pageable) {
+    public Page<MeetingListDto> getMeetingRelatedIssue(Long issueId, Long memberId,Pageable pageable) {
         Issue issue = issueService.getIssueById(issueId);
-        return meetingRepository.findByIssueAndIsDelFalse(issue, pageable)
+        return meetingRepository.findByIssueAndMemberId(issue, memberId, pageable)
                 .map(this::toMeetingListDto);
     }
 
@@ -348,7 +354,12 @@ public class MeetingService {
 
     // 나의 업무 회의 조회 + 검색
     public Page<MeetingListDto> getMeetingsForMember(Long memberId, FilterDto filter, Pageable pageable) {
-        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, pageable);
+        LocalDateTime startDt = (filter.getStartDate() != null) ?
+                filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDt = (filter.getEndDate() != null) ?
+                filter.getEndDate().atTime(23, 59, 59) : null;
+
+        Page<Meeting> meetings = meetingRepository.findMeetingsWithFilter(filter, memberId, startDt, endDt,true, pageable);
         return meetings.map(this::toMeetingListDto);
     }
 }

@@ -16,11 +16,52 @@ import java.util.Optional;
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     Page<Meeting> findByIsDelFalse(Pageable pageable);
 
-    Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
+//    Page<Meeting> findByIssueAndIsDelFalse(Issue issue, Pageable pageable);
 
-    List<Meeting> findByStartDateBetweenAndIsDelFalse(
+    @Query("""
+    SELECT m FROM Meeting m
+    WHERE m.issue = :issue
+    AND m.isDel = false
+    AND (
+        m.isPrivate = false
+        OR EXISTS (
+            SELECT 1 FROM MeetingMember mm
+            WHERE mm.meeting = m AND mm.member.id = :memberId
+        )
+    )
+""")
+    Page<Meeting> findByIssueAndMemberId(@Param("issue") Issue issue,
+                                         @Param("memberId") Long memberId,
+                                         Pageable pageable);
+
+    List<Meeting> findByMeetingMembers_Member_IdAndStartDateBetweenAndIsDelFalse(
+            Long memberId,
             LocalDateTime start,
             LocalDateTime end);
+
+    // 전체 회의 일정표 조회 본인 미참여 비밀글 제외
+    @Query("""
+    SELECT DISTINCT m
+    FROM Meeting m
+    WHERE m.isDel = false
+    AND m.startDate <= :end 
+    AND (m.endDate IS NULL OR m.endDate >= :start)
+    AND (
+        /* 1. 공개글이거나 설정값이 없는 경우 전체 노출 */
+        (m.isPrivate = false OR m.isPrivate IS NULL)
+        OR
+        /* 2. 비밀글이라도 내가 참여자라면 노출 */
+        (:memberId IS NOT NULL AND EXISTS (
+            SELECT 1 FROM MeetingMember mm 
+            WHERE mm.meeting = m AND mm.member.id = :memberId
+        ))
+    )
+""")
+    List<Meeting> findCalendarMeetings(
+            @Param("memberId") Long memberId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
     // 기존 상세 조회
     @Query("""
@@ -47,18 +88,23 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 LEFT JOIN m.meetingMembers hostMm ON hostMm.isHost = true
                 LEFT JOIN hostMm.member hostM
                 WHERE m.isDel = false
-            
-                /* 키워드 검색 (제목, 카테고리, 멤버, 부서) */
-                AND (
-                    :#{#filter.keyword} IS NULL 
-                    OR :#{#filter.keyword} = '' 
-                    OR (
-                        m.title LIKE %:#{#filter.keyword}% 
-                        OR c.name LIKE %:#{#filter.keyword}% 
-                        OR mem.name LIKE %:#{#filter.keyword}% 
-                        OR d.name LIKE %:#{#filter.keyword}%
-                    )
-                )
+                            
+                                        /* 비밀글 */
+                 AND (
+                     (:isMyWork = true AND :memberId IS NOT NULL AND EXISTS (
+                         SELECT 1 FROM MeetingMember mm2
+                         WHERE mm2.meeting = m AND mm2.member.id = :memberId
+                     ))
+                     OR
+                     (:isMyWork = false AND (
+                         (m.isPrivate = false OR m.isPrivate IS NULL)
+                         OR
+                         (:memberId IS NOT NULL AND EXISTS (
+                             SELECT 1 FROM MeetingMember mm3
+                             WHERE mm3.meeting = m AND mm3.member.id = :memberId
+                         ))
+                     ))
+                 )
             
                 /* 부서 필터 */
                 AND (
@@ -89,12 +135,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                     :#{#filter.statuses} IS NULL 
                     OR m.status IN :#{#filter.statuses}
                 )
-            
-                /* 특정 멤버 기준 조회 (나의 회의 등) */
-                AND (
-                    :memberId IS NULL 
-                    OR mm.member.id = :memberId
-                )
                             
             /* 기간 필터  */
              AND (
@@ -102,7 +142,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                  (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NULL)
          
                  /* 2) 시작일만 있는 경우: 회의 종료일이 시작일 이후이거나, 종료일이 없더라도 회의 시작일이 필터 시작일 이후인 경우 */
-                 OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL\s
+                 OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL
                      AND (
                          (m.endDate IS NOT NULL AND m.endDate >= :#{#filter.startDate?.atStartOfDay()})
                          OR (m.endDate IS NULL AND m.startDate >= :#{#filter.startDate?.atStartOfDay()})
@@ -110,14 +150,14 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                  )
          
                  /* 3) 종료일만 있는 경우: 회의 시작일이 필터 종료일 이전인 경우 */
-                 OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL\s
+                 OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL
                      AND m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                  )
          
                  /* 4) 시작일 + 종료일 모두 있는 경우: 기간 겹침 */
                  OR (m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                      AND (
-                         m.endDate IS NULL\s
+                         m.endDate IS NULL
                          OR m.endDate >= :#{#filter.startDate?.atStartOfDay()}
                      )
                  )
@@ -127,6 +167,9 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     findMeetingsWithFilter(
             @Param("filter") FilterDto filter,
             @Param("memberId") Long memberId,
+            @Param("startDt") LocalDateTime startDt,
+            @Param("endDt") LocalDateTime endDt,
+            @Param("isMyWork") boolean isMyWork,
             Pageable pageable
     );
 }

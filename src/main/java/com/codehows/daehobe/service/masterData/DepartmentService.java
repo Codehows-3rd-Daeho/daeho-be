@@ -1,6 +1,7 @@
 package com.codehows.daehobe.service.masterData;
 
 import com.codehows.daehobe.dto.masterData.MasterDataDto;
+import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.masterData.Department;
 import com.codehows.daehobe.repository.masterData.DepartmentRepository;
 import com.codehows.daehobe.repository.member.MemberRepository;
@@ -56,5 +57,11 @@ public class DepartmentService {
         Department department = departmentRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         // 로직 추가.
         departmentRepository.delete(department);
+    }
+
+    public Department updateDpt(Long id, MasterDataDto masterDataDto) {
+        Department department = departmentRepository.findById(id).orElseThrow(EntityNotFoundException::new);
+        department.changeName(masterDataDto.getName());
+        return department;
     }
 }

@@ -33,6 +33,9 @@ public class MeetingListDto {
     @JsonProperty("isDel")
     private boolean del;               // 삭제 여부
 
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;          // 비밀글 여부
+
 
     // 주관자 부서명 빠진버전
     public static MeetingListDto fromEntity(Meeting meeting, List<String> departmentName, String hostName, String hostJPName) {
@@ -45,6 +48,7 @@ public class MeetingListDto {
                 .endDate(meeting.getEndDate())
                 .categoryName(meeting.getCategory().getName())
                 .del(meeting.isDel())
+                .isPrivate(meeting.isPrivate())
                 .departmentName(departmentName)
                 .hostName(hostName)
                 .hostJPName(hostJPName)
