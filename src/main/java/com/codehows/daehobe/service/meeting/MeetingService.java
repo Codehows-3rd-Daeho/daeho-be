@@ -20,7 +20,9 @@ import com.codehows.daehobe.entity.masterData.Category;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.entity.meeting.MeetingMember;
 import com.codehows.daehobe.entity.member.Member;
+import com.codehows.daehobe.repository.meeting.MeetingMemberRepository;
 import com.codehows.daehobe.repository.meeting.MeetingRepository;
+import com.codehows.daehobe.repository.member.MemberRepository;
 import com.codehows.daehobe.service.file.FileService;
 import com.codehows.daehobe.service.issue.IssueService;
 import com.codehows.daehobe.service.masterData.CategoryService;
@@ -57,6 +59,8 @@ public class MeetingService {
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
     private final STTService sttService;
+    private final MeetingMemberRepository meetingMemberRepository;
+    private final MemberRepository memberRepository;
 
 
     @TrackChanges(type = ChangeType.CREATE, target = TargetType.MEETING)
@@ -286,8 +290,15 @@ public class MeetingService {
     }
 
     @Transactional
-    public void updateMeetingColor(Long meetingId, String color) {
+    public void updateMeetingColor(Long meetingId, String color, Long memberId) {
         Meeting meeting = getMeetingById(meetingId);
+        Member member = memberRepository.findById(memberId).orElse(null);
+        if (meeting == null || member == null) return;
+        MeetingMember meetingMember = meetingMemberRepository.findByMeetingAndMember(meeting, member)
+                .orElseThrow(() -> new IllegalStateException("회의 참여자가 아닙니다."));
+        if (!meetingMember.isPermitted()) {
+            throw new IllegalStateException("해당 회의의 수정 권한이 없습니다.");
+        }
         meeting.updateColor(color);
     }
 
