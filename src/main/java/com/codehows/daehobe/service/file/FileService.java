@@ -5,18 +5,22 @@ import com.codehows.daehobe.dto.file.FileDto;
 import com.codehows.daehobe.entity.file.File;
 import com.codehows.daehobe.repository.file.FileRepository;
 import com.codehows.daehobe.utils.AudioProcessor;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -174,6 +178,38 @@ public class FileService {
             if (f.exists()) f.delete();
         }
         fileRepository.deleteAll(files);
+    }
+
+    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"
+    );
+
+    public String storeEmbedImage(MultipartFile file) throws IOException {
+        // 파일명 검증
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+
+        if (originalFileName.contains("..")) {
+            throw new IllegalArgumentException("파일명에 부적절한 경로가 포함되어 있습니다: " + originalFileName);
+        }
+
+        // 파일 확장자 검증
+        int lastDotIndex = originalFileName.lastIndexOf('.');
+        String fileExtension = lastDotIndex > 0 ? originalFileName.substring(lastDotIndex).toLowerCase() : "";
+        if (!ALLOWED_EXTENSIONS.contains(fileExtension.toLowerCase())) {
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다: " + fileExtension);
+        }
+
+        // 고유한 파일명 생성 (UUID + 원본 확장자)
+        String uniqueFileName = UUID.randomUUID().toString() + fileExtension;
+
+        // 파일 저장
+        Path targetLocation = Paths.get(fileLocation).toAbsolutePath().normalize().resolve(uniqueFileName);
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        return uniqueFileName;
     }
 
     // 파일id로 파일 찾기

@@ -26,6 +26,7 @@ public class MeetingFormDto {
     private Long categoryId;
     private List<Long> departmentIds;
     private List<MeetingMemberDto> members;
+    private String remarks;
     private Boolean  isDel;
     private Boolean isPrivate = false;
 }

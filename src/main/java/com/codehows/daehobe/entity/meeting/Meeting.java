@@ -84,6 +84,16 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
     @OneToMany(mappedBy = "meeting", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeetingMember> meetingMembers = new ArrayList<>();
 
+    @Column(name = "remarks")
+    private String remarks;
+
+    @Column(name = "color")
+    private String color;
+
+    public void updateColor(String color) {
+        this.color = color;
+    }
+
     public void deleteMeeting() {
         this.isDel = true;
     }
@@ -101,6 +111,7 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
         this.endDate = meetingFormDto.getEndDate();
         this.status = Status.valueOf(meetingFormDto.getStatus());
         this.isPrivate = meetingFormDto.getIsPrivate();
+        this.remarks = meetingFormDto.getRemarks();
     }
 
     public void updateEndDate() {
@@ -129,13 +140,15 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
                             .collect(Collectors.joining(", "));
                     yield "참여자 > [" + names + "]";
                 }
+                case "비고" -> "비고 > " + remarks;
                 default -> null;
             };
         }
         return null;
-    };
-        @Override
-        public String createLogMessage(ChangeType type) {
+    }
+
+    @Override
+    public String createLogMessage(ChangeType type) {
         return switch (type) {
             case CREATE -> "등록 > " + title;
             case DELETE -> "삭제 > " + title;

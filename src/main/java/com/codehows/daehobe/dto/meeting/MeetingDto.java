@@ -38,6 +38,7 @@ public class MeetingDto {
     private List<String> departmentName;
     private FileDto meetingMinutes; // 회의록
     private String totalSummary;
+    private String remarks;
 
     @JsonFormat(pattern = "yyyy.MM.dd HH:mm")
     private LocalDateTime createdAt;
@@ -71,7 +72,6 @@ public class MeetingDto {
             issue = null;
         }
 
-
         String hostName = host != null ? host.getMember().getName() : null;
         String hostJPName = (host != null && host.getMember().getJobPosition() != null)
                 ? host.getMember().getJobPosition().getName()
@@ -91,6 +91,7 @@ public class MeetingDto {
                 .categoryName(meeting.getCategory().getName())
                 .departmentName(departmentNames)
                 .meetingMinutes(meetingMinutes)
+                .remarks(meeting.getRemarks())
                 .createdAt(meeting.getCreatedAt())
                 .updatedAt(meeting.getUpdatedAt())
                 .del(meeting.isDel())
