@@ -3,12 +3,14 @@ package com.codehows.daehobe.controller.meeting;
 import com.codehows.daehobe.dto.issue.FilterDto;
 import com.codehows.daehobe.dto.issue.IssueFormDto;
 import com.codehows.daehobe.dto.issue.IssueListDto;
+import com.codehows.daehobe.dto.meeting.MeetingColorUpdateRequest;
 import com.codehows.daehobe.dto.meeting.MeetingDto;
 import com.codehows.daehobe.dto.meeting.MeetingFormDto;
 import com.codehows.daehobe.dto.meeting.MeetingListDto;
 import com.codehows.daehobe.entity.meeting.Meeting;
 import com.codehows.daehobe.service.meeting.MeetingService;
 import com.codehows.daehobe.service.member.MemberService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -135,6 +137,14 @@ public class MeetingController {
             e.printStackTrace();
             return ResponseEntity.status(500).body("회의 조회 중 오류 발생");
         }
+    }
+
+    @PatchMapping("/{meetingId}/color")
+    public ResponseEntity<?> updateMeetingColor(
+            @PathVariable Long meetingId,
+            @Valid @RequestBody MeetingColorUpdateRequest request) {
+        meetingService.updateMeetingColor(meetingId, request.getColor());
+        return ResponseEntity.ok().build();
     }
 
     //회의 캘린더 조회

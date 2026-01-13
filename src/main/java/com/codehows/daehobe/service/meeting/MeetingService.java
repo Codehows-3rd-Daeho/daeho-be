@@ -76,6 +76,7 @@ public class MeetingService {
                 .content(meetingFormDto.getContent())
                 .status(Status.valueOf(meetingFormDto.getStatus()))
                 .issue(issue)
+                .remarks(meetingFormDto.getRemarks())
                 .startDate(meetingFormDto.getStartDate())
                 .endDate(meetingFormDto.getEndDate())
                 .category(categoryId)
@@ -284,7 +285,13 @@ public class MeetingService {
         return meetings.map(this::toMeetingListDto);
     }
 
-    //회의 캘린더 조회
+    @Transactional
+    public void updateMeetingColor(Long meetingId, String color) {
+        Meeting meeting = getMeetingById(meetingId);
+        meeting.updateColor(color);
+    }
+
+        //회의 캘린더 조회
     public List<MeetingListDto> findByDateBetween(
             Long memberId,int year, int month
     ) {

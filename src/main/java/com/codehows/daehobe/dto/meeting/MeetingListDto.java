@@ -35,6 +35,7 @@ public class MeetingListDto {
 
     @JsonProperty("isPrivate")
     private boolean isPrivate;          // 비밀글 여부
+    private String color;
 
 
     // 주관자 부서명 빠진버전
@@ -49,6 +50,7 @@ public class MeetingListDto {
                 .categoryName(meeting.getCategory().getName())
                 .del(meeting.isDel())
                 .isPrivate(meeting.isPrivate())
+                .color(meeting.getColor())
                 .departmentName(departmentName)
                 .hostName(hostName)
                 .hostJPName(hostJPName)
