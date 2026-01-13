@@ -142,8 +142,15 @@ public class MeetingController {
     @PatchMapping("/{meetingId}/color")
     public ResponseEntity<?> updateMeetingColor(
             @PathVariable Long meetingId,
-            @Valid @RequestBody MeetingColorUpdateRequest request) {
-        meetingService.updateMeetingColor(meetingId, request.getColor());
+            @Valid @RequestBody MeetingColorUpdateRequest request,
+            Authentication authentication
+    ) {
+        Long memberId = Long.valueOf(authentication.getName());
+        try{
+            meetingService.updateMeetingColor(meetingId, request.getColor(), memberId);
+        }catch (IllegalStateException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        }
         return ResponseEntity.ok().build();
     }
 
