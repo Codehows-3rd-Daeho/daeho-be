@@ -86,10 +86,10 @@ public class KafkaConsumerConfig {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         // 위에서 정의한 consumerFactory()를 사용하여 컨슈머 인스턴스를 생성하도록 설정합니다.
         factory.setConsumerFactory(consumerFactory());
-
-        // factory.setConcurrency(3): 리스너의 동시성을 설정할 수 있습니다.
+        //리스너의 동시성을 설정할 수 있습니다.
         // 예를 들어, 3으로 설정하면 3개의 스레드가 동시에 메시지를 처리합니다.
         // 이는 토픽의 파티션 수와 관련이 깊으며, 보통 파티션 수와 맞추거나 더 작게 설정합니다.
+        factory.setConcurrency(10);
 
         return factory;
     }

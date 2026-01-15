@@ -32,12 +32,12 @@ public class KafkaTopicConfig {
                 // partitions(1): 토픽의 파티션 수를 1로 설정합니다.
                 // 파티션은 토픽을 구성하는 데이터의 하위 집합으로, 병렬 처리를 가능하게 합니다.
                 // 컨슈머 그룹 내의 컨슈머 수만큼 파티션을 늘리면 처리량을 높일 수 있습니다.
-                .partitions(1)
+                .partitions(10)
 
                 // replicas(1): 각 파티션의 복제본 수를 1로 설정합니다.
                 // 복제본은 데이터의 고가용성(High Availability)과 내구성(Durability)을 보장합니다.
                 // 운영 환경에서는 보통 2 또는 3 이상의 값을 권장하지만, 로컬 개발 환경이므로 1로 설정합니다.
-                .replicas(1)
+                .replicas(2)
 
                 // .compact(): 이 옵션을 사용하면 로그 압축(Log Compaction)을 활성화할 수 있습니다.
                 // 로그 압축은 토픽의 각 메시지 키에 대해 최소 하나 이상의 최신 값만 보존하는 전략입니다.
@@ -46,6 +46,6 @@ public class KafkaTopicConfig {
                 .build();
     }
 
-    }
+}
 
     

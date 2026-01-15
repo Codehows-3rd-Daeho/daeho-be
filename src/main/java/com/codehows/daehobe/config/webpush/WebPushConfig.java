@@ -32,6 +32,8 @@ public class WebPushConfig {
      */
     @Value("${vapid.public.key}")
     private String vapidPublicKey;
+    @Value("${vapid.service.mail}")
+    private String serviceMailAddress;
 
     /**
      * VAPID 개인 키입니다.
@@ -58,6 +60,9 @@ public class WebPushConfig {
         }
 
         // VAPID 공개 키와 개인 키를 사용하여 PushService를 초기화하고 빈으로 반환합니다.
-        return new PushService(vapidPublicKey, vapidPrivateKey, "mailto:example@example.com");
+        return new PushService(
+                vapidPublicKey,
+                vapidPrivateKey,
+                "mailto:%s".formatted(serviceMailAddress));
     }
 }
