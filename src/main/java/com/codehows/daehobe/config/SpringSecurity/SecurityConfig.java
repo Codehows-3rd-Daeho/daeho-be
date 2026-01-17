@@ -1,6 +1,6 @@
 package com.codehows.daehobe.config.SpringSecurity;
 
-import com.codehows.daehobe.config.jwt.JwtFilter;
+import com.codehows.daehobe.config.jwtAuth.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

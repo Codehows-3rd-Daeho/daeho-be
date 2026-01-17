@@ -1,6 +1,6 @@
 package com.codehows.daehobe.config.SpringSecurity;
-import com.codehows.daehobe.entity.member.Member;
-import com.codehows.daehobe.repository.member.MemberRepository;
+import com.codehows.daehobe.member.entity.Member;
+import com.codehows.daehobe.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.User;
