@@ -47,10 +47,8 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     AND m.startDate <= :end 
     AND (m.endDate IS NULL OR m.endDate >= :start)
     AND (
-        /* 1. 공개글이거나 설정값이 없는 경우 전체 노출 */
         (m.isPrivate = false OR m.isPrivate IS NULL)
         OR
-        /* 2. 비밀글이라도 내가 참여자라면 노출 */
         (:memberId IS NOT NULL AND EXISTS (
             SELECT 1 FROM MeetingMember mm 
             WHERE mm.meeting = m AND mm.member.id = :memberId
@@ -88,8 +86,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 LEFT JOIN m.meetingMembers hostMm ON hostMm.isHost = true
                 LEFT JOIN hostMm.member hostM
                 WHERE m.isDel = false
-                            
-                                        /* 비밀글 */
                  AND (
                      (:isMyWork = true AND :memberId IS NOT NULL AND EXISTS (
                          SELECT 1 FROM MeetingMember mm2
@@ -105,43 +101,29 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                          ))
                      ))
                  )
-            
-                /* 부서 필터 */
                 AND (
                     :#{#filter.departmentIds} IS NULL 
                     OR d.id IN :#{#filter.departmentIds}
                 )
-            
-                /* 카테고리 필터 */
                 AND (
                     :#{#filter.categoryIds} IS NULL 
                     OR c.id IN :#{#filter.categoryIds}
                 )
-            
-                /* 주최자 필터 */
                 AND (
                     :#{#filter.hostIds} IS NULL 
                     OR (hostMm.isHost = true AND hostM.id IN :#{#filter.hostIds})
                 )
-            
-                /* 참여자 필터 */
                 AND (
                     :#{#filter.participantIds} IS NULL 
                     OR (mm.isHost = false AND mem.id IN :#{#filter.participantIds})
                 )
-            
-                /* 상태 필터 */
                 AND (
                     :#{#filter.statuses} IS NULL 
                     OR m.status IN :#{#filter.statuses}
                 )
-                            
-            /* 기간 필터  */
              AND (
-                 /* 1) 시작일, 종료일 모두 없음 */
                  (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NULL)
          
-                 /* 2) 시작일만 있는 경우: 회의 종료일이 시작일 이후이거나, 종료일이 없더라도 회의 시작일이 필터 시작일 이후인 경우 */
                  OR (:#{#filter.startDate} IS NOT NULL AND :#{#filter.endDate} IS NULL
                      AND (
                          (m.endDate IS NOT NULL AND m.endDate >= :#{#filter.startDate?.atStartOfDay()})
@@ -149,12 +131,10 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                      )
                  )
          
-                 /* 3) 종료일만 있는 경우: 회의 시작일이 필터 종료일 이전인 경우 */
                  OR (:#{#filter.startDate} IS NULL AND :#{#filter.endDate} IS NOT NULL
                      AND m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                  )
          
-                 /* 4) 시작일 + 종료일 모두 있는 경우: 기간 겹침 */
                  OR (m.startDate <= :#{#filter.endDate?.atTime(23, 59, 59)}
                      AND (
                          m.endDate IS NULL
@@ -163,8 +143,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                  )
              )
             """)
-    Page<Meeting>
-    findMeetingsWithFilter(
+    Page<Meeting> findMeetingsWithFilter(
             @Param("filter") FilterDto filter,
             @Param("memberId") Long memberId,
             @Param("startDt") LocalDateTime startDt,

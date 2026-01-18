@@ -86,14 +86,14 @@ public class MeetingService {
                 .isPrivate(Boolean.TRUE.equals(meetingFormDto.getIsPrivate()))
                 .build();
 
-        meetingRepository.save(saveMeeting);
+        Meeting savedMeeting = meetingRepository.save(saveMeeting);
 
         //회의 부서
         // 1. DTO에서 부서 이름 목록 (List<Long>) 추출
         List<Long> departmentIds = meetingFormDto.getDepartmentIds();
         //2. 부서 저장 서비스 호출
         if (departmentIds != null && !departmentIds.isEmpty()) {
-            meetingDepartmentService.saveDepartment(saveMeeting.getId(), departmentIds);
+            meetingDepartmentService.saveDepartment(savedMeeting.getId(), departmentIds);
         }
 
         //회의 참여자
@@ -101,13 +101,13 @@ public class MeetingService {
         List<MeetingMemberDto> meetingMemberDtos = meetingFormDto.getMembers();
         //2. 참여자 저장 서비스 호출
         if (meetingMemberDtos != null && !meetingMemberDtos.isEmpty()) {
-            meetingMemberService.saveMeetingMember(saveMeeting.getId(), meetingMemberDtos);
+            meetingMemberService.saveMeetingMember(savedMeeting.getId(), meetingMemberDtos);
 
         }
 
         //파일 저장
         if (multipartFiles != null) {
-            fileService.uploadFiles(saveMeeting.getId(), multipartFiles, TargetType.MEETING);
+            fileService.uploadFiles(savedMeeting.getId(), multipartFiles, TargetType.MEETING);
         }
 
 
@@ -118,12 +118,12 @@ public class MeetingService {
                             .map(MeetingMemberDto::getId)
                             .toList(),
                     Long.valueOf(writerId),
-                    "새 회의가 등록되었습니다 \n" + saveMeeting.getTitle(),
-                    "/meeting/" + saveMeeting.getId()
+                    "새 회의가 등록되었습니다 \n" + savedMeeting.getTitle(),
+                    "/meeting/" + savedMeeting.getId()
             );
         }
 
-        return saveMeeting;
+        return savedMeeting;
     }
 
     public MeetingDto getMeetingDtl(Long id, Long memberId) {

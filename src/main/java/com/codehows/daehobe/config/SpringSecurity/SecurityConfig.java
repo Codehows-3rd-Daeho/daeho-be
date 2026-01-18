@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,7 +34,7 @@ public class SecurityConfig {
     // Spring Security에서 보안 필터 체인을 수동 설정. HttpSecurity를 이용해서 요청 URL에 대한 보안 정책을 설정
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         // CSRF 보호 기능 끄기 (JWT 기반 인증에선 세션을 쓰지 않으므로 필요 없음)
-        http.csrf(csrf -> csrf.disable())
+        http.csrf(AbstractHttpConfigurer::disable)
 
                 // 세션을 아예 만들지 않도록 설정 (STATELESS → 모든 요청은 JWT 토큰 기반으로 인증)
                 .sessionManagement((session) -> session

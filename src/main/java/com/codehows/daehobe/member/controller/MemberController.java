@@ -5,6 +5,8 @@ import com.codehows.daehobe.member.dto.MemberListDto;
 import com.codehows.daehobe.member.dto.MemberProfileDto;
 import com.codehows.daehobe.member.dto.PasswordRequestDto;
 import com.codehows.daehobe.member.service.MemberService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,8 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -119,8 +119,13 @@ public class MemberController {
     //비밀번호 재설정
     @PatchMapping("mypage/password")
     public ResponseEntity<?> changePassword(@RequestBody PasswordRequestDto passwordRequestDto) {
-        memberService.changPwd(passwordRequestDto.getNewPassword());
-        return ResponseEntity.ok().build();
+        try {
+            memberService.changPwd(passwordRequestDto.getNewPassword());
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("비밀번호 수정 중 오류 발생");
+        }
     }
 
 

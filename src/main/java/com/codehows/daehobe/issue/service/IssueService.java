@@ -59,7 +59,7 @@ public class IssueService {
                 .build();
 
         // 이슈 먼저 저장 후 id를 파일 엔티티에 저장 가능
-        issueRepository.save(saveIssue);
+        saveIssue = issueRepository.save(saveIssue);
 
         // 부서
         // 1. DTO에서 부서 이름 목록 (List<Long>) 추출
@@ -161,12 +161,13 @@ public class IssueService {
         return IssueFormDto.fromEntity(issue, departmentIds, members);
     }
 
-    public void updateReadStatus(Long id, Long memberId) {
+    public IssueMember updateReadStatus(Long id, Long memberId) {
         IssueMember issueMember = issueMemberService.findByIssueIdAndMemberId(id, memberId);
         if (issueMember.isRead()) {
-            return;
+            return issueMember;
         }
         issueMember.updateIsRead(true);
+        return issueMember;
     }
 
     @TrackChanges(type = ChangeType.UPDATE, target = TargetType.ISSUE, trackMembers = true)

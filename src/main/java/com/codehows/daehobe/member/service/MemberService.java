@@ -71,14 +71,14 @@ public class MemberService {
                 .build();
 
         // 회원저장
-        memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
 
         // 파일저장
         if (profileImage != null) {
-            fileService.uploadFiles(member.getId(), profileImage, TargetType.MEMBER);
+            fileService.uploadFiles(savedMember.getId(), profileImage, TargetType.MEMBER);
         }
 
-        return member;
+        return savedMember;
     }
 
     public Page<MemberListDto> findAll(Pageable pageable, String keyword) {
@@ -136,7 +136,7 @@ public class MemberService {
 
     }
 
-    public Member updateMember(Long id,
+    public void updateMember(Long id,
                                MemberDto memberDto,
                                List<MultipartFile> newFiles,
                                List<Long> removeFileIds) {
@@ -150,8 +150,6 @@ public class MemberService {
 
         // 파일 업데이트
         fileService.updateFiles(member.getId(), newFiles, removeFileIds, TargetType.MEMBER);
-
-        return member;
     }
 
     // 8자 영숫자 임시 비밀번호 생성

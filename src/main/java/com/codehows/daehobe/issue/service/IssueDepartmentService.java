@@ -23,7 +23,7 @@ public class IssueDepartmentService {
     private final IssueRepository issueRepository;
     private final IssueDepartmentRepository issueDepartmentRepository;
 
-    public  List<IssueDepartment> saveDepartment(Long issueId, List<Long> departmentIds) {
+    public List<IssueDepartment> saveDepartment(Long issueId, List<Long> departmentIds) {
         //1. 이슈 조회
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new EntityNotFoundException("해당 ID의 이슈를 찾을 수 없습니다: " + issueId));
