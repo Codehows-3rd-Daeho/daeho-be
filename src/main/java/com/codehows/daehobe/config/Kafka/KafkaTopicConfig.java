@@ -40,19 +40,13 @@ public class KafkaTopicConfig {
                 .build();
     }
 
-    @Bean
-    public NewTopic sttAbnormalTerminationTopic() {
-        return TopicBuilder.name(STT_ABNORMAL_TERMINATION_TOPIC)
-                .partitions(1)
-                .replicas(2)
-                .build();
-    }
+
 
     @Bean
     public NewTopic sttEncodingTopic() {
         return TopicBuilder.name(STT_ENCODING_TOPIC)
                 .partitions(2)
-                .replicas(3)
+                .replicas(2)
                 .build();
     }
 

@@ -1,39 +1,39 @@
 package com.codehows.daehobe.meeting.service;
 
-import com.codehows.daehobe.logging.AOP.annotations.TrackChanges;
-import com.codehows.daehobe.logging.constant.ChangeType;
 import com.codehows.daehobe.common.constant.Status;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.file.dto.FileDto;
+import com.codehows.daehobe.file.entity.File;
+import com.codehows.daehobe.file.service.FileService;
 import com.codehows.daehobe.issue.dto.FilterDto;
+import com.codehows.daehobe.issue.entity.Issue;
+import com.codehows.daehobe.issue.service.IssueService;
+import com.codehows.daehobe.logging.AOP.annotations.TrackChanges;
+import com.codehows.daehobe.logging.constant.ChangeType;
 import com.codehows.daehobe.masterData.dto.SetNotificationDto;
+import com.codehows.daehobe.masterData.entity.Category;
+import com.codehows.daehobe.masterData.service.CategoryService;
+import com.codehows.daehobe.masterData.service.SetNotificationService;
 import com.codehows.daehobe.meeting.dto.MeetingDto;
 import com.codehows.daehobe.meeting.dto.MeetingFormDto;
 import com.codehows.daehobe.meeting.dto.MeetingListDto;
 import com.codehows.daehobe.meeting.dto.MeetingMemberDto;
-import com.codehows.daehobe.stt.dto.STTDto;
-import com.codehows.daehobe.file.entity.File;
-import com.codehows.daehobe.issue.entity.Issue;
-import com.codehows.daehobe.masterData.entity.Category;
 import com.codehows.daehobe.meeting.entity.Meeting;
 import com.codehows.daehobe.meeting.entity.MeetingMember;
-import com.codehows.daehobe.member.entity.Member;
 import com.codehows.daehobe.meeting.repository.MeetingMemberRepository;
 import com.codehows.daehobe.meeting.repository.MeetingRepository;
+import com.codehows.daehobe.member.entity.Member;
 import com.codehows.daehobe.member.repository.MemberRepository;
-import com.codehows.daehobe.file.service.FileService;
-import com.codehows.daehobe.issue.service.IssueService;
-import com.codehows.daehobe.masterData.service.CategoryService;
-import com.codehows.daehobe.masterData.service.SetNotificationService;
 import com.codehows.daehobe.member.service.MemberService;
-import com.codehows.daehobe.stt.service.STTService;
 import com.codehows.daehobe.notification.service.NotificationService;
+import com.codehows.daehobe.stt.dto.STTDto;
+import com.codehows.daehobe.stt.service.STTService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -43,19 +43,19 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class MeetingService {
 
-    private final CategoryService categoryService;
     private final MeetingRepository meetingRepository;
     private final FileService fileService;
+    private final IssueService issueService;
+    private final CategoryService categoryService;
     private final MeetingDepartmentService meetingDepartmentService;
     private final MeetingMemberService meetingMemberService;
-    private final IssueService issueService;
-    private final MemberService memberService;
     private final NotificationService notificationService;
     private final SetNotificationService setNotificationService;
+    private final MemberService memberService;
     private final STTService sttService;
     private final MeetingMemberRepository meetingMemberRepository;
     private final MemberRepository memberRepository;
@@ -326,11 +326,11 @@ public class MeetingService {
                 .withHour(23).withMinute(59).withSecond(59);
 
 
-        System.out.println(" =============================================================");
+        System.out.println(" ============================================================");
         System.out.println(" findByDateBetweenForMember memberId: " + memberId);
         System.out.println(" findByDateBetweenForMember year: " + year);
         System.out.println(" findByDateBetweenForMember month: " + month);
-        System.out.println(" =============================================================");
+        System.out.println(" ============================================================");
 
         List<MeetingMember> meetings = meetingMemberService.findMeetingsByMemberAndDate(memberId, start, end);
 

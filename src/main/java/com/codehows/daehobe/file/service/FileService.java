@@ -70,7 +70,7 @@ public class FileService {
                 throw new RuntimeException("Failed to append chunk to file", e);
             }
         }
-        return fileRepository.save(recordingFile);
+        return recordingFile;
     }
 
     public File encodeAudioFile(File originalFile) {

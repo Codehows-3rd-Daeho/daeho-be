@@ -1,4 +1,4 @@
-package com.codehows.daehobe.stt.service.processor;
+package com.codehows.daehobe.stt.service.processing;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,14 +35,5 @@ public class DistributedLockManager {
     public void releaseLock(String lockKey) {
         redisTemplate.delete(lockKey);
         log.debug("Released distributed lock: {}", lockKey);
-    }
-
-    public void renewLock(String lockKey, long ttlSeconds) {
-        Boolean renewed = redisTemplate.expire(lockKey, ttlSeconds, TimeUnit.SECONDS);
-        if (Boolean.TRUE.equals(renewed)) {
-            log.trace("Renewed distributed lock: {}", lockKey);
-        } else {
-            log.warn("Failed to renew distributed lock: {}", lockKey);
-        }
     }
 }

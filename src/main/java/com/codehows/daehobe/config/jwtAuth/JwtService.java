@@ -93,4 +93,34 @@ public class JwtService {
         return null;
     }
 
+    /**
+     * JWT 토큰 문자열을 파싱하여 사용자 ID와 역할을 추출합니다. (WebSocket 인증용)
+     *
+     * @param token JWT 토큰 문자열
+     * @return 토큰이 유효한 경우 사용자 ID("memberId")와 역할("role")이 담긴 Map, 그렇지 않으면 null
+     */
+    public Map<String, String> parseTokenWithRole(String token) {
+        if (token != null) {
+            try {
+                var claims = Jwts.parserBuilder()
+                        .setSigningKey(signingKey)
+                        .build()
+                        .parseClaimsJws(token)
+                        .getBody();
+
+                String memberId = claims.getSubject();
+                String role = claims.get("role", String.class);
+
+                if (memberId != null && role != null) {
+                    return Map.of(
+                            "memberId", memberId,
+                            "role", role
+                    );
+                }
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
 }

@@ -68,18 +68,7 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-    @Bean
-    public ConsumerFactory<String, String> sttAbnormalTerminationGroupConsumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerProps(STT_ABNORMAL_TERMINATION_GROUP));
-    }
 
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> sttAbnormalTerminationListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(sttAbnormalTerminationGroupConsumerFactory());
-        factory.setConcurrency(1);
-        return factory;
-    }
 
     @Bean
     public ConsumerFactory<String, String> sttEncodingGroupConsumerFactory() {
