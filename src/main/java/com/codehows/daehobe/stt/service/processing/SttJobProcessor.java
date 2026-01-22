@@ -74,52 +74,43 @@ public class SttJobProcessor {
     }
 
     @Transactional
-    public Mono<Void> processSingleEncodingJob(Long sttId) {
-        return Mono.fromCallable(() -> {
-                    try {
-                        STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-                        stt.setStatus(STT.Status.ENCODING);
-                        sttRepository.save(stt);
+    public void processSingleEncodingJob(Long sttId) {
+        try {
+            STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+            stt.setStatus(STT.Status.ENCODING);
+            sttRepository.save(stt);
 
-                        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
-                        cachedStatus.updateStatus(STT.Status.ENCODING);
-                        sttCacheService.updateCacheFields(sttId, Map.of(
-                                "status", cachedStatus.getStatus().name()
-                        ));
-                        messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+            cachedStatus.updateStatus(STT.Status.ENCODING);
+            sttCacheService.updateCacheFields(sttId, Map.of(
+                    "status", cachedStatus.getStatus().name()
+            ));
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
-                        log.info("Starting encoding job for STT ID: {}", sttId);
-                        File originalFile = fileService.getSTTFile(sttId);
-                        File encodedFile = fileService.encodeAudioFile(originalFile);
+            log.info("Starting encoding job for STT ID: {}", sttId);
+            File originalFile = fileService.getSTTFile(sttId);
+            File encodedFile = fileService.encodeAudioFile(originalFile);
 
-                        boolean isFileReady = isFileReadyToBeServed(encodedFile);
-                        if (!isFileReady) {
-                            log.error("File for STT {} is not ready after encoding and retries.", sttId);
-                            throw new RuntimeException("Encoded file not available for serving.");
-                        }
+            boolean isFileReady = isFileReadyToBeServed(encodedFile);
+            if (!isFileReady) {
+                log.error("File for STT {} is not ready after encoding and retries.", sttId);
+                throw new RuntimeException("Encoded file not available for serving.");
+            }
 
-                        stt.setStatus(STT.Status.ENCODED);
-                        sttRepository.save(stt);
-                        STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(encodedFile));
-                        dto.updateStatus(STT.Status.ENCODED);
-                        sttCacheService.updateCacheFields(sttId, Map.of(
-                                "status", dto.getStatus().name()
-                        ));
-                        messagingTemplate.convertAndSend("/topic/stt/updates/" + dto.getMeetingId(), dto);
+            stt.setStatus(STT.Status.ENCODED);
+            sttRepository.save(stt);
+            STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(encodedFile));
+            dto.updateStatus(STT.Status.ENCODED);
+            sttCacheService.updateCacheFields(sttId, Map.of(
+                    "status", dto.getStatus().name()
+            ));
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + dto.getMeetingId(), dto);
 
-                        log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
-                        return null;
-                    } catch (Exception e) {
-                        log.error("Failed to process encoding job for STT: {}", sttId, e);
-                        throw e;
-                    }
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .then()
-                .onErrorResume(e -> {
-                    log.error("Error in encoding job for STT {}", sttId, e);
-                    return Mono.empty();
-                });
+            log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
+        } catch (Exception e) {
+            log.error("Failed to process encoding job for STT: {}", sttId, e);
+            throw new RuntimeException(e); // Re-throw the exception to be handled by the consumer
+        }
     }
 
     @Transactional

@@ -32,7 +32,7 @@ public class KafkaTopicConfig {
     public NewTopic notificationTopic() {
         return TopicBuilder.name(NOTIFICATION_TOPIC)
                 .partitions(5)
-                .replicas(2)
+                .replicas(3)
                 // .compact(): 이 옵션을 사용하면 로그 압축(Log Compaction)을 활성화할 수 있습니다.
                 // 로그 압축은 토픽의 각 메시지 키에 대해 최소 하나 이상의 최신 값만 보존하는 전략입니다.
                 // .config(TopicConfig.RETENTION_MS_CONFIG, "-1"): 메시지 보존 기간을 설정합니다.
@@ -45,8 +45,8 @@ public class KafkaTopicConfig {
     @Bean
     public NewTopic sttEncodingTopic() {
         return TopicBuilder.name(STT_ENCODING_TOPIC)
-                .partitions(2)
-                .replicas(2)
+                .partitions(3)
+                .replicas(3)
                 .build();
     }
 
@@ -54,7 +54,7 @@ public class KafkaTopicConfig {
     public NewTopic sttProcessingTopic() {
         return TopicBuilder.name(STT_PROCESSING_TOPIC)
                 .partitions(3)
-                .replicas(2)
+                .replicas(3)
                 .build();
     }
 
@@ -62,7 +62,7 @@ public class KafkaTopicConfig {
     public NewTopic sttSummarizingTopic() {
         return TopicBuilder.name(STT_SUMMARIZING_TOPIC)
                 .partitions(3)
-                .replicas(2)
+                .replicas(3)
                 .build();
     }
 
