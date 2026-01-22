@@ -1,6 +1,7 @@
 package com.codehows.daehobe.stt.service;
 
 import com.codehows.daehobe.common.constant.TargetType;
+import com.codehows.daehobe.config.redis.RedisMessageBroker;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
@@ -20,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -49,10 +51,10 @@ public class STTService {
     @Qualifier("dagloSttProvider")
     private final SttProvider sttProvider;
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate hashRedisTemplate;
     private final SttCacheService sttCacheService;
     private final ObjectMapper objectMapper; // ObjectMapper 주입
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RedisMessageBroker redisMessageBroker;
 
     @Value("${file.location}")
     private String fileLocation;
@@ -110,8 +112,8 @@ public class STTService {
         File savedFile = fileService.getSTTFile(stt.getId());
         fileService.updateFiles(id, null, List.of(savedFile.getFileId()), TargetType.STT);
         sttRepository.delete(stt);
-        redisTemplate.delete(STT_STATUS_HASH_PREFIX + id);
-        redisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + id);
+        hashRedisTemplate.delete(STT_STATUS_HASH_PREFIX + id);
+        hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + id);
     }
 
     @Transactional
@@ -131,9 +133,9 @@ public class STTService {
 
         STTDto sttDto = STTDto.fromEntity(newSTT, FileDto.fromEntity(newFile));
         sttCacheService.cacheSttStatus(sttDto);
-        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         // 비정상 종료 감지를 위한 Heartbeat 키 생성
-        redisTemplate.opsForValue().set(STT_RECORDING_HEARTBEAT_PREFIX + newSTT.getId(), "", heartbeatTtl, TimeUnit.SECONDS);
+        hashRedisTemplate.opsForValue().set(STT_RECORDING_HEARTBEAT_PREFIX + newSTT.getId(), "", heartbeatTtl, TimeUnit.SECONDS);
         return sttDto;
     }
 
@@ -149,12 +151,12 @@ public class STTService {
             stt.setStatus(STT.Status.ENCODING);
             sttDto.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(sttDto);
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
-            redisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
+            redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+            hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
             kafkaTemplate.send(STT_ENCODING_TOPIC, String.valueOf(sttId), "start-encoding");
         }else {
             // 마지막 청크 시각 업데이트 -> 비정상 종료 처리에 활용 (Heartbeat 갱신)
-            redisTemplate.opsForValue().set(
+            hashRedisTemplate.opsForValue().set(
                     STT_RECORDING_HEARTBEAT_PREFIX + sttId,
                     "",
                     heartbeatTtl,
@@ -180,7 +182,7 @@ public class STTService {
         File savedFile = fileService.uploadFiles(savedStt.getId(), List.of(file), TargetType.STT).getFirst();
         STTDto sttDto = STTDto.fromEntity(savedStt, FileDto.fromEntity(savedFile));
         sttCacheService.cacheSttStatus(sttDto);
-        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
 
         kafkaTemplate.send(STT_PROCESSING_TOPIC, String.valueOf(savedStt.getId()), "start-processing");
         return sttDto;
@@ -201,7 +203,7 @@ public class STTService {
         sttRepository.save(stt);
         STTDto sttDto = STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
         sttCacheService.cacheSttStatus(sttDto);
-        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
 
         kafkaTemplate.send(STT_PROCESSING_TOPIC, String.valueOf(stt.getId()), "start-processing");
         return sttDto;

@@ -44,7 +44,6 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.springframework.session:spring-session-data-redis'
     // Web Push
     implementation 'nl.martijndwars:web-push:5.1.1'
     implementation 'org.apache.httpcomponents:httpclient' // web-push를 위한 http client

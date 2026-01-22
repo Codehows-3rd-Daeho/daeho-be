@@ -1,5 +1,6 @@
 package com.codehows.daehobe.stt.service.processing;
 
+import com.codehows.daehobe.config.redis.RedisMessageBroker;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
@@ -45,7 +46,7 @@ public class SttJobProcessor {
     @Qualifier("dagloSttProvider")
     private final SttProvider sttProvider;
     private final SttCacheService sttCacheService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final RedisMessageBroker redisMessageBroker;
 
     @Value("${app.base-url}")
     private String appBaseUrl;
@@ -82,10 +83,8 @@ public class SttJobProcessor {
 
             STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
             cachedStatus.updateStatus(STT.Status.ENCODING);
-            sttCacheService.updateCacheFields(sttId, Map.of(
-                    "status", cachedStatus.getStatus().name()
-            ));
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             log.info("Starting encoding job for STT ID: {}", sttId);
             File originalFile = fileService.getSTTFile(sttId);
@@ -101,10 +100,8 @@ public class SttJobProcessor {
             sttRepository.save(stt);
             STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(encodedFile));
             dto.updateStatus(STT.Status.ENCODED);
-            sttCacheService.updateCacheFields(sttId, Map.of(
-                    "status", dto.getStatus().name()
-            ));
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + dto.getMeetingId(), dto);
+            sttCacheService.cacheSttStatus(dto);
+            redisMessageBroker.publish("/topic/stt/updates/" + dto.getMeetingId(), dto);
 
             log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
         } catch (Exception e) {
@@ -137,11 +134,8 @@ public class SttJobProcessor {
 
             cachedStatus.updateContent(result.getContent());
             cachedStatus.updateProgress(result.getProgress());
-            sttCacheService.updateCacheFields(sttId, Map.of(
-                "content", result.getContent() == null ? "" : result.getContent(),
-                "progress", result.getProgress()
-            ));
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("STT {} completed, transitioning to SUMMARIZING", sttId);
@@ -150,11 +144,8 @@ public class SttJobProcessor {
 
                 cachedStatus.updateStatus(STT.Status.SUMMARIZING);
                 cachedStatus.updateSummaryRid(summaryRid);
-                sttCacheService.updateCacheFields(sttId, Map.of(
-                        "status", STT.Status.SUMMARIZING.toString(),
-                        "summaryRid", Objects.requireNonNull(summaryRid)
-                ));
-                messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+                sttCacheService.cacheSttStatus(cachedStatus);
+                redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
                 kafkaTemplate.send(STT_SUMMARIZING_TOPIC, String.valueOf(sttId), "start-summarizing");
                 STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
@@ -200,17 +191,14 @@ public class SttJobProcessor {
 
             cachedStatus.updateSummary(result.getSummaryText());
             cachedStatus.updateProgress(result.getProgress());
-            sttCacheService.updateCacheFields(sttId, Map.of(
-                "summary", result.getSummaryText() == null ? "" : result.getSummaryText(),
-                "progress", result.getProgress()
-            ));
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("Summary for sttId {} completed", sttId);
                 cachedStatus.updateStatus(STT.Status.COMPLETED);
-                sttCacheService.updateCacheField(sttId, "status", STT.Status.COMPLETED.toString());
-                messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+                sttCacheService.cacheSttStatus(cachedStatus);
+                redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
                 STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
                 stt.updateFromDto(cachedStatus);
