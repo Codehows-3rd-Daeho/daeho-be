@@ -156,5 +156,5 @@ volumes:
     driver: local
   kafka-data-2:
     driver: local
-  kafka-data-3:
-    driver: local
+#   kafka-data-3:
+#     driver: local
