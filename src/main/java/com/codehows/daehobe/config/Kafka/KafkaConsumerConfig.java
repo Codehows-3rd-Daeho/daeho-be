@@ -66,7 +66,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> notificationListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(notificationGroupConsumerFactory());
-        factory.setConcurrency(3);
+        factory.setConcurrency(2);
         return factory;
     }
 
@@ -81,7 +81,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> sttEncodingListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(sttEncodingGroupConsumerFactory());
-        factory.setConcurrency(3);
+        factory.setConcurrency(2);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
@@ -95,7 +95,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> sttProcessingListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(sttProcessingGroupConsumerFactory());
-        factory.setConcurrency(3);
+        factory.setConcurrency(2);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
@@ -109,7 +109,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> sttSummarizingListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(sttSummarizingGroupConsumerFactory());
-        factory.setConcurrency(3);
+        factory.setConcurrency(2);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }

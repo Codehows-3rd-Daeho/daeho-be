@@ -83,4 +83,8 @@ public class STTDto {
                 .build();
     }
 
+    public void updateFile(FileDto file) {
+        this.file = file;
+    }
+
 }

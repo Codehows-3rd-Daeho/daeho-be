@@ -5,6 +5,8 @@ import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
 import com.codehows.daehobe.stt.dto.STTDto;
+import com.codehows.daehobe.stt.dto.SttSummaryResult;
+import com.codehows.daehobe.stt.dto.SttTranscriptionResult;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
@@ -57,31 +59,25 @@ public class SttJobProcessor {
             .build();
 
     @Transactional
-    public Mono<Void> handleAbnormalTermination(Long sttId) {
-        return Mono.fromRunnable(() -> {
-            log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
+    public void handleAbnormalTermination(Long sttId) {
+        log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
 
-            STT stt = sttRepository.findById(sttId).orElse(null);
-            if (stt == null || stt.getStatus() != STT.Status.RECORDING) {
-                log.error("STT entity not found for abnormally terminated session: {}", sttId);
-                return;
-            }
+        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+        if (cachedStatus == null || cachedStatus.getStatus() != STT.Status.RECORDING) {
+            log.error("STT entity not found for abnormally terminated session: {}", sttId);
+            return;
+        }
 
-            kafkaTemplate.send(STT_ENCODING_TOPIC, String.valueOf(sttId), "abnormal-termination-encoding");
+        kafkaTemplate.send(STT_ENCODING_TOPIC, String.valueOf(sttId), "abnormal-termination-encoding");
 
-            log.info("Moved STT {} from recording to encoding queue for recovery.", sttId);
-        }).subscribeOn(Schedulers.boundedElastic())
-        .then();
+        log.info("Moved STT {} from recording to encoding queue for recovery.", sttId);
     }
 
     @Transactional
     public void processSingleEncodingJob(Long sttId) {
         try {
-            STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-            stt.setStatus(STT.Status.ENCODING);
-            sttRepository.save(stt);
-
             STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+
             cachedStatus.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(cachedStatus);
             redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
@@ -89,19 +85,16 @@ public class SttJobProcessor {
             log.info("Starting encoding job for STT ID: {}", sttId);
             File originalFile = fileService.getSTTFile(sttId);
             File encodedFile = fileService.encodeAudioFile(originalFile);
-
             boolean isFileReady = isFileReadyToBeServed(encodedFile);
             if (!isFileReady) {
                 log.error("File for STT {} is not ready after encoding and retries.", sttId);
                 throw new RuntimeException("Encoded file not available for serving.");
             }
 
-            stt.setStatus(STT.Status.ENCODED);
-            sttRepository.save(stt);
-            STTDto dto = STTDto.fromEntity(stt, FileDto.fromEntity(encodedFile));
-            dto.updateStatus(STT.Status.ENCODED);
-            sttCacheService.cacheSttStatus(dto);
-            redisMessageBroker.publish("/topic/stt/updates/" + dto.getMeetingId(), dto);
+            cachedStatus.updateFile(FileDto.fromEntity(encodedFile));
+            cachedStatus.updateStatus(STT.Status.ENCODED);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
         } catch (Exception e) {
@@ -125,7 +118,7 @@ public class SttJobProcessor {
         }
 
         try {
-            var result = sttProvider.checkTranscriptionStatus(cachedStatus.getRid()).block();
+            SttTranscriptionResult result = sttProvider.checkTranscriptionStatus(cachedStatus.getRid()).block();
 
             if (result == null) {
                 log.error("STT status check for rid {} returned null", cachedStatus.getRid());
@@ -148,9 +141,6 @@ public class SttJobProcessor {
                 redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
                 kafkaTemplate.send(STT_SUMMARIZING_TOPIC, String.valueOf(sttId), "start-summarizing");
-                STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-                stt.updateFromDto(cachedStatus);
-                sttRepository.save(stt);
             } else {
                 log.info("STT {} is still in progress ({}%). Will retry.", sttId, result.getProgress());
                 throw new SttNotCompletedException("STT job not yet completed for sttId: " + sttId);
@@ -182,7 +172,7 @@ public class SttJobProcessor {
         }
 
         try {
-            var result = sttProvider.checkSummaryStatus(cachedStatus.getSummaryRid()).block();
+            SttSummaryResult result = sttProvider.checkSummaryStatus(cachedStatus.getSummaryRid()).block();
 
             if (result == null) {
                 log.error("Summary status check for rid {} returned null", cachedStatus.getSummaryRid());

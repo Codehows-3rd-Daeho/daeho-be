@@ -51,7 +51,7 @@ public class SttTaskConsumer extends KeyExpirationEventMessageListener {
 
         try {
             log.warn("Heartbeat expired for STT ID: {}. Triggering abnormal termination process.", sttId);
-            sttJobProcessor.handleAbnormalTermination(sttId).subscribe();
+            sttJobProcessor.handleAbnormalTermination(sttId);
         } finally {
             distributedLockManager.releaseLock(lockKey);
         }
