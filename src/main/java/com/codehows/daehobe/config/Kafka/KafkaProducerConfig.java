@@ -58,8 +58,7 @@ public class KafkaProducerConfig {
         // "all" (또는 "-1"): 리더와 모든 팔로워 복제본에 메시지가 기록될 때까지 기다립니다. 가장 높은 내구성을 보장합니다.
         // "1": 리더 복제본에만 메시지가 기록되면 성공으로 간주합니다. (기본값)
         // "0": 확인을 기다리지 않고 즉시 메시지를 전송합니다. 가장 빠르지만 메시지 유실 가능성이 있습니다.
-        // configProps.put(ProducerConfig.ACKS_CONFIG, "all");
-
+         configProps.put(ProducerConfig.ACKS_CONFIG, "1");
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 

@@ -1,6 +1,6 @@
 package com.codehows.daehobe.config.SpringSecurity;
 
-import com.codehows.daehobe.config.jwt.JwtFilter;
+import com.codehows.daehobe.config.jwtAuth.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,7 +34,7 @@ public class SecurityConfig {
     // Spring Security에서 보안 필터 체인을 수동 설정. HttpSecurity를 이용해서 요청 URL에 대한 보안 정책을 설정
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         // CSRF 보호 기능 끄기 (JWT 기반 인증에선 세션을 쓰지 않으므로 필요 없음)
-        http.csrf(csrf -> csrf.disable())
+        http.csrf(AbstractHttpConfigurer::disable)
 
                 // 세션을 아예 만들지 않도록 설정 (STATELESS → 모든 요청은 JWT 토큰 기반으로 인증)
                 .sessionManagement((session) -> session
@@ -49,7 +50,7 @@ public class SecurityConfig {
 
                 // 요청 URL 별 접근 권한 설정
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/login","/file/**").permitAll()
+                        .requestMatchers("/login","/file/**", "/ws/**", "/actuator/**").permitAll()
                         .requestMatchers( "/index.html",  "/sw.js", "/manifest.webmanifest").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN") //admin으로 시작하는 경로는 admin role일 경우에만 접근 가능하도록.
 

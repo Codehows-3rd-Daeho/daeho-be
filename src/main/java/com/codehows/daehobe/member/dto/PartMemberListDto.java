@@ -1,0 +1,25 @@
+package com.codehows.daehobe.member.dto;
+
+import com.codehows.daehobe.member.entity.Member;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+// 참여자 목록 조회
+@Getter
+@AllArgsConstructor
+public class PartMemberListDto {
+    private Long id;
+    private String name;
+    private String department;
+    private String jobPositionName;
+
+    // Entity → DTO 변환
+    public static PartMemberListDto fromEntity(Member member) {
+        return new PartMemberListDto(
+                member.getId(),
+                member.getName(),
+                member.getDepartment()==null ? null : member.getDepartment().getName(),
+                member.getJobPosition()==null ? null : member.getJobPosition().getName() // Lazy라도 트랜잭션 내 safe
+        );
+    }
+}

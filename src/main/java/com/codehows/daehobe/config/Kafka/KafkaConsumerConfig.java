@@ -15,9 +15,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ContainerProperties;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.codehows.daehobe.common.constant.KafkaConstants.*;
 
 /**
  * @class KafkaConsumerConfig
@@ -28,17 +31,19 @@ import java.util.Map;
 @Configuration // Spring 설정 클래스임을 나타냅니다.
 public class KafkaConsumerConfig {
 
-    /**
-     * Kafka 브로커의 주소 목록입니다.
-     */
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    /**
-     * Kafka 컨슈머 그룹 ID입니다.
-     */
-    @Value("${spring.kafka.consumer.group-id}")
-    private String groupId;
+    private Map<String, Object> consumerProps(String groupId) {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        return props;
+    }
 
     /**
      * @method consumerFactory
@@ -46,33 +51,9 @@ public class KafkaConsumerConfig {
      *              이 팩토리는 컨슈머가 Kafka 브로커에 연결하고 메시지를 수신하는 데 필요한 기본 속성들을 설정합니다.
      * @returns {ConsumerFactory<String, String>} Kafka 컨슈머 생성을 위한 ConsumerFactory 객체
      */
-    @Bean // Spring 컨테이너에 빈으로 등록합니다.
-    public ConsumerFactory<String, String> consumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-
-        // BOOTSTRAP_SERVERS_CONFIG: 컨슈머가 처음 연결할 Kafka 브로커의 호스트와 포트 목록입니다.
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-
-        // GROUP_ID_CONFIG: 컨슈머가 속한 그룹의 ID입니다.
-        // 동일한 그룹 ID를 가진 컨슈머들은 하나의 토픽의 다른 파티션들을 나누어 처리함으로써 메시지 처리의 병렬성을 높입니다.
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-
-        // KEY_DESERIALIZER_CLASS_CONFIG: 메시지 키를 역직렬화(byte[] -> Object)하는 클래스입니다.
-        // 프로듀서에서 사용한 직렬화 클래스(KEY_SERIALIZER_CLASS_CONFIG)와 일치해야 합니다.
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-
-        // VALUE_DESERIALIZER_CLASS_CONFIG: 메시지 값을 역직렬화하는 클래스입니다.
-        // 프로듀서에서 사용한 직렬화 클래스(VALUE_SERIALIZER_CLASS_CONFIG)와 일치해야 합니다.
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-
-        // AUTO_OFFSET_RESET_CONFIG: 컨슈머가 처음 시작하거나 기존 오프셋을 찾을 수 없을 때 어디서부터 메시지를 읽을지 결정합니다.
-        // "earliest": 가장 오래된 메시지부터 읽기 시작합니다.
-        // "latest": 가장 최근(새로운) 메시지부터 읽기 시작합니다. (기본값)
-        // "none": 오프셋을 찾지 못하면 예외를 발생시킵니다.
-        // 이 설정은 보통 application.properties (`spring.kafka.consumer.auto-offset-reset`)에서 관리하는 것이 일반적입니다.
-        // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        return new DefaultKafkaConsumerFactory<>(props);
+    @Bean
+    public ConsumerFactory<String, String> notificationGroupConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerProps(NOTIFICATION_GROUP));
     }
 
     /**
@@ -82,15 +63,54 @@ public class KafkaConsumerConfig {
      * @returns {ConcurrentKafkaListenerContainerFactory<String, String>} ConcurrentKafkaListenerContainerFactory 객체
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, String> notificationListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        // 위에서 정의한 consumerFactory()를 사용하여 컨슈머 인스턴스를 생성하도록 설정합니다.
-        factory.setConsumerFactory(consumerFactory());
+        factory.setConsumerFactory(notificationGroupConsumerFactory());
+        factory.setConcurrency(2);
+        return factory;
+    }
 
-        // factory.setConcurrency(3): 리스너의 동시성을 설정할 수 있습니다.
-        // 예를 들어, 3으로 설정하면 3개의 스레드가 동시에 메시지를 처리합니다.
-        // 이는 토픽의 파티션 수와 관련이 깊으며, 보통 파티션 수와 맞추거나 더 작게 설정합니다.
 
+
+    @Bean
+    public ConsumerFactory<String, String> sttEncodingGroupConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerProps(STT_ENCODING_GROUP));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> sttEncodingListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(sttEncodingGroupConsumerFactory());
+        factory.setConcurrency(2);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, String> sttProcessingGroupConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerProps(STT_PROCESSING_GROUP));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> sttProcessingListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(sttProcessingGroupConsumerFactory());
+        factory.setConcurrency(2);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        return factory;
+    }
+
+    @Bean
+    public ConsumerFactory<String, String> sttSummarizingGroupConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(consumerProps(STT_SUMMARIZING_GROUP));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> sttSummarizingListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(sttSummarizingGroupConsumerFactory());
+        factory.setConcurrency(2);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
 }

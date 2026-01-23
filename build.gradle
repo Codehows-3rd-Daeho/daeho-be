@@ -1,7 +1,8 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.0'
+    id 'org.springframework.boot' version '3.4.1'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
 }
 
 group = 'com.codehows'
@@ -25,19 +26,19 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-webclient'
-    testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'io.projectreactor:reactor-test'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    //Monitor
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     runtimeOnly 'com.mysql:mysql-connector-j'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     // JWT
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
@@ -46,16 +47,51 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    // Spring Session Redis (STOMP 브로커의 메시지 전송 계층으로 Redis 사용)
-    implementation 'org.springframework.session:spring-session-data-redis'
     // Web Push
     implementation 'nl.martijndwars:web-push:5.1.1'
     implementation 'org.apache.httpcomponents:httpclient' // web-push를 위한 http client
     implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1' // web-push를 위한 암호화
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    //test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'net.bytebuddy:byte-buddy:1.14.12' // Mockito 호환성을 위한 Byte Buddy 버전 명시
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport // test 작업이 끝나면 jacocoTestReport 자동 실행
+}
+
+jacoco {
+    toolVersion = "0.8.12" // JaCoCo 버전 명시
+}
+
+jacocoTestReport {
+    dependsOn test // jacocoTestReport는 test 작업에 의존
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    // 제외할 클래스/패키지 패턴
+                    '**/DaehoBeApplication.class',
+                    '**/*Config.*',
+                    '**/config/**/*.*',
+                    '**/jwtAuth/**/*.*',
+                    '**/constant/**/*.*',
+                    '**/dto/**/*.*',
+                    '**/entity/**/*.*',
+                    '**/common/entity/*.*'
+            ])
+        }))
+    }
 }
