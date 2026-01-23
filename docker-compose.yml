@@ -182,7 +182,7 @@ services:
       SPRING_JACKSON_TIME_ZONE: Asia/Seoul
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9093
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29093
     volumes:
       - /var/app/uploads:/app/uploads/production
     ports:
