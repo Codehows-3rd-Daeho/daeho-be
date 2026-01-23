@@ -192,7 +192,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      kafka:
+      kafka1:
+        condition: service_healthy
+      kafka2:
         condition: service_healthy
     networks:
       - app-network
