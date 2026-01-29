@@ -1,5 +1,6 @@
 package com.codehows.daehobe.comment.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.comment.dto.CommentMentionDto;
 import com.codehows.daehobe.comment.entity.Comment;
 import com.codehows.daehobe.comment.entity.Mention;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class MentionServiceTest {
 
     @Mock private MentionRepository mentionRepository;
@@ -64,7 +65,7 @@ class MentionServiceTest {
 
         // then
         // 작성자는 제외하고 멘션1, 멘션2만 저장되어야 함
-        verify(mentionRepository, times(1)).save(any(Mention.class));
+        verify(mentionRepository, times(2)).save(any(Mention.class));
         verify(mentionRepository).save(argThat(mention -> mention.getMember().getId().equals(mentionedMember1.getId())));
         verify(mentionRepository).save(argThat(mention -> mention.getMember().getId().equals(mentionedMember2.getId())));
         verify(mentionRepository, never()).save(argThat(mention -> mention.getMember().getId().equals(writerMember.getId())));

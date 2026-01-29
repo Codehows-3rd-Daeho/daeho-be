@@ -1,5 +1,6 @@
 package com.codehows.daehobe.stt.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.stt.dto.STTDto;
@@ -12,15 +13,12 @@ import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.file.service.FileService;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
 import com.codehows.daehobe.stt.service.provider.SttProvider;
-import com.codehows.daehobe.common.utils.DataSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -31,25 +29,27 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static com.codehows.daehobe.stt.constant.SttRedisKeys.STT_STATUS_HASH_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class STTServiceTest {
 
     @Mock private MeetingRepository meetingRepository;
     @Mock private STTRepository sttRepository;
     @Mock private FileService fileService;
     @Mock private SttProvider sttProvider;
-    @Mock private RedisTemplate<String, String> redisTemplate;
     @Mock private KafkaTemplate<String, String> kafkaTemplate;
-    @Mock private ValueOperations<String, String> valueOperations; // RedisTemplate의 opsForValue() 반환값
+    @Mock private org.springframework.data.redis.core.StringRedisTemplate hashRedisTemplate;
     @Mock private SttCacheService sttCacheService;
+    @Mock private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    @Mock private com.codehows.daehobe.config.redis.RedisMessageBroker redisMessageBroker;
+    @Mock private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
 
     private STTService sttService;
 
@@ -59,11 +59,14 @@ class STTServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(hashRedisTemplate.opsForValue()).thenReturn(valueOperations);
         sttService = new STTService(
             meetingRepository, sttRepository, fileService,
-            sttProvider, kafkaTemplate, redisTemplate, sttCacheService
+            sttProvider, kafkaTemplate, hashRedisTemplate, sttCacheService,
+            objectMapper, redisMessageBroker
         );
         ReflectionTestUtils.setField(sttService, "fileLocation", "/tmp/stt_test");
+        ReflectionTestUtils.setField(sttService, "heartbeatTtl", 30L);
 
         testMeeting = Meeting.builder().id(1L).title("테스트 회의").build();
         testAudioFile = File.builder()
@@ -71,6 +74,7 @@ class STTServiceTest {
                 .path("/file/test.wav")
                 .originalName("test.wav")
                 .savedName("test.wav")
+                .size(1024L)
                 .targetId(1L)
                 .targetType(TargetType.STT)
                 .build();
@@ -82,8 +86,6 @@ class STTServiceTest {
                 .status(STT.Status.COMPLETED)
                 .build();
         
-        // RedisTemplate의 opsForValue()가 Mock된 valueOperations를 반환하도록 설정
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
     @Test
@@ -106,15 +108,14 @@ class STTServiceTest {
     void getDynamicSttStatus_CacheHit_Success() {
         // given
         STTDto cachedDto = STTDto.fromEntity(testStt, FileDto.fromEntity(testAudioFile));
-        String jsonDto = DataSerializer.serialize(cachedDto);
-        when(valueOperations.get(STT_STATUS_HASH_PREFIX + testStt.getId())).thenReturn(jsonDto);
+        when(sttCacheService.getCachedSttStatus(testStt.getId())).thenReturn(cachedDto);
 
         // when
         STTDto result = sttService.getDynamicSttStatus(testStt.getId());
 
         // then
         assertThat(result.getId()).isEqualTo(testStt.getId());
-        verify(valueOperations).get(STT_STATUS_HASH_PREFIX + testStt.getId());
+        verify(sttCacheService).getCachedSttStatus(testStt.getId());
         verify(sttRepository, never()).findById(anyLong()); // 캐시 히트 시 DB 조회 없음
     }
 
@@ -122,7 +123,7 @@ class STTServiceTest {
     @DisplayName("성공: 캐시에서 동적 STT 상태 조회 (캐시 미스 -> DB 조회)")
     void getDynamicSttStatus_CacheMiss_Success() {
         // given
-        when(valueOperations.get(STT_STATUS_HASH_PREFIX + testStt.getId())).thenReturn(null);
+        when(sttCacheService.getCachedSttStatus(testStt.getId())).thenReturn(null);
         when(sttRepository.findById(anyLong())).thenReturn(Optional.of(testStt));
         when(fileService.getSTTFile(anyLong())).thenReturn(testAudioFile);
 
@@ -131,7 +132,7 @@ class STTServiceTest {
 
         // then
         assertThat(result.getId()).isEqualTo(testStt.getId());
-        verify(valueOperations).get(STT_STATUS_HASH_PREFIX + testStt.getId());
+        verify(sttCacheService).getCachedSttStatus(testStt.getId());
         verify(sttRepository).findById(anyLong()); // 캐시 미스 시 DB 조회
     }
 
@@ -181,8 +182,8 @@ class STTServiceTest {
 
         // then
         assertThat(result.getId()).isEqualTo(testStt.getId());
-        verify(redisTemplate.opsForSet()).add(eq("stt:recording:set"), anyString());
-        verify(kafkaTemplate).send(eq("stt-abnormal-termination-topic"), anyString(), anyString());
+        verify(sttCacheService).cacheSttStatus(any(STTDto.class));
+        verify(redisMessageBroker).publish(anyString(), any(STTDto.class));
     }
 
     @Test
@@ -190,8 +191,6 @@ class STTServiceTest {
     void uploadAndTranslate_Success() {
         // given
         MockMultipartFile mockFile = new MockMultipartFile("audio", "audio.wav", "audio/wav", "audio data".getBytes());
-        Resource mockResource = mock(Resource.class);
-        when(mockFile.getResource()).thenReturn(mockResource); // getResource() mocking
 
         when(meetingRepository.findById(anyLong())).thenReturn(Optional.of(testMeeting));
         when(sttProvider.requestTranscription(any(Resource.class))).thenReturn(Mono.just("rid123"));
@@ -203,7 +202,7 @@ class STTServiceTest {
 
         // then
         assertThat(result.getId()).isEqualTo(testStt.getId());
-        verify(redisTemplate.opsForSet()).add(eq("stt:processing:set"), anyString());
+        verify(sttCacheService).cacheSttStatus(any(STTDto.class));
         verify(kafkaTemplate).send(eq("stt-processing-topic"), anyString(), anyString());
     }
     

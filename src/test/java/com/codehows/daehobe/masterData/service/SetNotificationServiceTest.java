@@ -1,5 +1,6 @@
 package com.codehows.daehobe.masterData.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.masterData.dto.SetNotificationDto;
 import com.codehows.daehobe.masterData.entity.SetNotification;
 import com.codehows.daehobe.masterData.repository.SetNotificationRepository;
@@ -17,7 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class SetNotificationServiceTest {
 
     @Mock

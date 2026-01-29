@@ -1,5 +1,6 @@
 package com.codehows.daehobe.comment.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.comment.dto.CommentDto;
 import com.codehows.daehobe.comment.dto.CommentRequest;
@@ -52,7 +53,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.spy; // spy import
 import java.util.Arrays; // Arrays import
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class CommentServiceTest {
 
     @Mock private CommentRepository commentRepository;
@@ -217,7 +218,6 @@ class CommentServiceTest {
         when(mentionService.getMentionedMemberIds(anyLong())).thenReturn(Collections.singletonList(2L)); // 기존 멘션 ID
         doNothing().when(mentionService).updateMentions(any(Comment.class), anyList());
         when(setNotificationService.getSetting()).thenReturn(notificationSetting);
-        when(memberService.getMemberById(eq(spyComment.getMember().getId()))).thenReturn(testMember); // 댓글 작성자
         doNothing().when(notificationService).notifyMembers(anyList(), anyLong(), anyString(), anyString());
         doNothing().when(fileService).updateFiles(anyLong(), anyList(), anyList(), any(TargetType.class));
 

@@ -1,11 +1,13 @@
 package com.codehows.daehobe.comment.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.comment.dto.CommentDto;
 import com.codehows.daehobe.comment.dto.CommentRequest;
 import com.codehows.daehobe.comment.entity.Comment;
 import com.codehows.daehobe.comment.service.CommentService;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(CommentController.class)
 @Import(JwtService.class)
 class CommentControllerTest {
@@ -99,7 +102,7 @@ class CommentControllerTest {
             CommentRequest request = createCommentRequest("새 이슈 댓글");
             MockMultipartFile data = new MockMultipartFile("data", "", MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsBytes(request));
             Comment savedComment = Comment.builder().id(TEST_COMMENT_ID).content("새 이슈 댓글").build();
-            given(commentService.createIssueComment(anyLong(), any(CommentRequest.class), anyLong(), anyList())).willReturn(savedComment);
+            given(commentService.createIssueComment(anyLong(), any(CommentRequest.class), anyLong(), any())).willReturn(savedComment);
 
             // when
             ResultActions result = mockMvc.perform(multipart(POST_URL, TEST_TARGET_ID)
@@ -153,7 +156,7 @@ class CommentControllerTest {
             CommentRequest request = createCommentRequest("새 회의 댓글");
             MockMultipartFile data = new MockMultipartFile("data", "", MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsBytes(request));
             Comment savedComment = Comment.builder().id(TEST_COMMENT_ID).content("새 회의 댓글").build();
-            given(commentService.createMeetingComment(anyLong(), any(CommentRequest.class), anyLong(), anyList())).willReturn(savedComment);
+            given(commentService.createMeetingComment(anyLong(), any(CommentRequest.class), anyLong(), any())).willReturn(savedComment);
 
             // when
             ResultActions result = mockMvc.perform(multipart(POST_URL, TEST_TARGET_ID)
@@ -184,7 +187,8 @@ class CommentControllerTest {
             // given
             CommentRequest request = createCommentRequest("수정된 댓글");
             MockMultipartFile data = new MockMultipartFile("data", "", MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsBytes(request));
-            doNothing().when(commentService).updateComment(anyLong(), any(CommentRequest.class), anyList(), anyList());
+            Comment updatedComment = Comment.builder().id(TEST_COMMENT_ID).content("수정된 댓글").build();
+            given(commentService.updateComment(anyLong(), any(CommentRequest.class), any(), any())).willReturn(updatedComment);
 
             // when
             ResultActions result = mockMvc.perform(multipart(BASE_URL, TEST_COMMENT_ID)
@@ -205,7 +209,8 @@ class CommentControllerTest {
         @WithMockUser
         void deleteComment_Success() throws Exception {
             // given
-            doNothing().when(commentService).deleteComment(anyLong());
+            Comment deletedComment = Comment.builder().id(TEST_COMMENT_ID).build();
+            given(commentService.deleteComment(anyLong())).willReturn(deletedComment);
 
             // when
             ResultActions result = mockMvc.perform(delete(BASE_URL, TEST_COMMENT_ID).with(csrf()));

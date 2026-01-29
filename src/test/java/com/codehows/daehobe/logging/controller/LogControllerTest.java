@@ -1,8 +1,10 @@
 package com.codehows.daehobe.logging.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.logging.dto.LogDto;
 import com.codehows.daehobe.logging.service.LogService;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(LogController.class)
 @Import(JwtService.class)
 class LogControllerTest {

@@ -1,5 +1,6 @@
 package com.codehows.daehobe.member.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.Role;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.file.service.FileService;
@@ -30,7 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class LoginServiceTest {
 
     @Mock

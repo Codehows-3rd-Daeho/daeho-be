@@ -1,5 +1,6 @@
 package com.codehows.daehobe.issue.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.issue.dto.IssueMemberDto;
 import com.codehows.daehobe.issue.entity.Issue;
 import com.codehows.daehobe.issue.entity.IssueMember;
@@ -31,7 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class IssueMemberServiceTest {
 
     @Mock

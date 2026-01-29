@@ -1,5 +1,6 @@
 package com.codehows.daehobe.issue.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.Status;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.file.entity.File;
@@ -42,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class IssueServiceTest {
 
     @Mock

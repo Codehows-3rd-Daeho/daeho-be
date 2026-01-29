@@ -1,11 +1,13 @@
 package com.codehows.daehobe.masterData.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.masterData.dto.MasterDataDto;
 import com.codehows.daehobe.masterData.entity.AllowedExtension;
 import com.codehows.daehobe.masterData.service.FileSettingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityExistsException;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(FileSettingController.class)
 @Import(JwtService.class)
 class FileSettingControllerTest {

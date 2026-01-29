@@ -1,5 +1,6 @@
 package com.codehows.daehobe.meeting.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.meeting.dto.MeetingDto;
 import com.codehows.daehobe.meeting.dto.MeetingFormDto;
@@ -8,6 +9,7 @@ import com.codehows.daehobe.meeting.entity.Meeting;
 import com.codehows.daehobe.meeting.service.MeetingService;
 import com.codehows.daehobe.member.service.MemberService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(MeetingController.class)
 @Import(JwtService.class)
 class MeetingControllerTest {

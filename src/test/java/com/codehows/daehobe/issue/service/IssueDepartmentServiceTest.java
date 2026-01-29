@@ -1,5 +1,6 @@
 package com.codehows.daehobe.issue.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.issue.entity.Issue;
 import com.codehows.daehobe.issue.entity.IssueDepartment;
 import com.codehows.daehobe.issue.repository.IssueDepartmentRepository;
@@ -26,7 +27,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class IssueDepartmentServiceTest {
 
     @Mock

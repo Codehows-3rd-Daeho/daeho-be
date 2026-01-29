@@ -1,5 +1,6 @@
 package com.codehows.daehobe.notification.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.member.entity.Member;
 import com.codehows.daehobe.member.service.MemberService;
 import com.codehows.daehobe.notification.dto.NotificationMessageDto;
@@ -32,9 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class NotificationServiceTest {
 
     @Mock
@@ -83,7 +85,7 @@ class NotificationServiceTest {
         ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.now());
         Page<Notification> notificationPage = new PageImpl<>(Collections.singletonList(notification), pageable, 1);
 
-        when(notificationRepository.findByMemberId(memberId, any(Pageable.class))).thenReturn(notificationPage);
+        when(notificationRepository.findByMemberId(eq(memberId), any(Pageable.class))).thenReturn(notificationPage);
         when(memberService.getMemberById(sender.getId())).thenReturn(sender);
 
         // when

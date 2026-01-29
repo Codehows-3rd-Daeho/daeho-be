@@ -1,5 +1,6 @@
 package com.codehows.daehobe.masterData.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.SpringSecurity.SecurityConfig;
 import com.codehows.daehobe.config.jpaAuditor.AuditorAwareImpl;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
@@ -8,6 +9,7 @@ import com.codehows.daehobe.masterData.entity.Department;
 import com.codehows.daehobe.masterData.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +49,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
  * Spring Security 테스트 유틸리티를 사용하여 인증된 사용자(ADMIN 역할)로
  * 가장하여 테스트를 수행합니다.</p>
  */
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(value = DepartmentController.class)
 @Import({ JwtService.class })
 class DepartmentControllerTest {

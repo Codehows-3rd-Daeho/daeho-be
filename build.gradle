@@ -60,6 +60,7 @@ dependencies {
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate6'
     testImplementation 'net.bytebuddy:byte-buddy:1.14.12' // Mockito 호환성을 위한 Byte Buddy 버전 명시
 }
 

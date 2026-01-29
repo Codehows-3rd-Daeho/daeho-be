@@ -1,5 +1,6 @@
 package com.codehows.daehobe.logging.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.logging.dto.LogDto;
 import com.codehows.daehobe.logging.entity.Log;
@@ -22,7 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class LogServiceTest {
 
     @Mock

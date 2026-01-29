@@ -1,5 +1,6 @@
 package com.codehows.daehobe.stt.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.dto.StartRecordingRequest;
@@ -9,6 +10,7 @@ import org.springframework.mock.web.MockPart;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile; // MultipartFile 임포트
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(STTController.class)
 @Import(JwtService.class)
 class STTControllerTest {
@@ -115,7 +118,7 @@ class STTControllerTest {
         // given
         MockMultipartFile chunkFile = new MockMultipartFile("file", "chunk.wav", "audio/wav", "audio data".getBytes());
         STTDto sttDto = STTDto.builder().id(TEST_STT_ID).status(STT.Status.RECORDING).build();
-        given(sttService.appendChunk(eq(TEST_STT_ID), any(MultipartFile.class), eq(true))).willReturn(sttDto);
+        given(sttService.appendChunk(eq(TEST_STT_ID), any(MultipartFile.class), eq(false))).willReturn(sttDto);
 
         // when
         ResultActions result = mockMvc.perform(multipart("/stt/{sttId}/chunk", TEST_STT_ID)
@@ -170,7 +173,7 @@ class STTControllerTest {
         given(sttService.uploadAndTranslate(eq(TEST_MEETING_ID), any(MultipartFile.class))).willReturn(sttDto);
 
         // when
-        ResultActions result = mockMvc.perform(multipart("/stt/upload/{id}", TEST_STT_ID)
+        ResultActions result = mockMvc.perform(multipart("/stt/upload/{id}", TEST_MEETING_ID)
                 .file(file)
                 .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
                 .with(csrf()));
@@ -186,15 +189,11 @@ class STTControllerTest {
     @WithMockUser
     void finishRecording_Success() throws Exception {
         // given
-        MockMultipartFile chunkFile = new MockMultipartFile("file", "chunk.wav", "audio/wav", "audio data".getBytes());
         STTDto sttDto = STTDto.builder().id(TEST_STT_ID).status(STT.Status.PROCESSING).build();
         given(sttService.startTranslateForRecorded(eq(TEST_STT_ID))).willReturn(sttDto);
 
         // when
-        ResultActions result = mockMvc.perform(multipart("/stt/{sttId}/chunk", TEST_STT_ID)
-                        .file(chunkFile)
-                        .part(new MockPart("finish", "true".getBytes()))
-                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
+        ResultActions result = mockMvc.perform(post("/stt/{sttId}/recording/finish", TEST_STT_ID)
                         .with(csrf()));
 
         // then

@@ -1,5 +1,6 @@
 package com.codehows.daehobe.masterData.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.masterData.dto.MasterDataDto;
 import com.codehows.daehobe.masterData.entity.AllowedExtension;
 import com.codehows.daehobe.masterData.entity.MaxFileSize;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class FileSettingServiceTest {
 
     @Mock

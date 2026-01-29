@@ -1,5 +1,6 @@
 package com.codehows.daehobe.meeting.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.Status;
 import com.codehows.daehobe.file.service.FileService;
 import com.codehows.daehobe.issue.entity.Issue;
@@ -34,7 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class MeetingServiceTest {
 
     @Mock private CategoryService categoryService;
@@ -60,9 +61,9 @@ class MeetingServiceTest {
     @BeforeEach
     void setUp() {
         meetingService = new MeetingService(
-            categoryService, meetingRepository, fileService,
-            meetingDepartmentService, meetingMemberService, issueService,
-            memberService, notificationService, setNotificationService,
+            meetingRepository, fileService, issueService,
+            categoryService, meetingDepartmentService, meetingMemberService,
+            notificationService, setNotificationService, memberService,
             sttService, meetingMemberRepository, memberRepository
         );
 
@@ -93,9 +94,13 @@ class MeetingServiceTest {
                 .members(testMeetingFormDto.getMembers())
                 .issueId(1L)
                 .build();
+        Meeting meetingWithIssue = Meeting.builder()
+                .id(1L).title("테스트 회의").status(Status.IN_PROGRESS)
+                .category(testCategory).issue(testIssue).build();
         when(categoryService.getCategoryById(anyLong())).thenReturn(testCategory);
         when(issueService.getIssueById(anyLong())).thenReturn(testIssue);
-        when(meetingRepository.save(any(Meeting.class))).thenReturn(testMeeting);
+        when(meetingRepository.save(any(Meeting.class))).thenReturn(meetingWithIssue);
+        when(setNotificationService.getSetting()).thenReturn(new com.codehows.daehobe.masterData.dto.SetNotificationDto(false, false, false, false, false));
 
         // when
         Meeting createdMeeting = meetingService.createMeeting(dtoWithIssue, null, "1");
@@ -120,6 +125,7 @@ class MeetingServiceTest {
                 .build();
         when(categoryService.getCategoryById(anyLong())).thenReturn(testCategory);
         when(meetingRepository.save(any(Meeting.class))).thenReturn(testMeeting);
+        when(setNotificationService.getSetting()).thenReturn(new com.codehows.daehobe.masterData.dto.SetNotificationDto(false, false, false, false, false));
 
         // when
         Meeting createdMeeting = meetingService.createMeeting(dtoNoIssue, null, "1");
