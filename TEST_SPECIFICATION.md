@@ -1,6 +1,6 @@
 # 테스트 명세서 (Test Specification)
 
-> **총 260개 테스트** | 단위 테스트 228개 + 통합 테스트 32개
+> **총 303개 테스트** | 단위 테스트 228개 + 통합 테스트 32개 + STT 통합 테스트 43개
 > 모든 테스트에 `PerformanceLoggingExtension` 적용 (실행 시간 / 메모리 사용량 측정)
 
 ---
@@ -10,6 +10,10 @@
 1. [단위 테스트 - 서비스](#1-단위-테스트---서비스)
 2. [단위 테스트 - 컨트롤러](#2-단위-테스트---컨트롤러)
 3. [통합 테스트](#3-통합-테스트)
+4. [STT 통합 테스트 (Testcontainers)](#4-stt-통합-테스트-testcontainers)
+5. [k6 성능 테스트](#5-k6-성능-테스트)
+
+> **STT 테스트 상세 문서**: [STT_TEST_DEEP_DIVE.md](./STT_TEST_DEEP_DIVE.md)
 
 ---
 
@@ -413,6 +417,135 @@ Mockito 기반 단위 테스트. 외부 의존성을 모두 Mock 처리하여 �
 
 ---
 
+## 4. STT 통합 테스트 (Testcontainers)
+
+**Testcontainers** 기반 실제 컨테이너 환경 테스트. Redis, Kafka를 실제 Docker 컨테이너로 구동하여 분산 시스템 동작을 검증합니다.
+
+> 상세 문서: [STT_TEST_DEEP_DIVE.md](./STT_TEST_DEEP_DIVE.md)
+
+---
+
+### 4-1. 분산락 테스트 - DistributedLockIntegrationTest (8개)
+
+| # | 시나리오 | 메서드 | 검증 내용 |
+|---|---------|--------|-----------|
+| 1 | 단일 락 획득/해제 정상 동작 | `acquireAndReleaseLock_SingleThread_Success` | 락 획득 성공, 해제 후 키 삭제 |
+| 2 | 동시 락 획득 경쟁 (10 스레드) | `acquireLock_ConcurrentThreads_OnlyOneSucceeds` | 정확히 1개만 성공, 9개 실패 |
+| 3 | 여러 인스턴스 시뮬레이션 | `acquireLock_MultipleInstances_PreventsDuplicateProcessing` | 중복 처리 방지 확인 |
+| 4 | TTL 만료 시 락 자동 해제 | `acquireLock_TTLExpiry_AutoRelease` | TTL 후 재획득 가능 |
+| 5 | 크래시 복구 시나리오 | `acquireLock_CrashRecovery_TTLPreventsDeadlock` | TTL 기반 데드락 방지 |
+| 6 | 원자적 락 획득 검증 (100 스레드) | `acquireLock_AtomicOperation_Verified` | setIfAbsent 원자성 확인 |
+| 7 | 다른 락 키 독립 동작 | `acquireLock_DifferentKeys_Independent` | 다른 키는 독립적 |
+
+### 4-2. Kafka 통합 테스트 - SttKafkaIntegrationTest (10개)
+
+| # | 시나리오 | 메서드 | 검증 내용 |
+|---|---------|--------|-----------|
+| 1 | 메시지 발행/소비 | `publishAndConsume_EncodingTopic_Success` | 발행 후 소비 확인 |
+| 2 | 파티션 결정 (같은 키) | `messagePartitioning_SameKeyToSamePartition` | 동일 키 → 동일 파티션 |
+| 3 | 메시지 순서 보장 | `messageOrdering_SamePartition_OrderMaintained` | 파티션 내 순서 유지 |
+| 4 | 수동 커밋 시뮬레이션 | `manualAcknowledgment_OffsetNotCommittedUntilExplicit` | 명시적 커밋 전 오프셋 유지 |
+| 5 | 다중 토픽 동시 발행 | `multipleTopics_ConcurrentPublish_Success` | 3개 토픽 동시 발행 |
+| 6 | 높은 처리량 (1000개) | `highThroughput_1000Messages_Success` | 1000개 메시지 발행/소비 |
+| 7 | 재시도 시뮬레이션 | `retryableException_SttNotCompleted_SimulateRetry` | SttNotCompletedException 재시도 |
+| 8 | DLT 발행 시뮬레이션 | `deadLetterTopic_PublishSimulation_Success` | Dead Letter Topic 발행 |
+
+### 4-3. E2E 통합 테스트 - SttE2EIntegrationTest (10개)
+
+| # | 시나리오 | 메서드 | 검증 내용 |
+|---|---------|--------|-----------|
+| 1 | 녹음 시작 시뮬레이션 | `startRecording_SimulateRecordingState_CachedInRedis` | RECORDING 상태, Redis 캐싱 |
+| 2 | 청크 업로드/Heartbeat 갱신 | `uploadChunk_SimulateChunkUpload_HeartbeatRefreshed` | TTL 갱신 확인 |
+| 3 | ENCODING 상태 전이 | `finishRecording_TransitionToEncoding_KafkaMessagePublished` | 상태 변경, Heartbeat 삭제 |
+| 4 | Daglo STT API 모킹 | `wiremockDagloSttApi_RequestTranscription_Success` | WireMock 스텁 설정 |
+| 5 | Daglo 상태 확인 (진행중→완료) | `wiremockDagloSttStatus_ProgressToCompleted` | 시나리오 기반 스텁 |
+| 6 | Daglo Summary API 모킹 | `wiremockDagloSummaryApi_RequestSummary_Success` | 요약 API 스텁 |
+| 7 | 전체 상태 전이 | `fullStateTransition_RecordingToCompleted` | RECORDING → COMPLETED |
+| 8 | 캐시 TTL 테스트 | `cacheExpiry_After30Minutes_KeyRemoved` | TTL 후 키 삭제 |
+| 9 | 동시 녹음 세션 독립성 | `concurrentRecordingSessions_IndependentStates` | 세션 간 격리 |
+| 10 | Heartbeat 만료 시뮬레이션 | `heartbeatExpiry_AbnormalTermination_Detected` | 비정상 종료 감지 |
+
+### 4-4. 클러스터 HA 테스트 - KafkaClusterHaTest (10개)
+
+| # | 시나리오 | 메서드 | 검증 내용 |
+|---|---------|--------|-----------|
+| 1 | Kafka 클러스터 상태 확인 | `kafkaCluster_HealthCheck_Success` | 노드, 컨트롤러 존재 |
+| 2 | 컨테이너 재시작 후 메시지 유지 | `kafkaRestart_MessagesPreserved` | 재시작 후 메시지 확인 |
+| 3 | Producer 재시도 동작 | `producerRetry_OnTemporaryFailure_Recovers` | 10개 메시지 전송 성공 |
+| 4 | Consumer 그룹 리밸런싱 | `consumerGroup_Rebalancing_Simulation` | 2 컨슈머 리밸런싱 |
+| 5 | Redis 연결 상태 확인 | `redisConnection_HealthCheck_Success` | 읽기/쓰기 성공 |
+| 6 | Redis 연결 끊김 Graceful 처리 | `redisConnectionLoss_GracefulHandling` | 예외 처리 확인 |
+| 7 | 분산락 실패 시 Fallback | `distributedLock_Failure_Fallback` | Fallback 동작 |
+| 8 | 높은 동시성 (Kafka+Redis) | `highConcurrency_KafkaAndRedis_Together` | 20스레드×10메시지 |
+| 9 | 컨테이너 복원 후 처리 재개 | `containerRecovery_ResumeProcessing` | 복구 후 메시지 수신 |
+| 10 | 네트워크 지연 타임아웃 | `networkLatency_TimeoutHandling` | 타임아웃 처리 |
+
+### 4-5. 컨슈머 페일오버 테스트 - KafkaConsumerFailoverTest (5개)
+
+다중 인스턴스 환경에서의 Kafka Consumer 장애 복구 시나리오를 검증합니다.
+
+| # | 시나리오 | 메서드 | 검증 내용 |
+|---|---------|--------|-----------|
+| 1 | 다중 컨슈머 파티션 분산 | `multipleConsumers_PartitionsDistributed` | 3개 파티션이 3개 컨슈머에 분산 |
+| 2 | 컨슈머 죽음 → 파티션 재할당 | `consumerDeath_PartitionReassignment_RemainingConsumerHandlesAll` | 남은 컨슈머가 모든 파티션 인수 |
+| 3 | 모든 컨슈머 죽음 → 복구 | `allConsumersDeath_Recovery_ResumeFromCommittedOffset` | 커밋된 오프셋부터 재개, 다운타임 메시지 처리 |
+| 4 | 컨슈머 그룹 상태 모니터링 | `consumerGroupMonitoring_MemberAndPartitionStatus` | AdminClient로 멤버/파티션 상태 확인 |
+| 5 | 순차적 컨슈머 장애 | `sequentialConsumerFailure_ContinuousFailover` | 연속 페일오버 시 메시지 유실 없음 |
+
+---
+
+## 5. k6 성능 테스트
+
+HTTP/WebSocket 기반 부하 테스트. 실제 서버에 부하를 주어 성능 한계와 병목점을 확인합니다.
+
+---
+
+### 5-1. STT 로드 테스트 - stt-load-test.js
+
+| 시나리오 | VU | 시간 | 목적 |
+|---------|-----|------|------|
+| smoke | 1 | 즉시 | 기본 플로우 3회 반복 |
+| load | 0→10→10→0 | 3분 | 동시 10개 녹음 세션 |
+| stress | 0→30→50→0 | 3.5분 | 한계 성능 확인 |
+
+**테스트 플로우:**
+1. 로그인 → JWT 획득
+2. 녹음 시작 (`POST /stt/recording/start`)
+3. 청크 업로드 5회 (`POST /stt/{id}/chunk`)
+4. 상태 폴링 (`GET /stt/status/{id}`)
+
+**성능 임계값:**
+
+| 메트릭 | 기준 |
+|--------|------|
+| `stt_start_duration` p(95) | < 1000ms |
+| `stt_chunk_duration` p(95) | < 500ms |
+| `stt_status_duration` p(95) | < 300ms |
+| `http_req_failed` | < 5% |
+
+### 5-2. WebSocket 테스트 - stt-websocket-test.js
+
+| 시나리오 | VU | 시간 | 목적 |
+|---------|-----|------|------|
+| ws_connections | 0→5→10→0 | 3.5분 | WebSocket 동시 연결 |
+
+**테스트 플로우:**
+1. 로그인 → JWT 획득
+2. STT 녹음 시작
+3. WebSocket STOMP 연결
+4. `/topic/stt/updates/{meetingId}` 구독
+5. 실시간 상태 업데이트 수신
+
+**성능 임계값:**
+
+| 메트릭 | 기준 |
+|--------|------|
+| `ws_connect_duration` p(95) | < 3000ms |
+| `ws_message_latency` p(95) | < 500ms |
+| `ws_errors` | < 10% |
+
+---
+
 ## 테스트 인프라
 
 ### 성능 측정
@@ -429,11 +562,28 @@ Mockito 기반 단위 테스트. 외부 의존성을 모두 Mock 처리하여 �
 |------|------|
 | DB | H2 In-Memory (MySQL 호환 모드) |
 | DDL | `create-drop` |
-| Kafka | `auto-startup=false` |
-| Redis | Mock 처리 (`IntegrationTestConfig`) |
+| Kafka | `auto-startup=false` (Mock) / Testcontainers (통합) |
+| Redis | Mock 처리 / Testcontainers (통합) |
 | WebPush | Mock 처리 (`IntegrationTestConfig`) |
 | 인증 | JWT (테스트용 키) |
 | 커버리지 | JaCoCo |
+| 외부 API | WireMock (Daglo API Mock) |
+
+### 테스트 의존성
+
+```groovy
+// Testcontainers
+testImplementation 'org.testcontainers:testcontainers:1.19.7'
+testImplementation 'org.testcontainers:junit-jupiter:1.19.7'
+testImplementation 'org.testcontainers:kafka:1.19.7'
+testImplementation 'com.redis:testcontainers-redis:2.2.0'
+
+// WireMock (외부 API Mock)
+testImplementation 'org.wiremock:wiremock-standalone:3.4.2'
+
+// Awaitility (비동기 테스트)
+testImplementation 'org.awaitility:awaitility:4.2.1'
+```
 
 ### 실행 명령
 
@@ -449,4 +599,16 @@ Mockito 기반 단위 테스트. 외부 의존성을 모두 Mock 처리하여 �
 
 # 통합 테스트만
 ./gradlew test --tests "com.codehows.daehobe.integration.*"
+
+# STT 통합 테스트만
+./gradlew test --tests "com.codehows.daehobe.stt.integration.*"
+
+# 분산락 테스트만
+./gradlew test --tests "DistributedLockIntegrationTest"
+
+# k6 STT 로드 테스트
+k6 run -e BASE_URL=http://localhost:8080 -e MEETING_ID=1 k6/stt-load-test.js
+
+# k6 WebSocket 테스트
+k6 run -e WS_URL=ws://localhost:8080/ws -e MEETING_ID=1 k6/stt-websocket-test.js
 ```

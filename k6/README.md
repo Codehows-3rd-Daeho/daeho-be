@@ -76,6 +76,18 @@ k6 run k6/soak-test.js
 ```
 > 30명으로 10분간 지속 (메모리 누수, 커넥션 풀 고갈 등 확인)
 
+### STT 로드 테스트 (녹음/청크 업로드/상태 폴링)
+```bash
+k6 run -e MEETING_ID=1 k6/stt-load-test.js
+```
+> 녹음 시작 → 청크 업로드 5회 → 상태 폴링 (총 약 8분)
+
+### STT WebSocket 테스트 (실시간 상태 업데이트)
+```bash
+k6 run -e WS_URL=ws://localhost:8080/ws -e MEETING_ID=1 k6/stt-websocket-test.js
+```
+> WebSocket STOMP 연결 → STT 구독 → 실시간 업데이트 수신
+
 ### 대상 서버 변경
 ```bash
 k6 run -e BASE_URL=http://192.168.1.100:8080 k6/load-test.js
@@ -108,6 +120,24 @@ k6 run -e BASE_URL=http://192.168.1.100:8080 k6/load-test.js
 - 30명으로 **10분간** 지속
 - 메모리 누수, DB 커넥션 풀 고갈, GC 문제 등 확인
 
+### stt-load-test.js (STT 부하 테스트)
+| 시나리오 | VU 수 | 시간 | 목적 |
+|---------|-------|------|------|
+| smoke | 1 | 즉시 | STT 기본 플로우 확인 |
+| load | 0→10→10→0 | 3분 | 동시 10개 녹음 세션 |
+| stress | 0→30→50→0 | 3.5분 | 한계 성능 확인 |
+
+**테스트 흐름:**
+1. 로그인 → JWT 토큰 획득
+2. 녹음 시작 (POST /stt/recording/start)
+3. 청크 업로드 5회 (POST /stt/{id}/chunk)
+4. 상태 폴링 (GET /stt/status/{id}) - ENCODED까지 확인
+
+### stt-websocket-test.js (STT WebSocket 테스트)
+- STOMP 프로토콜로 /topic/stt/updates/{meetingId} 구독
+- 실시간 STT 상태 업데이트 수신
+- WebSocket 연결 지속시간 및 메시지 레이턴시 측정
+
 ---
 
 ## 5. 성능 기준 (Thresholds)
@@ -120,6 +150,16 @@ k6 run -e BASE_URL=http://192.168.1.100:8080 k6/load-test.js
 | `login_duration` p(95) | < 3초 | 로그인 응답 시간 |
 | `issue_api_duration` p(95) | < 2초 | 이슈 API 응답 시간 |
 | `meeting_api_duration` p(95) | < 2초 | 회의 API 응답 시간 |
+
+### STT 테스트 성능 기준
+
+| 메트릭 | 기준 | 설명 |
+|--------|------|------|
+| `stt_start_duration` p(95) | < 1초 | 녹음 시작 응답 시간 |
+| `stt_chunk_duration` p(95) | < 500ms | 청크 업로드 응답 시간 |
+| `stt_status_duration` p(95) | < 300ms | 상태 조회 응답 시간 |
+| `ws_connect_duration` p(95) | < 3초 | WebSocket 연결 시간 |
+| `ws_message_latency` p(95) | < 500ms | WebSocket 메시지 레이턴시 |
 
 기준 미달 시 k6가 exit code 99로 종료되어 CI에서 빌드 실패 처리됩니다.
 

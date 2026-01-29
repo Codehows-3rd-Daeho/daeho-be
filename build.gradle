@@ -62,6 +62,18 @@ dependencies {
     testRuntimeOnly 'com.h2database:h2'
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate6'
     testImplementation 'net.bytebuddy:byte-buddy:1.14.12' // Mockito 호환성을 위한 Byte Buddy 버전 명시
+
+    // Testcontainers
+    testImplementation 'org.testcontainers:testcontainers:1.19.7'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.7'
+    testImplementation 'org.testcontainers:kafka:1.19.7'
+    testImplementation 'com.redis:testcontainers-redis:2.2.0'
+
+    // WireMock (외부 API Mock)
+    testImplementation 'org.wiremock:wiremock-standalone:3.4.2'
+
+    // Awaitility (비동기 테스트)
+    testImplementation 'org.awaitility:awaitility:4.2.1'
 }
 
 tasks.named('test') {
