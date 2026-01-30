@@ -7,40 +7,29 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.redis.testcontainers.RedisContainer;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.*;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
-import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static com.codehows.daehobe.common.constant.KafkaConstants.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * STT E2E 통합 테스트
+ * STT E2E 통합 테스트 (경량화 아키텍처)
  *
  * 테스트 플로우:
  * 1. 녹음 시작 → 상태 RECORDING → Redis 캐싱 확인
- * 2. 청크 업로드 (5개) → finish=true 시 Kafka 발행
+ * 2. 청크 업로드 시 Heartbeat 갱신
  * 3. WireMock으로 Daglo API Mock (STT, Summary)
  * 4. 상태 전이 확인: RECORDING → ENCODING → PROCESSING → SUMMARIZING → COMPLETED
- * 5. 최종 결과 DB 저장 확인
+ * 5. @Scheduled 폴링 기반 처리
  */
 @Testcontainers
 @DisplayName("STT E2E 통합 테스트")
@@ -52,14 +41,8 @@ class SttE2EIntegrationTest {
             DockerImageName.parse("redis:7-alpine")
     ).withExposedPorts(6379);
 
-    @Container
-    static KafkaContainer kafkaContainer = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.6.0")
-    ).withKraft();
-
     static WireMockServer wireMockServer;
     static StringRedisTemplate redisTemplate;
-    static Consumer<String, String> kafkaConsumer;
     static ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String STT_STATUS_PREFIX = "stt:status:";
@@ -83,50 +66,12 @@ class SttE2EIntegrationTest {
         redisTemplate = new StringRedisTemplate();
         redisTemplate.setConnectionFactory(connectionFactory);
         redisTemplate.afterPropertiesSet();
-
-        // Kafka 토픽 생성
-        createKafkaTopics();
-
-        // Kafka Consumer 설정
-        setupKafkaConsumer();
-    }
-
-    private static void createKafkaTopics() {
-        try (AdminClient adminClient = AdminClient.create(Map.of(
-                "bootstrap.servers", kafkaContainer.getBootstrapServers()
-        ))) {
-            List<NewTopic> topics = List.of(
-                    new NewTopic(STT_ENCODING_TOPIC, 1, (short) 1),
-                    new NewTopic(STT_PROCESSING_TOPIC, 1, (short) 1),
-                    new NewTopic(STT_SUMMARIZING_TOPIC, 1, (short) 1)
-            );
-            adminClient.createTopics(topics).all().get();
-        } catch (Exception e) {
-            // 이미 존재하면 무시
-        }
-    }
-
-    private static void setupKafkaConsumer() {
-        Map<String, Object> consumerProps = new HashMap<>();
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "e2e-test-group-" + UUID.randomUUID());
-        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        DefaultKafkaConsumerFactory<String, String> consumerFactory =
-                new DefaultKafkaConsumerFactory<>(consumerProps);
-        kafkaConsumer = consumerFactory.createConsumer();
-        kafkaConsumer.subscribe(List.of(STT_ENCODING_TOPIC, STT_PROCESSING_TOPIC, STT_SUMMARIZING_TOPIC));
     }
 
     @AfterAll
     static void tearDownAll() {
         if (wireMockServer != null) {
             wireMockServer.stop();
-        }
-        if (kafkaConsumer != null) {
-            kafkaConsumer.close();
         }
     }
 
@@ -195,8 +140,8 @@ class SttE2EIntegrationTest {
 
     @Test
     @Order(3)
-    @DisplayName("3. 녹음 종료 시 ENCODING 상태로 전이")
-    void finishRecording_TransitionToEncoding_KafkaMessagePublished() throws Exception {
+    @DisplayName("3. 녹음 종료 시 ENCODING 상태로 전이 (@Async 트리거)")
+    void finishRecording_TransitionToEncoding_AsyncTriggered() throws Exception {
         // given
         Long sttId = 3L;
         Long meetingId = 100L;
@@ -210,7 +155,7 @@ class SttE2EIntegrationTest {
         String key = STT_STATUS_PREFIX + sttId;
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(sttDto), 30, TimeUnit.MINUTES);
 
-        // when - 녹음 종료 시 상태 변경
+        // when - 녹음 종료 시 상태 변경 (SttEncodingTaskExecutor.submitEncodingTask 시뮬레이션)
         sttDto = STTDto.builder()
                 .id(sttId)
                 .meetingId(meetingId)
@@ -239,9 +184,6 @@ class SttE2EIntegrationTest {
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"rid\": \"" + expectedRid + "\"}")));
-
-        // when - 요청 시뮬레이션
-        // (실제로는 WebClient가 호출하지만 여기서는 스텁 확인)
 
         // then - 스텁이 올바르게 설정되었는지 확인
         verify(0, postRequestedFor(urlEqualTo("/stt/v1/async/transcripts")));
@@ -316,7 +258,7 @@ class SttE2EIntegrationTest {
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
         assertThat(getStatus(key)).isEqualTo(STT.Status.RECORDING);
 
-        // 2. ENCODING
+        // 2. ENCODING (@Async 트리거)
         dto = STTDto.builder()
                 .id(sttId).meetingId(meetingId).status(STT.Status.ENCODING).build();
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
@@ -328,14 +270,14 @@ class SttE2EIntegrationTest {
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
         assertThat(getStatus(key)).isEqualTo(STT.Status.ENCODED);
 
-        // 4. PROCESSING
+        // 4. PROCESSING (@Scheduled 폴링 시작)
         dto = STTDto.builder()
                 .id(sttId).meetingId(meetingId).status(STT.Status.PROCESSING)
                 .rid("test-rid").build();
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
         assertThat(getStatus(key)).isEqualTo(STT.Status.PROCESSING);
 
-        // 5. SUMMARIZING
+        // 5. SUMMARIZING (@Scheduled 폴링 계속)
         dto = STTDto.builder()
                 .id(sttId).meetingId(meetingId).status(STT.Status.SUMMARIZING)
                 .rid("test-rid").summaryRid("summary-rid")
@@ -437,7 +379,7 @@ class SttE2EIntegrationTest {
 
         assertThat(redisTemplate.hasKey(heartbeatKey)).isFalse();
         // 실제 시스템에서는 이 시점에 KeyExpirationEventMessageListener가
-        // 비정상 종료 처리를 시작함
+        // @Async 비정상 종료 처리를 시작함
     }
 
     private STT.Status getStatus(String key) throws Exception {

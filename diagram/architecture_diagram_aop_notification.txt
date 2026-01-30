@@ -37,7 +37,6 @@ flowchart TB
             Repository["Spring Data JPA"]
             EntityManager
             RedisTemplate
-            KafkaTemplate
         end
     end
 
@@ -45,10 +44,6 @@ flowchart TB
         direction LR
         subgraph Database["Relational DB"]
             MySQL["MySQL"]
-        end
-
-        subgraph Kafka["Message Queue"]
-            NotificationTopic["Kafka Topic<br>notification-topic"]
         end
 
         subgraph Redis["Redis Cache"]
@@ -87,12 +82,9 @@ flowchart TB
 
     Controller -- "Send Notification" --> NotificationService
     NotificationService -- "Save History" --> Repository
-    NotificationService -- "Publish" --> KafkaTemplate
-    KafkaTemplate --> NotificationTopic
 
-    %% Push Notification
-    NotificationTopic -- "Consume" --> WebPushService
-    NotificationService -- "Get Subscriptions" --> WebPushService
+    %% Push Notification (Direct @Async call instead of Kafka)
+    NotificationService -- "@Async" --> WebPushService
     WebPushService -- "Push API" --> PushService
     PushService -- "Deliver" --> Browser
 

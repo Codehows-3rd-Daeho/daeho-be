@@ -7,7 +7,7 @@ import com.codehows.daehobe.notification.dto.NotificationMessageDto;
 import com.codehows.daehobe.notification.dto.NotificationResponseDto;
 import com.codehows.daehobe.notification.entity.Notification;
 import com.codehows.daehobe.notification.repository.NotificationRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.codehows.daehobe.notification.webPush.service.WebPushService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,24 +15,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -40,13 +36,11 @@ import static org.mockito.Mockito.*;
 class NotificationServiceTest {
 
     @Mock
-    private KafkaTemplate<String, String> kafkaTemplate;
-    @Mock
     private NotificationRepository notificationRepository;
     @Mock
     private MemberService memberService;
-    @Spy
-    private ObjectMapper objectMapper;
+    @Mock
+    private WebPushService webPushService;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -79,14 +73,15 @@ class NotificationServiceTest {
                 .id(1L)
                 .member(member)
                 .message("알림")
+                .forwardUrl("/url")
                 .isRead(false)
+                .createdByMember(sender)
                 .build();
         ReflectionTestUtils.setField(notification, "createdBy", sender.getId());
         ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.now());
         Page<Notification> notificationPage = new PageImpl<>(Collections.singletonList(notification), pageable, 1);
 
-        when(notificationRepository.findByMemberId(eq(memberId), any(Pageable.class))).thenReturn(notificationPage);
-        when(memberService.getMemberById(sender.getId())).thenReturn(sender);
+        when(notificationRepository.findByMemberIdWithCreatedByMember(eq(memberId), any(Pageable.class))).thenReturn(notificationPage);
 
         // when
         Page<NotificationResponseDto> result = notificationService.getMyNotifications(memberId, 0, 10);
@@ -103,21 +98,21 @@ class NotificationServiceTest {
         Long notificationId = 1L;
         Notification notification = spy(Notification.builder().id(notificationId).build());
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.of(notification));
-        
+
         // when
         notificationService.readNotification(notificationId);
-        
+
         // then
         verify(notification).setIsRead();
     }
-    
+
     @Test
     @DisplayName("실패: 알림 읽음 처리 (알림 없음)")
     void readNotification_NotFound() {
         // given
         Long notificationId = 99L;
         when(notificationRepository.findById(notificationId)).thenReturn(Optional.empty());
-        
+
         // when & then
         assertThrows(EntityNotFoundException.class, () -> notificationService.readNotification(notificationId));
     }
@@ -131,8 +126,22 @@ class NotificationServiceTest {
 
         // when
         int count = notificationService.getUnreadCount(memberId);
-        
+
         // then
         assertThat(count).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("성공: 알림 발송 (@Async -> WebPushService)")
+    void sendNotification_Success() {
+        // given
+        String memberId = "1";
+        NotificationMessageDto messageDto = new NotificationMessageDto("테스트 메시지", "/url");
+
+        // when
+        notificationService.sendNotification(memberId, messageDto);
+
+        // then
+        verify(webPushService).sendNotificationToUser(eq(memberId), eq(messageDto));
     }
 }
