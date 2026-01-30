@@ -1,18 +1,14 @@
 package com.codehows.daehobe.stt.service.cache;
 
 import com.codehows.daehobe.stt.dto.STTDto;
+import com.codehows.daehobe.stt.entity.STT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import static com.codehows.daehobe.stt.constant.SttRedisKeys.STT_STATUS_HASH_PREFIX;
 
 @Slf4j
 @Service
@@ -27,13 +23,23 @@ public class SttCacheService {
         try {
             String key = STT_STATUS_PREFIX + sttDto.getId();
             String jsonValue = objectMapper.writeValueAsString(sttDto);
+            long ttlMinutes = calculateTtl(sttDto.getStatus());
 
-            hashRedisTemplate.opsForValue().set(key, jsonValue, 30, TimeUnit.MINUTES);
+            hashRedisTemplate.opsForValue().set(key, jsonValue, ttlMinutes, TimeUnit.MINUTES);
 
-            log.debug("STT status cached - ID: {}", sttDto.getId());
+            log.debug("STT status cached - ID: {}, TTL: {} minutes", sttDto.getId(), ttlMinutes);
         } catch (Exception e) {
             log.error("Failed to cache STT status for ID: {}", sttDto.getId(), e);
         }
+    }
+
+    private long calculateTtl(STT.Status status) {
+        return switch (status) {
+            case RECORDING, ENCODING -> 60;     // 진행 중: 1시간
+            case ENCODED -> 1440;               // 대기 중: 24시간 (사용자 액션 대기)
+            case PROCESSING, SUMMARIZING -> 30; // API 폴링 중: 30분
+            case COMPLETED -> 10;               // 완료: 10분 (DB에 이미 저장됨)
+        };
     }
 
     public STTDto getCachedSttStatus(Long sttId) {

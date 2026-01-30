@@ -1,0 +1,122 @@
+---
+config:
+  theme: base
+---
+sequenceDiagram
+    actor User as End User
+    participant Browser as React App
+    participant Backend as Spring Boot
+    participant Redis as Redis Cache
+    participant Kafka as Kafka Queue
+    participant FFmpeg as FFmpeg
+    participant Storage as Disk Storage
+    participant Daglo as Daglo API
+    participant DB as Database
+
+    rect rgb(220, 240, 255)
+    Note over User,DB: Phase 1: 녹음 시작 및 청크 업로드
+    User->>Browser: 녹음 시작 버튼 클릭
+    Browser->>Backend: POST /recording/start
+    Backend->>DB: STT 레코드 생성
+    DB-->>Backend: STT ID 반환
+    Backend->>Redis: 상태 캐싱 (RECORDING)
+    Backend-->>Browser: STT ID 반환
+    Browser-->>User: 녹음 시작 확인
+
+    loop 10초 간격
+        User->>Browser: 음성 녹음 중...
+        Browser->>Backend: POST /chunk/{sttId}
+        Backend->>Storage: 청크 파일 추가
+        Backend-->>Browser: 청크 저장 완료
+    end
+    end
+
+    rect rgb(255, 245, 220)
+    Note over User,DB: Phase 2: 녹음 종료 및 인코딩
+    User->>Browser: 녹음 종료 버튼 클릭
+    Browser->>Backend: POST /chunk/{sttId}?finish=true
+    Backend->>Kafka: ENCODING 태스크 발행
+    Backend-->>Browser: 인코딩 시작됨
+    Browser-->>User: 인코딩 대기 중...
+
+    Kafka->>Backend: ENCODING 태스크 소비
+    Backend->>Redis: 상태 업데이트 (ENCODING)
+    Backend->>Redis: 웹소켓 메시지 발행
+    Redis-->>Browser: 실시간 상태 전송
+
+    Backend->>FFmpeg: 오디오 인코딩 요청
+    FFmpeg->>Storage: 원본 파일 읽기
+    FFmpeg->>Storage: 인코딩된 파일 저장
+    FFmpeg-->>Backend: 인코딩 완료
+
+    Backend->>Redis: 상태 업데이트 (ENCODED)
+    Backend->>Redis: 웹소켓 메시지 발행
+    Redis-->>Browser: 실시간 상태 전송
+    Backend->>Kafka: 오프셋 커밋
+    end
+
+    rect rgb(240, 255, 240)
+    Note over User,DB: Phase 3: 음성 변환 (STT Processing)
+    User->>Browser: 음성 변환 시작 클릭
+    Browser->>Backend: POST /recording/finish/{sttId}
+
+    Backend->>Daglo: POST /transcripts (변환 요청)
+    Daglo-->>Backend: 작업 ID (rid) 반환
+
+    Backend->>Redis: 상태 업데이트 (PROCESSING)
+    Backend->>Redis: 웹소켓 메시지 발행
+    Backend->>Kafka: PROCESSING 태스크 발행
+    Backend-->>Browser: 변환 시작됨
+    Browser-->>User: 변환 진행 중...
+
+    loop 진행 상태 폴링 (완료될 때까지)
+        Kafka->>Backend: PROCESSING 태스크 소비
+        Backend->>Daglo: GET /status/{rid}
+        Daglo-->>Backend: {진행률, 부분 결과}
+
+        Backend->>Redis: 진행 상태 캐시 업데이트
+        Backend->>Redis: 웹소켓 메시지 발행
+        Redis-->>Browser: 실시간 진행 상황 전송
+
+        alt 변환 미완료
+            Backend->>Backend: SttNotCompletedException 발생
+            Backend->>Kafka: 오프셋 미커밋 (재시도 대기)
+        else 변환 완료
+            Backend->>Kafka: 오프셋 커밋
+        end
+    end
+    end
+
+    rect rgb(255, 240, 245)
+    Note over User,DB: Phase 4: 요약 생성 (Summarizing)
+    Backend->>Daglo: POST /summary/{rid}
+    Daglo-->>Backend: 요약 작업 ID 반환
+
+    Backend->>Redis: 상태 업데이트 (SUMMARIZING)
+    Backend->>Redis: 웹소켓 메시지 발행
+    Backend->>Kafka: SUMMARIZING 태스크 발행
+
+    loop 진행 상태 폴링 (완료될 때까지)
+        Kafka->>Backend: SUMMARIZING 태스크 소비
+        Backend->>Daglo: GET /status/{rid}
+        Daglo-->>Backend: {진행률, 요약 내용}
+
+        Backend->>Redis: 진행 상태 캐시 업데이트
+        Backend->>Redis: 웹소켓 메시지 발행
+        Redis-->>Browser: 실시간 진행 상황 전송
+
+        alt 요약 미완료
+            Backend->>Backend: SttNotCompletedException 발생
+            Backend->>Kafka: 오프셋 미커밋 (재시도 대기)
+        else 요약 완료
+            Backend->>Kafka: 오프셋 커밋
+        end
+    end
+
+    Backend->>DB: 최종 결과 저장
+    DB-->>Backend: 저장 완료
+    Backend->>Redis: 상태 업데이트 (COMPLETED)
+    Backend->>Redis: 웹소켓 메시지 발행
+    Redis-->>Browser: 최종 완료 상태 전송
+    Browser->>User: 결과 화면 표시
+    end

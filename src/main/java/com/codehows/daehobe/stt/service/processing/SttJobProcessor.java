@@ -8,6 +8,7 @@ import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.dto.SttSummaryResult;
 import com.codehows.daehobe.stt.dto.SttTranscriptionResult;
 import com.codehows.daehobe.stt.entity.STT;
+import com.codehows.daehobe.stt.event.SttSummarizingEvent;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
 import com.codehows.daehobe.stt.exception.SttNotCompletedException;
@@ -17,12 +18,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.io.IOException;
 import java.net.URI;
@@ -30,12 +31,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Map; // Map import 추가
-import java.util.Objects;
 
 import static com.codehows.daehobe.common.constant.KafkaConstants.STT_ENCODING_TOPIC;
 import static com.codehows.daehobe.common.constant.KafkaConstants.STT_SUMMARIZING_TOPIC;
-import static com.codehows.daehobe.stt.constant.SttRedisKeys.STT_STATUS_HASH_PREFIX;
 
 @Slf4j
 @Service
@@ -49,6 +47,7 @@ public class SttJobProcessor {
     private final SttProvider sttProvider;
     private final SttCacheService sttCacheService;
     private final RedisMessageBroker redisMessageBroker;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.base-url}")
     private String appBaseUrl;
@@ -140,7 +139,7 @@ public class SttJobProcessor {
                 sttCacheService.cacheSttStatus(cachedStatus);
                 redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
-                kafkaTemplate.send(STT_SUMMARIZING_TOPIC, String.valueOf(sttId), "start-summarizing");
+                eventPublisher.publishEvent(new SttSummarizingEvent(sttId));
             } else {
                 log.info("STT {} is still in progress ({}%). Will retry.", sttId, result.getProgress());
                 throw new SttNotCompletedException("STT job not yet completed for sttId: " + sttId);
@@ -236,5 +235,11 @@ public class SttJobProcessor {
         return e instanceof IllegalStateException
                 || e instanceof IllegalArgumentException
                 || e.getCause() instanceof NumberFormatException;
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void handleSttSummarizingEvent(SttSummarizingEvent event) {
+        log.info("Transaction committed. Sending Kafka message for STT summarizing: {}", event.getSttId());
+        kafkaTemplate.send(STT_SUMMARIZING_TOPIC, String.valueOf(event.getSttId()), "start-summarizing");
     }
 }

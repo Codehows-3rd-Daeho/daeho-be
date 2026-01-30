@@ -5,7 +5,8 @@
       "Bash(./gradlew test:*)",
       "Bash(./gradlew clean test:*)",
       "WebFetch(domain:)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(./gradlew compileJava:*)"
     ]
   }
 }

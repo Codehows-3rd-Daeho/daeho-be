@@ -1,0 +1,106 @@
+---
+config:
+  layout: elk
+  theme: mc
+---
+flowchart
+    subgraph Server
+      Application
+      subgraph ServerResource["Server Resource"]
+        DiskStorage["Disk Storage"]
+        ffmpeg["ffmpeg"]
+      end
+    end
+    subgraph Application["Application Layer"]
+        subgraph WebLayer["Web Layer"]
+            Controller["REST Controllers"]
+        end
+
+        subgraph STTService["STT Service Layer"]
+            FileService["File Service"]
+            SttService["STT Service"]
+            SttProvider["STT Provider"]
+            WebClient["WebClient"]
+        end
+
+        subgraph Processing["STT Processing"]
+            TaskListener["Task Listener<br>(Kafka Consumer)"]
+            TaskProcessor["Task Processor"]
+        end
+
+        subgraph DataAccess["Data Access"]
+            RedisTemplate
+            KafkaTemplate
+        end
+
+        subgraph Messaging["WebSocket Messaging"]
+            MessageBroker["Redis Message Broker"]
+            MessageSubscriber["Message Subscriber"]
+            MessagingTemplate["Messaging Template"]
+        end
+    end
+    subgraph Infrastructure["Infrastructure Layer"]
+        subgraph Kafka["Message Queue"]
+            Topics["[Kafka Topics]<br>stt-encoding-topic<br>stt-processing-topic<br>stt-summarizing-topic"]
+        end
+        subgraph Redis["Redis Cache"]
+          subgraph String
+            Heartbeat["[Heartbeat]<br>stt:recording:heartbeat:{id}"]
+          end
+          subgraph Hash
+            StatusCache["[Status Cache]<br>stt:status:{id}"]
+          end
+          subgraph Channel
+            WebSocketChannel["[WebSocket Channel]<br>websocket-broker-channel"]
+          end
+        end
+    end
+    subgraph External["External Services"]
+        DagloService["Daglo STT API"]
+    end
+
+    %% Main STT Flow
+    Controller --> SttService
+
+    %% File Processing
+    SttService -- "Save & Encode" --> FileService
+    FileService -- "File I/O" --> DiskStorage
+    FileService -- "Audio Encoding" --> ffmpeg
+
+    %% External API Call
+    SttService --> SttProvider
+    SttProvider -- "Delegate" --> WebClient
+    WebClient -- "API Call" --> DagloService
+
+    %% Task Publishing
+    SttService -- "Publish Task" --> KafkaTemplate
+    KafkaTemplate --> Topics
+
+    %% Task Processing (Kafka Consumer Group provides exclusive partition assignment)
+    Topics -- "Consume" --> TaskListener
+    TaskListener -- "Process" --> TaskProcessor
+
+    %% Status Cache
+    SttService -- "Cache Status" --> RedisTemplate
+    RedisTemplate --> StatusCache
+    RedisTemplate --> String
+
+    %% WebSocket Messaging
+    SttService -- "Send Message" --> MessageBroker
+    TaskProcessor -- "Send Update" --> MessageBroker
+    MessageBroker --> RedisTemplate
+    RedisTemplate --> WebSocketChannel
+    WebSocketChannel --> MessageSubscriber
+    MessageSubscriber --> MessagingTemplate
+
+    %% Styling
+    Application:::backend
+    Redis:::services
+    Kafka:::services
+    External:::external
+
+    classDef frontend fill:#cde4ff,stroke:#446,stroke-width:2px
+    classDef backend fill:#ffcdd2,stroke:#644,stroke-width:2px
+    classDef services fill:#dcedc8,stroke:#464,stroke-width:2px
+    classDef webserver fill:#fff9c4,stroke:#664,stroke-width:2px
+    classDef external fill:#f3e5f5,stroke:#646,stroke-width:2px
