@@ -28,15 +28,17 @@ public class AsyncConfig {
         return executor;
     }
 
-    @Bean("notificationTaskExecutor")
-    public Executor notificationTaskExecutor() {
-        AsyncProperties.ExecutorProperties props = asyncProperties.getNotification();
+    @Bean(name = "pushAsyncExecutor")
+    public Executor pushAsyncExecutor() {
+        AsyncProperties.ExecutorProperties props = asyncProperties.getPush();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(props.getCorePoolSize());
         executor.setMaxPoolSize(props.getMaxPoolSize());
         executor.setQueueCapacity(props.getQueueCapacity());
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setThreadNamePrefix(props.getThreadNamePrefix());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }

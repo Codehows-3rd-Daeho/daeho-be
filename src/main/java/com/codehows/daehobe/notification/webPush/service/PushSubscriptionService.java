@@ -51,10 +51,6 @@ public class PushSubscriptionService {
         String key = buildKey(memberId);
         String subscriptionJson = redisTemplate.opsForValue().get(key);
 
-        if (subscriptionJson == null) {
-            return Optional.empty();
-        }
-
         try {
             return Optional.of(objectMapper.readValue(subscriptionJson, PushSubscriptionDto.class));
         } catch (JsonProcessingException e) {

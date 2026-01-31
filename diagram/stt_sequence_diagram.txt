@@ -7,7 +7,6 @@ sequenceDiagram
     participant Browser as React App
     participant Backend as Spring Boot
     participant Redis as Redis Cache
-    participant Scheduler as Polling Scheduler
     participant FFmpeg as FFmpeg
     participant Storage as Disk Storage
     participant Daglo as Daglo API
@@ -43,87 +42,80 @@ sequenceDiagram
     Browser-->>User: 인코딩 대기 중...
 
     Backend->>Redis: 상태 업데이트 (ENCODING)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 실시간 상태 전송
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
     Backend->>FFmpeg: 오디오 인코딩 요청
     FFmpeg->>Storage: 원본 파일 읽기
     FFmpeg->>Storage: 인코딩된 파일 저장
     FFmpeg-->>Backend: 인코딩 완료
 
-    Backend->>DB: 상태 업데이트 (ENCODED) - 복구 지점
+    Backend->>DB: 상태 업데이트 (ENCODED)
     Backend->>Redis: 상태 업데이트 (ENCODED)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 실시간 상태 전송
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     end
 
     rect rgb(240, 255, 240)
-    Note over User,DB: Phase 3: 음성 변환 (Redis-Only Zone)
+    Note over User,DB: Phase 3: 음성 변환
     User->>Browser: 음성 변환 시작 클릭
     Browser->>Backend: POST /recording/finish/{sttId}
 
     Backend->>Daglo: POST /transcripts (변환 요청)
     Daglo-->>Backend: 작업 ID (rid) 반환
 
-    Note over Backend,DB: DB 저장 없음 - Redis Only
     Backend->>Redis: 상태 캐싱 (PROCESSING)
     Backend->>Redis: SADD stt:polling:processing
-    Backend->>Redis: 웹소켓 메시지 발행
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     Backend-->>Browser: 변환 시작됨
     Browser-->>User: 변환 진행 중...
 
     loop @Scheduled 폴링 (2초 간격, 완료될 때까지)
-        Scheduler->>Redis: SMEMBERS stt:polling:processing
-        Redis-->>Scheduler: 폴링 대상 ID 목록
-        Scheduler->>Daglo: GET /status/{rid}
-        Daglo-->>Scheduler: {진행률, 부분 결과}
+        Backend->>Redis: SMEMBERS stt:polling:processing
+        Redis-->>Backend: 폴링 대상 ID 목록
+        Backend->>Daglo: GET /status/{rid}
+        Daglo-->>Backend: {진행률, 부분 결과}
 
-        Scheduler->>Redis: 진행 상태 캐시 업데이트
-        Scheduler->>Redis: 웹소켓 메시지 발행
-        Redis-->>Browser: 실시간 진행 상황 전송
+        Backend->>Redis: 진행 상태 캐시 업데이트
+        Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
         alt 변환 미완료
-            Scheduler->>Redis: INCR stt:retry:{id}
+            Backend->>Redis: INCR stt:retry:{id}
         else 변환 완료
-            Scheduler->>Redis: SREM stt:polling:processing
-            Scheduler->>Redis: SADD stt:polling:summarizing
-            Scheduler->>Redis: DEL stt:retry:{id}
+            Backend->>Redis: SREM stt:polling:processing
+            Backend->>Redis: SADD stt:polling:summarizing
+            Backend->>Redis: DEL stt:retry:{id}
         end
     end
     end
 
     rect rgb(255, 240, 245)
-    Note over User,DB: Phase 4: 요약 생성 (Redis-Only Zone)
+    Note over User,DB: Phase 4: 요약 생성
     Backend->>Daglo: POST /summary/{rid}
     Daglo-->>Backend: 요약 작업 ID 반환
 
-    Note over Backend,DB: DB 저장 없음 - Redis Only
     Backend->>Redis: 상태 캐싱 (SUMMARIZING)
-    Backend->>Redis: 웹소켓 메시지 발행
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
     loop @Scheduled 폴링 (2초 간격, 완료될 때까지)
-        Scheduler->>Redis: SMEMBERS stt:polling:summarizing
-        Redis-->>Scheduler: 폴링 대상 ID 목록
-        Scheduler->>Daglo: GET /status/{rid}
-        Daglo-->>Scheduler: {진행률, 요약 내용}
+        Backend->>Redis: SMEMBERS stt:polling:summarizing
+        Redis-->>Backend: 폴링 대상 ID 목록
+        Backend->>Daglo: GET /status/{rid}
+        Daglo-->>Backend: {진행률, 요약 내용}
 
-        Scheduler->>Redis: 진행 상태 캐시 업데이트
-        Scheduler->>Redis: 웹소켓 메시지 발행
-        Redis-->>Browser: 실시간 진행 상황 전송
+        Backend->>Redis: 진행 상태 캐시 업데이트
+        Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
         alt 요약 미완료
-            Scheduler->>Redis: INCR stt:retry:{id}
+            Backend->>Redis: INCR stt:retry:{id}
         else 요약 완료
-            Note over Scheduler,DB: 최종 결과만 DB 저장
-            Scheduler->>DB: 최종 결과 저장 (COMPLETED)
-            Scheduler->>Redis: SREM stt:polling:summarizing
-            Scheduler->>Redis: DEL stt:retry:{id}
+            Note over Backend,DB: 최종 결과만 DB 저장
+            Backend->>DB: 최종 결과 저장 (COMPLETED)
+            Backend->>Redis: SREM stt:polling:summarizing
+            Backend->>Redis: DEL stt:retry:{id}
         end
     end
 
-    Scheduler->>Redis: 상태 업데이트 (COMPLETED)
-    Scheduler->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 최종 완료 상태 전송
+    Backend->>Redis: 상태 업데이트 (COMPLETED)
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     Browser->>User: 결과 화면 표시
     end
 
@@ -148,7 +140,7 @@ sequenceDiagram
 
     rect rgb(255, 250, 230)
     Note over User,DB: 성능 개선 (MySQL 8.0 + 100만 건 실측)
-    Note over Scheduler,DB: DB 폴링 쿼리: 4,181us → Redis SET: 1,558us (62.7% 개선)
-    Note over Scheduler,DB: 폴링 사이클: 114.5ms → 93.6ms (18.3% 개선)
-    Note over Scheduler,DB: 폴링 시 DB 쿼리 2회/2초 → 0회 (100% 제거)
+    Note over Backend,DB: DB 폴링 쿼리: 4,181us → Redis SET: 1,558us (62.7% 개선)
+    Note over Backend,DB: 폴링 사이클: 114.5ms → 93.6ms (18.3% 개선)
+    Note over Backend,DB: 폴링 시 DB 쿼리 2회/2초 → 0회 (100% 제거)
     end

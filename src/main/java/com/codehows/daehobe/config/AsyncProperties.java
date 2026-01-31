@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class AsyncProperties {
 
     private ExecutorProperties stt = new ExecutorProperties(2, 4, 100, "stt-task-");
-    private ExecutorProperties notification = new ExecutorProperties(4, 8, 500, "notification-");
+    private ExecutorProperties push = new ExecutorProperties(20, 100, 500, "push-async-");
 
     @Getter
     @Setter

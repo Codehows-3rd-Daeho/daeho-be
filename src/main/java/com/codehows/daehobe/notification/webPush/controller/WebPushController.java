@@ -1,8 +1,10 @@
 package com.codehows.daehobe.notification.webPush.controller;
 
+import com.codehows.daehobe.notification.dto.NotificationMessageDto;
 import com.codehows.daehobe.notification.dto.PushSubscriptionDto;
 import com.codehows.daehobe.notification.webPush.service.WebPushService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,20 @@ public class WebPushController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * 성능 테스트용 엔드포인트 (dev/test 프로파일에서만 사용)
+     */
+    @PostMapping("/push/test-send")
+    @Profile({"dev", "test", "local"})
+    public ResponseEntity<?> testSendPush(@RequestBody NotificationMessageDto messageDto, Authentication authentication) {
+        try {
+            webPushService.sendNotificationToUser(authentication.getName(), messageDto);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.ok().body("Push attempted (may fail if no subscription)");
         }
     }
 }

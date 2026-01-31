@@ -1,6 +1,5 @@
 package com.codehows.daehobe.stt.service.processing;
 
-import com.codehows.daehobe.config.redis.RedisMessageBroker;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
@@ -17,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +37,7 @@ public class SttJobProcessor {
     @Qualifier("dagloSttProvider")
     private final SttProvider sttProvider;
     private final SttCacheService sttCacheService;
-    private final RedisMessageBroker redisMessageBroker;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.base-url}")
     private String appBaseUrl;
@@ -70,7 +70,7 @@ public class SttJobProcessor {
 
             cachedStatus.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(cachedStatus);
-            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             log.info("Starting encoding job for STT ID: {}", sttId);
             File originalFile = fileService.getSTTFile(sttId);
@@ -84,7 +84,7 @@ public class SttJobProcessor {
             cachedStatus.updateFile(FileDto.fromEntity(encodedFile));
             cachedStatus.updateStatus(STT.Status.ENCODED);
             sttCacheService.cacheSttStatus(cachedStatus);
-            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             // ENCODED 상태에서 DB 저장 (사용자 복귀 대비)
             STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
@@ -123,7 +123,7 @@ public class SttJobProcessor {
             cachedStatus.updateContent(result.getContent());
             cachedStatus.updateProgress(result.getProgress());
             sttCacheService.cacheSttStatus(cachedStatus);
-            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("STT {} completed, transitioning to SUMMARIZING", sttId);
@@ -134,7 +134,7 @@ public class SttJobProcessor {
                 cachedStatus.updateSummaryRid(summaryRid);
                 cachedStatus.updateRetryCount(0);
                 sttCacheService.cacheSttStatus(cachedStatus);
-                redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+                messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
                 // Redis-only: polling set 전환 (DB 저장 제거)
                 sttCacheService.removeFromPollingSet(sttId, STT.Status.PROCESSING);
@@ -181,13 +181,13 @@ public class SttJobProcessor {
             cachedStatus.updateSummary(result.getSummaryText());
             cachedStatus.updateProgress(result.getProgress());
             sttCacheService.cacheSttStatus(cachedStatus);
-            redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
             if (result.isCompleted()) {
                 log.info("Summary for sttId {} completed", sttId);
                 cachedStatus.updateStatus(STT.Status.COMPLETED);
                 sttCacheService.cacheSttStatus(cachedStatus);
-                redisMessageBroker.publish("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+                messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
 
                 // polling set에서 제거 및 retry count 정리
                 sttCacheService.removeFromPollingSet(sttId, STT.Status.SUMMARIZING);
@@ -213,7 +213,8 @@ public class SttJobProcessor {
         }
     }
 
-    private boolean isFileReadyToBeServed(File sttFile) throws InterruptedException {
+    // package-private for testing
+    boolean isFileReadyToBeServed(File sttFile) throws InterruptedException {
         String fileUrl = appBaseUrl + sttFile.getPath();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(fileUrl))

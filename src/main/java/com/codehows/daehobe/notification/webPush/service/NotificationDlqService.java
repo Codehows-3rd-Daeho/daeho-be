@@ -65,10 +65,6 @@ public class NotificationDlqService {
         List<FailedNotificationDto> items = new ArrayList<>();
         List<Object> rawItems = redisTemplate.opsForList().range(NOTIFICATION_DLQ_KEY, 0, count - 1);
 
-        if (rawItems == null) {
-            return items;
-        }
-
         for (Object rawItem : rawItems) {
             try {
                 items.add(objectMapper.readValue((String) rawItem, FailedNotificationDto.class));

@@ -36,9 +36,7 @@ flowchart
         end
 
         subgraph Messaging["WebSocket Messaging"]
-            MessageBroker["Redis Message Broker"]
-            MessageSubscriber["Message Subscriber"]
-            MessagingTemplate["Messaging Template"]
+            MessagingTemplate["SimpMessagingTemplate"]
         end
     end
     subgraph Infrastructure["Infrastructure Layer"]
@@ -53,9 +51,6 @@ flowchart
           subgraph Set["SET Keys (Polling)"]
             ProcessingSet["[Processing SET]<br>stt:polling:processing"]
             SummarizingSet["[Summarizing SET]<br>stt:polling:summarizing"]
-          end
-          subgraph Channel
-            WebSocketChannel["[WebSocket Channel]<br>websocket-broker-channel"]
           end
         end
         subgraph Database["MySQL"]
@@ -107,13 +102,9 @@ flowchart
     RedisTemplate --> String
     RedisTemplate --> Set
 
-    %% WebSocket Messaging
-    SttService -- "Send Message" --> MessageBroker
-    TaskProcessor -- "Send Update" --> MessageBroker
-    MessageBroker --> RedisTemplate
-    RedisTemplate --> WebSocketChannel
-    WebSocketChannel --> MessageSubscriber
-    MessageSubscriber --> MessagingTemplate
+    %% WebSocket Messaging (직접 전송)
+    SttService -- "Send Message" --> MessagingTemplate
+    TaskProcessor -- "Send Update" --> MessagingTemplate
 
     %% Styling
     Application:::backend

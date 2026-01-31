@@ -22,13 +22,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jakarta.persistence.EntityManager;
+
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -41,6 +46,8 @@ class NotificationServiceTest {
     private MemberService memberService;
     @Mock
     private WebPushService webPushService;
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -143,5 +150,69 @@ class NotificationServiceTest {
 
         // then
         verify(webPushService).sendNotificationToUser(eq(memberId), eq(messageDto));
+    }
+
+    @Test
+    @DisplayName("성공: 여러 멤버에게 알림 - writerId 필터링 및 배치 저장")
+    void notifyMembers_FilterWriterAndBatchSave() {
+        // given
+        Long writerId = 1L;
+        List<Long> targetMemberIds = Arrays.asList(1L, 2L, 3L);
+        String message = "새 댓글이 작성되었습니다.";
+        String url = "/meeting/1";
+
+        Member member2 = Member.builder().id(2L).build();
+        Member member3 = Member.builder().id(3L).build();
+
+        when(entityManager.getReference(Member.class, 2L)).thenReturn(member2);
+        when(entityManager.getReference(Member.class, 3L)).thenReturn(member3);
+
+        // when
+        notificationService.notifyMembers(targetMemberIds, writerId, message, url);
+
+        // then
+        // writerId(1L)가 필터링되고 2L, 3L에 대해서만 알림 생성
+        verify(notificationRepository).saveAll(argThat((List<Notification> notifications) ->
+                notifications.size() == 2 &&
+                notifications.stream().noneMatch(n -> n.getMember().getId().equals(writerId))
+        ));
+        // WebPush 알림도 2L, 3L에 대해서만 전송
+        verify(webPushService).sendNotificationToUser(eq("2"), any(NotificationMessageDto.class));
+        verify(webPushService).sendNotificationToUser(eq("3"), any(NotificationMessageDto.class));
+        verify(webPushService, never()).sendNotificationToUser(eq("1"), any(NotificationMessageDto.class));
+    }
+
+    @Test
+    @DisplayName("성공: 여러 멤버에게 알림 - 전부 writerId일 경우 조기 반환")
+    void notifyMembers_AllTargetsAreWriter() {
+        // given
+        Long writerId = 1L;
+        List<Long> targetMemberIds = Collections.singletonList(1L);
+        String message = "메시지";
+        String url = "/url";
+
+        // when
+        notificationService.notifyMembers(targetMemberIds, writerId, message, url);
+
+        // then
+        verify(notificationRepository, never()).saveAll(anyList());
+        verify(webPushService, never()).sendNotificationToUser(anyString(), any(NotificationMessageDto.class));
+    }
+
+    @Test
+    @DisplayName("성공: 여러 멤버에게 알림 - 빈 목록 처리")
+    void notifyMembers_EmptyTargets() {
+        // given
+        Long writerId = 1L;
+        List<Long> targetMemberIds = Collections.emptyList();
+        String message = "메시지";
+        String url = "/url";
+
+        // when
+        notificationService.notifyMembers(targetMemberIds, writerId, message, url);
+
+        // then
+        verify(notificationRepository, never()).saveAll(anyList());
+        verify(webPushService, never()).sendNotificationToUser(anyString(), any(NotificationMessageDto.class));
     }
 }

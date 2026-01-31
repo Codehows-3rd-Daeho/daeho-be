@@ -33,7 +33,7 @@ public class NotificationService {
     private final WebPushService webPushService;
     private final EntityManager entityManager;
 
-    @Async("notificationTaskExecutor")
+    @Async("pushAsyncExecutor")
     public void sendNotification(String memberId, NotificationMessageDto messageDto) {
         log.info("Sending notification for memberId: {}, message: {}", memberId, messageDto.getMessage());
         webPushService.sendNotificationToUser(memberId, messageDto);

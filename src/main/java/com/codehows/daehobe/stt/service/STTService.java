@@ -1,7 +1,6 @@
 package com.codehows.daehobe.stt.service;
 
 import com.codehows.daehobe.common.constant.TargetType;
-import com.codehows.daehobe.config.redis.RedisMessageBroker;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
@@ -22,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,7 +48,7 @@ public class STTService {
     private final SttProvider sttProvider;
     private final StringRedisTemplate hashRedisTemplate;
     private final SttCacheService sttCacheService;
-    private final RedisMessageBroker redisMessageBroker;
+    private final SimpMessagingTemplate messagingTemplate;
     private final SttEncodingTaskExecutor sttEncodingTaskExecutor;
 
     @Value("${file.location}")
@@ -128,7 +128,7 @@ public class STTService {
 
         STTDto sttDto = STTDto.fromEntity(newSTT, FileDto.fromEntity(newFile));
         sttCacheService.cacheSttStatus(sttDto);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         // 비정상 종료 감지를 위한 Heartbeat 키 생성
         hashRedisTemplate.opsForValue().set(STT_RECORDING_HEARTBEAT_PREFIX + newSTT.getId(), "", heartbeatTtl, TimeUnit.SECONDS);
         return sttDto;
@@ -146,7 +146,7 @@ public class STTService {
             stt.setStatus(STT.Status.ENCODING);
             sttDto.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(sttDto);
-            redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
             hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
             sttEncodingTaskExecutor.submitEncodingTask(sttId);
         }else {
@@ -182,7 +182,7 @@ public class STTService {
         sttDto.updateRetryCount(0);
         sttCacheService.cacheSttStatus(sttDto);
         sttCacheService.addToPollingSet(savedStt.getId(), STT.Status.PROCESSING);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         return sttDto;
     }
 
@@ -204,7 +204,7 @@ public class STTService {
         sttDto.updateRetryCount(0);
         sttCacheService.cacheSttStatus(sttDto);
         sttCacheService.addToPollingSet(sttId, STT.Status.PROCESSING);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         return sttDto;
     }
 }
