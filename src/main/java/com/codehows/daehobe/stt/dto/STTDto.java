@@ -27,6 +27,11 @@ public class STTDto {
     private Integer chunkingCnt;
     private Long memberId;
     private Integer progress;
+    private Integer retryCount;
+
+    public void updateRid(String rid) {
+        this.rid = rid;
+    }
 
     public void updateSummaryRid(String summaryRid) {
         this.summaryRid = summaryRid;
@@ -87,4 +92,11 @@ public class STTDto {
         this.file = file;
     }
 
+    public void updateRetryCount(Integer retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public void incrementRetryCount() {
+        this.retryCount = (this.retryCount == null) ? 1 : this.retryCount + 1;
+    }
 }

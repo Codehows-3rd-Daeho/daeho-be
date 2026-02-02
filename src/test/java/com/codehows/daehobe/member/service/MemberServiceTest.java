@@ -1,5 +1,6 @@
 package com.codehows.daehobe.member.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.Role;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.file.service.FileService;
@@ -35,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class MemberServiceTest {
 
     @Mock

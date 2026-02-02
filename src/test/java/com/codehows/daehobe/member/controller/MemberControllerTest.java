@@ -1,5 +1,6 @@
 package com.codehows.daehobe.member.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.member.dto.MemberDto;
 import com.codehows.daehobe.member.dto.MemberListDto;
@@ -7,6 +8,7 @@ import com.codehows.daehobe.member.dto.MemberProfileDto;
 import com.codehows.daehobe.member.dto.PasswordRequestDto;
 import com.codehows.daehobe.member.service.MemberService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(MemberController.class)
 @Import(JwtService.class)
 class MemberControllerTest {

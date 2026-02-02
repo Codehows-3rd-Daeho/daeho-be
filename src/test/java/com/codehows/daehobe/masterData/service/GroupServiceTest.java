@@ -1,5 +1,6 @@
 package com.codehows.daehobe.masterData.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.masterData.dto.GroupDto;
 import com.codehows.daehobe.masterData.dto.GroupListDto;
 import com.codehows.daehobe.masterData.entity.CustomGroup;
@@ -28,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class GroupServiceTest {
 
     @Mock

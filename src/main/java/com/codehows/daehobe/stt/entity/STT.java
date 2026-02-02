@@ -43,6 +43,10 @@ public class STT extends BaseEntity {
     @Column(name = "chunking_cnt")
     private int chunkingCnt;
 
+    @Column(name = "retry_count")
+    @Builder.Default
+    private Integer retryCount = 0;
+
     public enum Status {
         RECORDING, ENCODING, ENCODED, PROCESSING, SUMMARIZING, COMPLETED
     }
@@ -66,5 +70,13 @@ public class STT extends BaseEntity {
         this.summary = sttDto.getSummary();
         this.chunkingCnt = sttDto.getChunkingCnt();
         this.status = sttDto.getStatus();
+    }
+
+    public void incrementRetryCount() {
+        this.retryCount++;
+    }
+
+    public void resetRetryCount() {
+        this.retryCount = 0;
     }
 }

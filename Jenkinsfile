@@ -36,7 +36,43 @@ pipeline {
                 }
             }
         }
-        
+
+        stage('Test') {
+            steps {
+                script {
+                    echo 'Running tests...'
+                    sh './gradlew test'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'build/reports/tests/test/**/*.xml', allowEmptyResults: true
+                    jacoco(
+                        execPattern: 'build/jacoco/test.exec',
+                        classPattern: 'build/classes/java/main',
+                        sourcePattern: 'src/main/java'
+                    )
+                    publishHTML(target: [
+                        reportName: 'Test Report',
+                        reportDir: 'build/reports/tests/test',
+                        reportFiles: 'index.html',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true
+                    ])
+                    publishHTML(target: [
+                        reportName: 'Coverage Report',
+                        reportDir: 'build/reports/jacoco/test/html',
+                        reportFiles: 'index.html',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true
+                    ])
+                }
+                failure {
+                    echo 'Tests failed! Aborting deployment.'
+                }
+            }
+        }
+
         stage('Create Network') {
             steps {
                 script {

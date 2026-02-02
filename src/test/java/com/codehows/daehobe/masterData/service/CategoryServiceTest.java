@@ -1,5 +1,6 @@
 package com.codehows.daehobe.masterData.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.masterData.dto.MasterDataDto;
 import com.codehows.daehobe.masterData.entity.Category;
 import com.codehows.daehobe.masterData.repository.CategoryRepository;
@@ -29,7 +30,7 @@ import static org.mockito.Mockito.*;
  * {@code @Mock}을 통해 `CategoryRepository`를 Mock 객체로 주입하여
  * `CategoryService`의 비즈니스 로직을 격리하여 테스트합니다.</p>
  */
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class CategoryServiceTest {
 
     @Mock

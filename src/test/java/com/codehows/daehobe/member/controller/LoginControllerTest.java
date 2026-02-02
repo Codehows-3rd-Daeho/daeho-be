@@ -1,10 +1,12 @@
 package com.codehows.daehobe.member.controller;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.config.jwtAuth.JwtService;
 import com.codehows.daehobe.member.dto.LoginDto;
 import com.codehows.daehobe.member.dto.LoginResponseDto;
 import com.codehows.daehobe.member.service.LoginService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.lang.reflect.Field;
-
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 ////import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf; // csrf는 더 이상 사용하지 않으므로 제거
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(PerformanceLoggingExtension.class)
 @WebMvcTest(LoginController.class)
 @Import(JwtService.class)
 @AutoConfigureMockMvc(addFilters = false) // Spring Security 필터 비활성화
@@ -89,7 +91,7 @@ class LoginControllerTest {
 
         // then
         result.andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$").value("아이디는 필수 입력값입니다."))
+                .andExpect(jsonPath("$").value("아이디를 입력해주세요."))
                 .andDo(print());
     }
 
@@ -119,13 +121,10 @@ class LoginControllerTest {
         LoginDto loginDto = createLoginDto("testUser", "wrongPassword");
         given(loginService.login(any(LoginDto.class))).willThrow(new BadCredentialsException("자격 증명 실패"));
 
-        // when
-        ResultActions result = mockMvc.perform(post("/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginDto)));
-
-        // then
-        result.andExpect(status().isInternalServerError())
-                .andDo(print()); // 컨트롤러에서 잡지 않고 Spring이 500으로 처리
+        // when & then - 컨트롤러에서 잡지 않아 ServletException으로 전파
+        assertThrows(jakarta.servlet.ServletException.class, () ->
+                mockMvc.perform(post("/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginDto))));
     }
 }

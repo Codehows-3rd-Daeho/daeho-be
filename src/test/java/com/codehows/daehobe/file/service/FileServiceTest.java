@@ -1,5 +1,6 @@
 package com.codehows.daehobe.file.service;
 
+import com.codehows.daehobe.common.PerformanceLoggingExtension;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
@@ -29,7 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, PerformanceLoggingExtension.class})
 class FileServiceTest {
 
     @Mock
@@ -69,7 +70,7 @@ class FileServiceTest {
     void getIssueFiles_Success() {
         // given
         Long issueId = 1L;
-        File file = File.builder().fileId(1L).originalName("issue_file.txt").path("/file/issue_file.txt").build();
+        File file = File.builder().fileId(1L).originalName("issue_file.txt").path("/file/issue_file.txt").size(1024L).build();
         when(fileRepository.findByTargetIdAndTargetType(issueId, TargetType.ISSUE)).thenReturn(Collections.singletonList(file));
         
         // when

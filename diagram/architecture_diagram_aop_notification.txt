@@ -1,0 +1,102 @@
+---
+config:
+  layout: elk
+  theme: mc
+---
+flowchart TB
+    subgraph Client["Client Layer"]
+        Browser["Browser<br>(React SPA)"]
+        User("End User")
+    end
+
+    subgraph WebServer["Web Server Layer"]
+        Nginx["Nginx<br>(Reverse Proxy & Static Server)"]
+    end
+
+    subgraph Application["Application Layer"]
+        direction TB
+        subgraph WebLayer["Web Layer"]
+            Tomcat
+            Security["Spring Security<br>(Filter Chain)"]
+            Controller["REST Controllers"]
+        end
+
+        subgraph AspectLayer["AOP Layer"]
+            AOP["Logging Aspect"]
+        end
+
+        subgraph ServiceLayer["Service Layer"]
+            direction LR
+            MeetingService["Meeting Service"]
+            IssueService["Issue Service"]
+            NotificationService["Notification Service"]
+            WebPushService["WebPush Service"]
+        end
+
+        subgraph DataAccess["Data Access Layer"]
+            Repository["Spring Data JPA"]
+            EntityManager
+            RedisTemplate
+        end
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        direction LR
+        subgraph Database["Relational DB"]
+            MySQL["MySQL"]
+        end
+
+        subgraph Redis["Redis Cache"]
+            direction TB
+            Subscriptions["WebPush Subscriptions<br>webpush:subscriptions"]
+        end
+    end
+
+    subgraph External["External Services"]
+        PushService["Web Push Service<br>(FCM & APNs)"]
+    end
+
+    %% Main Flow
+    User --> Browser
+    Browser -- "HTTPS Request" --> Nginx
+    Nginx -- "Proxy /api" --> Tomcat
+    Tomcat --> Security
+    Security --> Controller
+
+    %% AOP Logging
+    Controller -- "Intercept" --> AOP
+    AOP -- "Proceed" --> MeetingService
+    AOP -- "Proceed" --> IssueService
+    AOP -- "Log to DB" --> EntityManager
+
+    %% Service Layer
+    MeetingService --> Repository
+    IssueService --> Repository
+    Repository --> EntityManager
+    EntityManager -- "JDBC" --> MySQL
+
+    %% Notification Flow
+    Controller -- "Subscribe" --> WebPushService
+    WebPushService -- "Save" --> RedisTemplate
+    RedisTemplate --> Subscriptions
+
+    Controller -- "Send Notification" --> NotificationService
+    NotificationService -- "Save History" --> Repository
+
+    %% Push Notification (Direct @Async call instead of Kafka)
+    NotificationService -- "@Async" --> WebPushService
+    WebPushService -- "Push API" --> PushService
+    PushService -- "Deliver" --> Browser
+
+    %% Styling
+    Client:::frontend
+    WebServer:::webserver
+    Application:::backend
+    Infrastructure:::services
+    External:::external
+
+    classDef frontend fill:#cde4ff,stroke:#446,stroke-width:2px
+    classDef backend fill:#ffcdd2,stroke:#644,stroke-width:2px
+    classDef services fill:#dcedc8,stroke:#464,stroke-width:2px
+    classDef webserver fill:#fff9c4,stroke:#664,stroke-width:2px
+    classDef external fill:#f3e5f5,stroke:#646,stroke-width:2px

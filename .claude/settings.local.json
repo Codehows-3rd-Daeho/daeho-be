@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileTestJava:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew clean test:*)",
+      "WebFetch(domain:)",
+      "Bash(findstr:*)",
+      "Bash(./gradlew compileJava:*)"
+    ]
+  }
+}

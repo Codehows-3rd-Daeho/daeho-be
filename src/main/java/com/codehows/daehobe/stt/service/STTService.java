@@ -1,7 +1,6 @@
 package com.codehows.daehobe.stt.service;
 
 import com.codehows.daehobe.common.constant.TargetType;
-import com.codehows.daehobe.config.redis.RedisMessageBroker;
 import com.codehows.daehobe.file.dto.FileDto;
 import com.codehows.daehobe.file.entity.File;
 import com.codehows.daehobe.file.service.FileService;
@@ -11,6 +10,7 @@ import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
+import com.codehows.daehobe.stt.service.processing.SttEncodingTaskExecutor;
 import com.codehows.daehobe.stt.service.provider.SttProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -20,9 +20,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,8 +34,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.codehows.daehobe.common.constant.KafkaConstants.STT_ENCODING_TOPIC;
-import static com.codehows.daehobe.common.constant.KafkaConstants.STT_PROCESSING_TOPIC;
 import static com.codehows.daehobe.stt.constant.SttRedisKeys.STT_RECORDING_HEARTBEAT_PREFIX;
 import static com.codehows.daehobe.stt.constant.SttRedisKeys.STT_STATUS_HASH_PREFIX;
 
@@ -50,11 +46,10 @@ public class STTService {
     private final FileService fileService;
     @Qualifier("dagloSttProvider")
     private final SttProvider sttProvider;
-    private final KafkaTemplate<String, String> kafkaTemplate;
     private final StringRedisTemplate hashRedisTemplate;
     private final SttCacheService sttCacheService;
-    private final ObjectMapper objectMapper; // ObjectMapper 주입
-    private final RedisMessageBroker redisMessageBroker;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final SttEncodingTaskExecutor sttEncodingTaskExecutor;
 
     @Value("${file.location}")
     private String fileLocation;
@@ -133,7 +128,7 @@ public class STTService {
 
         STTDto sttDto = STTDto.fromEntity(newSTT, FileDto.fromEntity(newFile));
         sttCacheService.cacheSttStatus(sttDto);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         // 비정상 종료 감지를 위한 Heartbeat 키 생성
         hashRedisTemplate.opsForValue().set(STT_RECORDING_HEARTBEAT_PREFIX + newSTT.getId(), "", heartbeatTtl, TimeUnit.SECONDS);
         return sttDto;
@@ -151,9 +146,9 @@ public class STTService {
             stt.setStatus(STT.Status.ENCODING);
             sttDto.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(sttDto);
-            redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
             hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
-            kafkaTemplate.send(STT_ENCODING_TOPIC, String.valueOf(sttId), "start-encoding");
+            sttEncodingTaskExecutor.submitEncodingTask(sttId);
         }else {
             // 마지막 청크 시각 업데이트 -> 비정상 종료 처리에 활용 (Heartbeat 갱신)
             hashRedisTemplate.opsForValue().set(
@@ -170,42 +165,46 @@ public class STTService {
     @Transactional
     public STTDto uploadAndTranslate(Long id, MultipartFile file) {
         Meeting meeting = meetingRepository.findById(id).orElseThrow(IllegalArgumentException::new);
-        String rid = sttProvider.requestTranscription(file.getResource()).block();
+        String rid = sttProvider.requestTranscription(file.getResource());
+        // 최초 생성은 ENCODED 상태로 DB 저장 (PROCESSING은 Redis-only)
         STT savedStt = sttRepository.save(STT.builder()
                 .rid(rid)
                 .meeting(meeting)
                 .summary("")
                 .content("")
-                .status(STT.Status.PROCESSING)
+                .status(STT.Status.ENCODED)
                 .chunkingCnt(0)
                 .build());
         File savedFile = fileService.uploadFiles(savedStt.getId(), List.of(file), TargetType.STT).getFirst();
         STTDto sttDto = STTDto.fromEntity(savedStt, FileDto.fromEntity(savedFile));
+        // Redis 캐시는 PROCESSING 상태로
+        sttDto.updateStatus(STT.Status.PROCESSING);
+        sttDto.updateRetryCount(0);
         sttCacheService.cacheSttStatus(sttDto);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
-
-        kafkaTemplate.send(STT_PROCESSING_TOPIC, String.valueOf(savedStt.getId()), "start-processing");
+        sttCacheService.addToPollingSet(savedStt.getId(), STT.Status.PROCESSING);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         return sttDto;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public STTDto startTranslateForRecorded(Long sttId) {
         STT stt = sttRepository.findById(sttId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid STT ID: " + sttId));
-        stt.setStatus(STT.Status.PROCESSING);
 
         File savedFile = fileService.getSTTFile(sttId);
         Path filePath = Paths.get(fileLocation, savedFile.getSavedName());
 
         Resource resource = new FileSystemResource(filePath);
-        String rid = sttProvider.requestTranscription(resource).block();
-        stt.setRid(rid);
-        sttRepository.save(stt);
-        STTDto sttDto = STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
-        sttCacheService.cacheSttStatus(sttDto);
-        redisMessageBroker.publish("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
+        String rid = sttProvider.requestTranscription(resource);
 
-        kafkaTemplate.send(STT_PROCESSING_TOPIC, String.valueOf(stt.getId()), "start-processing");
+        // Redis-only: DB 저장 제거, Redis 캐시 + polling set만 사용
+        STTDto sttDto = STTDto.fromEntity(stt, FileDto.fromEntity(savedFile));
+        sttDto.updateStatus(STT.Status.PROCESSING);
+        sttDto.updateRid(rid);
+        sttDto.updateRetryCount(0);
+        sttCacheService.cacheSttStatus(sttDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.PROCESSING);
+        messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         return sttDto;
     }
 }

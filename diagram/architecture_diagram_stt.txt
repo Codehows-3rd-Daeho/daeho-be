@@ -1,0 +1,124 @@
+---
+config:
+  layout: elk
+  theme: mc
+---
+flowchart
+    subgraph Server
+      Application
+      subgraph ServerResource["Server Resource"]
+        DiskStorage["Disk Storage"]
+        ffmpeg["ffmpeg"]
+      end
+    end
+    subgraph Application["Application Layer"]
+        subgraph WebLayer["Web Layer"]
+            Controller["REST Controllers"]
+        end
+
+        subgraph STTService["STT Service Layer"]
+            FileService["File Service"]
+            SttService["STT Service"]
+            SttProvider["STT Provider"]
+            WebClient["WebClient"]
+        end
+
+        subgraph Processing["STT Processing"]
+            AsyncExecutor["@Async Executor<br>(SttEncodingTaskExecutor)"]
+            TaskProcessor["Task Processor<br>(SttJobProcessor)"]
+            PollingScheduler["Polling Scheduler<br>(@Scheduled)"]
+            TaskListener["Task Listener<br>(Redis KeyExpiration)"]
+        end
+
+        subgraph DataAccess["Data Access"]
+            RedisTemplate
+            JpaRepository["JPA Repository"]
+        end
+
+        subgraph Messaging["WebSocket Messaging"]
+            MessagingTemplate["SimpMessagingTemplate"]
+        end
+    end
+    subgraph Infrastructure["Infrastructure Layer"]
+        subgraph Redis["Redis Cache"]
+          subgraph String["String Keys"]
+            Heartbeat["[Heartbeat]<br>stt:recording:heartbeat:{id}"]
+            RetryCount["[Retry Count]<br>stt:retry:{id}"]
+          end
+          subgraph Hash["Hash/Value Keys"]
+            StatusCache["[Status Cache]<br>stt:status:{id}"]
+          end
+          subgraph Set["SET Keys (Polling)"]
+            ProcessingSet["[Processing SET]<br>stt:polling:processing"]
+            SummarizingSet["[Summarizing SET]<br>stt:polling:summarizing"]
+          end
+        end
+        subgraph Database["MySQL"]
+            STTTable["STT Table<br>(status: RECORDING,<br>ENCODING, ENCODED,<br>COMPLETED only)"]
+        end
+    end
+    subgraph External["External Services"]
+        DagloService["Daglo STT API"]
+    end
+
+    %% Main STT Flow
+    Controller --> SttService
+
+    %% File Processing
+    SttService -- "Save & Encode" --> FileService
+    FileService -- "File I/O" --> DiskStorage
+    FileService -- "Audio Encoding" --> ffmpeg
+
+    %% External API Call
+    SttService --> SttProvider
+    SttProvider -- "Delegate" --> WebClient
+    WebClient -- "API Call" --> DagloService
+
+    %% Async Task Execution
+    SttService -- "@Async" --> AsyncExecutor
+    AsyncExecutor -- "Process" --> TaskProcessor
+
+    %% Polling Scheduler (Redis-First)
+    PollingScheduler -- "SMEMBERS" --> ProcessingSet
+    PollingScheduler -- "SMEMBERS" --> SummarizingSet
+    PollingScheduler -- "Process" --> TaskProcessor
+
+    %% Polling SET Management
+    TaskProcessor -- "SADD/SREM" --> ProcessingSet
+    TaskProcessor -- "SADD/SREM" --> SummarizingSet
+    TaskProcessor -- "INCR" --> RetryCount
+
+    %% DB Access (Limited to specific states)
+    TaskProcessor -- "COMPLETED only" --> JpaRepository
+    JpaRepository -- "Query/Update" --> STTTable
+
+    %% Redis KeyExpiration for Heartbeat
+    Heartbeat -- "Expiration Event" --> TaskListener
+    TaskListener -- "@Async" --> AsyncExecutor
+
+    %% Status Cache
+    SttService -- "Cache Status" --> RedisTemplate
+    RedisTemplate --> StatusCache
+    RedisTemplate --> String
+    RedisTemplate --> Set
+
+    %% WebSocket Messaging (직접 전송)
+    SttService -- "Send Message" --> MessagingTemplate
+    TaskProcessor -- "Send Update" --> MessagingTemplate
+
+    %% Styling
+    Application:::backend
+    Redis:::services
+    Database:::services
+    External:::external
+
+    classDef frontend fill:#cde4ff,stroke:#446,stroke-width:2px
+    classDef backend fill:#ffcdd2,stroke:#644,stroke-width:2px
+    classDef services fill:#dcedc8,stroke:#464,stroke-width:2px
+    classDef webserver fill:#fff9c4,stroke:#664,stroke-width:2px
+    classDef external fill:#f3e5f5,stroke:#646,stroke-width:2px
+
+    %% Performance Notes (MySQL 8.0 + 100만 건 실측)
+    %% - 폴링 쿼리: DB 4,181us → Redis SET 1,558us (62.7% 개선)
+    %% - 폴링 사이클: 114.5ms → 93.6ms (18.3% 개선)
+    %% - 폴링 시 DB 쿼리: 2회/2초 → 0회 (100% 제거)
