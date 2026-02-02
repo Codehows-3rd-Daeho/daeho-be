@@ -5,6 +5,7 @@ build/
 !**/src/test/**/build/
 
 nul
+.claude
 
 ### STS ###
 .apt_generated
