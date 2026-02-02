@@ -28,4 +28,12 @@ public class SttTranscriptionResult {
                 .progress(dagloResult.getProgress())
                 .build();
     }
+
+    public static SttTranscriptionResult stillProcessing() {
+        return SttTranscriptionResult.builder()
+                .completed(false)
+                .content("")
+                .progress(0)
+                .build();
+    }
 }

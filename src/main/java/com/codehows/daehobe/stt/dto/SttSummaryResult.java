@@ -28,4 +28,12 @@ public class SttSummaryResult {
                 .progress(dagloResult.getProgress())
                 .build();
     }
+
+    public static SttSummaryResult stillProcessing() {
+        return SttSummaryResult.builder()
+                .completed(false)
+                .summaryText("")
+                .progress(0)
+                .build();
+    }
 }

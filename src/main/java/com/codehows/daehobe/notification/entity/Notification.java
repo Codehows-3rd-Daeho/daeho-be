@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JoinFormula;
 
 @Entity
 @Table(name = "notification")
@@ -32,6 +33,10 @@ public class Notification extends BaseEntity {
 
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinFormula("created_by")
+    private Member createdByMember;
 
     public void setIsRead(){
         this.isRead = true;

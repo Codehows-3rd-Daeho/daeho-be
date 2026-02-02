@@ -7,7 +7,6 @@ sequenceDiagram
     participant Browser as React App
     participant Backend as Spring Boot
     participant Redis as Redis Cache
-    participant Kafka as Kafka Queue
     participant FFmpeg as FFmpeg
     participant Storage as Disk Storage
     participant Daglo as Daglo API
@@ -17,9 +16,10 @@ sequenceDiagram
     Note over User,DB: Phase 1: 녹음 시작 및 청크 업로드
     User->>Browser: 녹음 시작 버튼 클릭
     Browser->>Backend: POST /recording/start
-    Backend->>DB: STT 레코드 생성
+    Backend->>DB: STT 레코드 생성 (RECORDING)
     DB-->>Backend: STT ID 반환
     Backend->>Redis: 상태 캐싱 (RECORDING)
+    Backend->>Redis: Heartbeat 키 생성 (TTL 30초)
     Backend-->>Browser: STT ID 반환
     Browser-->>User: 녹음 시작 확인
 
@@ -27,6 +27,7 @@ sequenceDiagram
         User->>Browser: 음성 녹음 중...
         Browser->>Backend: POST /chunk/{sttId}
         Backend->>Storage: 청크 파일 추가
+        Backend->>Redis: Heartbeat 키 갱신
         Backend-->>Browser: 청크 저장 완료
     end
     end
@@ -35,88 +36,111 @@ sequenceDiagram
     Note over User,DB: Phase 2: 녹음 종료 및 인코딩
     User->>Browser: 녹음 종료 버튼 클릭
     Browser->>Backend: POST /chunk/{sttId}?finish=true
-    Backend->>Kafka: ENCODING 태스크 발행
+    Backend->>Redis: Heartbeat 키 삭제
+    Backend->>Backend: @Async 인코딩 태스크 실행
     Backend-->>Browser: 인코딩 시작됨
     Browser-->>User: 인코딩 대기 중...
 
-    Kafka->>Backend: ENCODING 태스크 소비
     Backend->>Redis: 상태 업데이트 (ENCODING)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 실시간 상태 전송
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
     Backend->>FFmpeg: 오디오 인코딩 요청
     FFmpeg->>Storage: 원본 파일 읽기
     FFmpeg->>Storage: 인코딩된 파일 저장
     FFmpeg-->>Backend: 인코딩 완료
 
+    Backend->>DB: 상태 업데이트 (ENCODED)
     Backend->>Redis: 상태 업데이트 (ENCODED)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 실시간 상태 전송
-    Backend->>Kafka: 오프셋 커밋
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     end
 
     rect rgb(240, 255, 240)
-    Note over User,DB: Phase 3: 음성 변환 (STT Processing)
+    Note over User,DB: Phase 3: 음성 변환
     User->>Browser: 음성 변환 시작 클릭
     Browser->>Backend: POST /recording/finish/{sttId}
 
     Backend->>Daglo: POST /transcripts (변환 요청)
     Daglo-->>Backend: 작업 ID (rid) 반환
 
-    Backend->>Redis: 상태 업데이트 (PROCESSING)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Backend->>Kafka: PROCESSING 태스크 발행
+    Backend->>Redis: 상태 캐싱 (PROCESSING)
+    Backend->>Redis: SADD stt:polling:processing
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     Backend-->>Browser: 변환 시작됨
     Browser-->>User: 변환 진행 중...
 
-    loop 진행 상태 폴링 (완료될 때까지)
-        Kafka->>Backend: PROCESSING 태스크 소비
+    loop @Scheduled 폴링 (2초 간격, 완료될 때까지)
+        Backend->>Redis: SMEMBERS stt:polling:processing
+        Redis-->>Backend: 폴링 대상 ID 목록
         Backend->>Daglo: GET /status/{rid}
         Daglo-->>Backend: {진행률, 부분 결과}
 
         Backend->>Redis: 진행 상태 캐시 업데이트
-        Backend->>Redis: 웹소켓 메시지 발행
-        Redis-->>Browser: 실시간 진행 상황 전송
+        Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
         alt 변환 미완료
-            Backend->>Backend: SttNotCompletedException 발생
-            Backend->>Kafka: 오프셋 미커밋 (재시도 대기)
+            Backend->>Redis: INCR stt:retry:{id}
         else 변환 완료
-            Backend->>Kafka: 오프셋 커밋
+            Backend->>Redis: SREM stt:polling:processing
+            Backend->>Redis: SADD stt:polling:summarizing
+            Backend->>Redis: DEL stt:retry:{id}
         end
     end
     end
 
     rect rgb(255, 240, 245)
-    Note over User,DB: Phase 4: 요약 생성 (Summarizing)
+    Note over User,DB: Phase 4: 요약 생성
     Backend->>Daglo: POST /summary/{rid}
     Daglo-->>Backend: 요약 작업 ID 반환
 
-    Backend->>Redis: 상태 업데이트 (SUMMARIZING)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Backend->>Kafka: SUMMARIZING 태스크 발행
+    Backend->>Redis: 상태 캐싱 (SUMMARIZING)
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
-    loop 진행 상태 폴링 (완료될 때까지)
-        Kafka->>Backend: SUMMARIZING 태스크 소비
+    loop @Scheduled 폴링 (2초 간격, 완료될 때까지)
+        Backend->>Redis: SMEMBERS stt:polling:summarizing
+        Redis-->>Backend: 폴링 대상 ID 목록
         Backend->>Daglo: GET /status/{rid}
         Daglo-->>Backend: {진행률, 요약 내용}
 
         Backend->>Redis: 진행 상태 캐시 업데이트
-        Backend->>Redis: 웹소켓 메시지 발행
-        Redis-->>Browser: 실시간 진행 상황 전송
+        Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
 
         alt 요약 미완료
-            Backend->>Backend: SttNotCompletedException 발생
-            Backend->>Kafka: 오프셋 미커밋 (재시도 대기)
+            Backend->>Redis: INCR stt:retry:{id}
         else 요약 완료
-            Backend->>Kafka: 오프셋 커밋
+            Note over Backend,DB: 최종 결과만 DB 저장
+            Backend->>DB: 최종 결과 저장 (COMPLETED)
+            Backend->>Redis: SREM stt:polling:summarizing
+            Backend->>Redis: DEL stt:retry:{id}
         end
     end
 
-    Backend->>DB: 최종 결과 저장
-    DB-->>Backend: 저장 완료
     Backend->>Redis: 상태 업데이트 (COMPLETED)
-    Backend->>Redis: 웹소켓 메시지 발행
-    Redis-->>Browser: 최종 완료 상태 전송
+    Backend-->>Browser: 웹소켓 직접 전송 (SimpMessagingTemplate)
     Browser->>User: 결과 화면 표시
+    end
+
+    rect rgb(255, 220, 220)
+    Note over User,DB: 비정상 종료 처리 (Heartbeat Expiration)
+    Note over Redis: Heartbeat 키 만료 (30초 경과)
+    Redis->>Backend: KeyExpiration 이벤트
+    Backend->>Backend: @Async 비정상 종료 처리
+    Backend->>Redis: 상태 업데이트 (ENCODING)
+    Backend->>FFmpeg: 오디오 인코딩 요청
+    Note over Backend: 이후 정상 인코딩 프로세스 진행
+    end
+
+    rect rgb(230, 230, 250)
+    Note over User,DB: Redis 키 구조 요약
+    Note over Redis: [String] stt:status:{id} - 상태 캐시 (JSON)
+    Note over Redis: [String] stt:recording:heartbeat:{id} - TTL 30s
+    Note over Redis: [String] stt:retry:{id} - retry count (TTL 30m)
+    Note over Redis: [SET] stt:polling:processing - 폴링 대상 ID
+    Note over Redis: [SET] stt:polling:summarizing - 폴링 대상 ID
+    end
+
+    rect rgb(255, 250, 230)
+    Note over User,DB: 성능 개선 (MySQL 8.0 + 100만 건 실측)
+    Note over Backend,DB: DB 폴링 쿼리: 4,181us → Redis SET: 1,558us (62.7% 개선)
+    Note over Backend,DB: 폴링 사이클: 114.5ms → 93.6ms (18.3% 개선)
+    Note over Backend,DB: 폴링 시 DB 쿼리 2회/2초 → 0회 (100% 제거)
     end

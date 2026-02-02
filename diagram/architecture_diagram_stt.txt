@@ -24,35 +24,37 @@ flowchart
         end
 
         subgraph Processing["STT Processing"]
-            TaskListener["Task Listener<br>(Kafka Consumer)"]
-            TaskProcessor["Task Processor"]
+            AsyncExecutor["@Async Executor<br>(SttEncodingTaskExecutor)"]
+            TaskProcessor["Task Processor<br>(SttJobProcessor)"]
+            PollingScheduler["Polling Scheduler<br>(@Scheduled)"]
+            TaskListener["Task Listener<br>(Redis KeyExpiration)"]
         end
 
         subgraph DataAccess["Data Access"]
             RedisTemplate
-            KafkaTemplate
+            JpaRepository["JPA Repository"]
         end
 
         subgraph Messaging["WebSocket Messaging"]
-            MessageBroker["Redis Message Broker"]
-            MessageSubscriber["Message Subscriber"]
-            MessagingTemplate["Messaging Template"]
+            MessagingTemplate["SimpMessagingTemplate"]
         end
     end
     subgraph Infrastructure["Infrastructure Layer"]
-        subgraph Kafka["Message Queue"]
-            Topics["[Kafka Topics]<br>stt-encoding-topic<br>stt-processing-topic<br>stt-summarizing-topic"]
-        end
         subgraph Redis["Redis Cache"]
-          subgraph String
+          subgraph String["String Keys"]
             Heartbeat["[Heartbeat]<br>stt:recording:heartbeat:{id}"]
+            RetryCount["[Retry Count]<br>stt:retry:{id}"]
           end
-          subgraph Hash
+          subgraph Hash["Hash/Value Keys"]
             StatusCache["[Status Cache]<br>stt:status:{id}"]
           end
-          subgraph Channel
-            WebSocketChannel["[WebSocket Channel]<br>websocket-broker-channel"]
+          subgraph Set["SET Keys (Polling)"]
+            ProcessingSet["[Processing SET]<br>stt:polling:processing"]
+            SummarizingSet["[Summarizing SET]<br>stt:polling:summarizing"]
           end
+        end
+        subgraph Database["MySQL"]
+            STTTable["STT Table<br>(status: RECORDING,<br>ENCODING, ENCODED,<br>COMPLETED only)"]
         end
     end
     subgraph External["External Services"]
@@ -72,31 +74,42 @@ flowchart
     SttProvider -- "Delegate" --> WebClient
     WebClient -- "API Call" --> DagloService
 
-    %% Task Publishing
-    SttService -- "Publish Task" --> KafkaTemplate
-    KafkaTemplate --> Topics
+    %% Async Task Execution
+    SttService -- "@Async" --> AsyncExecutor
+    AsyncExecutor -- "Process" --> TaskProcessor
 
-    %% Task Processing (Kafka Consumer Group provides exclusive partition assignment)
-    Topics -- "Consume" --> TaskListener
-    TaskListener -- "Process" --> TaskProcessor
+    %% Polling Scheduler (Redis-First)
+    PollingScheduler -- "SMEMBERS" --> ProcessingSet
+    PollingScheduler -- "SMEMBERS" --> SummarizingSet
+    PollingScheduler -- "Process" --> TaskProcessor
+
+    %% Polling SET Management
+    TaskProcessor -- "SADD/SREM" --> ProcessingSet
+    TaskProcessor -- "SADD/SREM" --> SummarizingSet
+    TaskProcessor -- "INCR" --> RetryCount
+
+    %% DB Access (Limited to specific states)
+    TaskProcessor -- "COMPLETED only" --> JpaRepository
+    JpaRepository -- "Query/Update" --> STTTable
+
+    %% Redis KeyExpiration for Heartbeat
+    Heartbeat -- "Expiration Event" --> TaskListener
+    TaskListener -- "@Async" --> AsyncExecutor
 
     %% Status Cache
     SttService -- "Cache Status" --> RedisTemplate
     RedisTemplate --> StatusCache
     RedisTemplate --> String
+    RedisTemplate --> Set
 
-    %% WebSocket Messaging
-    SttService -- "Send Message" --> MessageBroker
-    TaskProcessor -- "Send Update" --> MessageBroker
-    MessageBroker --> RedisTemplate
-    RedisTemplate --> WebSocketChannel
-    WebSocketChannel --> MessageSubscriber
-    MessageSubscriber --> MessagingTemplate
+    %% WebSocket Messaging (직접 전송)
+    SttService -- "Send Message" --> MessagingTemplate
+    TaskProcessor -- "Send Update" --> MessagingTemplate
 
     %% Styling
     Application:::backend
     Redis:::services
-    Kafka:::services
+    Database:::services
     External:::external
 
     classDef frontend fill:#cde4ff,stroke:#446,stroke-width:2px
@@ -104,3 +117,8 @@ flowchart
     classDef services fill:#dcedc8,stroke:#464,stroke-width:2px
     classDef webserver fill:#fff9c4,stroke:#664,stroke-width:2px
     classDef external fill:#f3e5f5,stroke:#646,stroke-width:2px
+
+    %% Performance Notes (MySQL 8.0 + 100만 건 실측)
+    %% - 폴링 쿼리: DB 4,181us → Redis SET 1,558us (62.7% 개선)
+    %% - 폴링 사이클: 114.5ms → 93.6ms (18.3% 개선)
+    %% - 폴링 시 DB 쿼리: 2회/2초 → 0회 (100% 제거)

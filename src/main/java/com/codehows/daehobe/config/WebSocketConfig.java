@@ -13,7 +13,7 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 
 /**
  * WebSocket 설정
- * Redis Pub/Sub을 메시지 브로커로 사용하는 순수한 구조
+ * SimpleBroker를 사용하여 메모리 기반 메시지 브로커 구현
  */
 @Slf4j
 @Configuration
@@ -35,13 +35,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     /**
      * 메시지 브로커 설정
-     * SimpleBroker 사용하지 않음 - Redis가 브로커 역할을 대체
+     * 메모리 기반 SimpleBroker 활성화
      */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // SimpleBroker는 사용하지 않음
-        // Redis Pub/Sub이 브로커 역할을 함
-
+        // 메모리 기반 SimpleBroker 활성화
+        registry.enableSimpleBroker("/topic", "/queue");
         // 클라이언트에서 서버로 메시지 전송 시 사용할 prefix
         registry.setApplicationDestinationPrefixes("/app");
     }

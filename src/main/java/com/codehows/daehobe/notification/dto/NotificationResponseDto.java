@@ -33,4 +33,17 @@ public class NotificationResponseDto {
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
+
+    public static NotificationResponseDto fromEntityWithCreatedBy(Notification entity) {
+        Member sender = entity.getCreatedByMember();
+        String senderName = sender != null ? sender.getName() : "시스템";
+        return NotificationResponseDto.builder()
+                .id(entity.getId())
+                .senderName(senderName)
+                .message(entity.getMessage())
+                .forwardUrl(entity.getForwardUrl())
+                .read(entity.getIsRead())
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
 }

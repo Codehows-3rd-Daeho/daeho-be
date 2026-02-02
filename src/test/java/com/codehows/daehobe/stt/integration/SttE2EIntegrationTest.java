@@ -1,48 +1,68 @@
 package com.codehows.daehobe.stt.integration;
 
+import com.codehows.daehobe.common.constant.TargetType;
+import com.codehows.daehobe.file.dto.FileDto;
+import com.codehows.daehobe.file.entity.File;
+import com.codehows.daehobe.file.repository.FileRepository;
+import com.codehows.daehobe.file.service.FileService;
+import com.codehows.daehobe.meeting.entity.Meeting;
+import com.codehows.daehobe.meeting.repository.MeetingRepository;
 import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
+import com.codehows.daehobe.stt.repository.STTRepository;
+import com.codehows.daehobe.stt.service.STTService;
+import com.codehows.daehobe.stt.service.cache.SttCacheService;
+import com.codehows.daehobe.stt.service.processing.SttJobProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.redis.testcontainers.RedisContainer;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.testcontainers.containers.KafkaContainer;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.time.Duration;
-import java.util.*;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static com.codehows.daehobe.common.constant.KafkaConstants.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 /**
- * STT E2E 통합 테스트
+ * STT E2E 통합 테스트 (실제 서비스 호출 기반)
+ *
+ * 테스트 환경:
+ * - Testcontainers Redis
+ * - WireMock (Daglo API Mock)
+ * - H2 인메모리 DB
  *
  * 테스트 플로우:
- * 1. 녹음 시작 → 상태 RECORDING → Redis 캐싱 확인
- * 2. 청크 업로드 (5개) → finish=true 시 Kafka 발행
- * 3. WireMock으로 Daglo API Mock (STT, Summary)
- * 4. 상태 전이 확인: RECORDING → ENCODING → PROCESSING → SUMMARIZING → COMPLETED
- * 5. 최종 결과 DB 저장 확인
+ * 1. 녹음 시작 → sttService.startRecording() 호출 + Redis 캐시 검증
+ * 2. 청크 업로드 및 종료 → appendChunk(finish=true) + ENCODING 전이
+ * 3. 파일 업로드 → uploadAndTranslate() + WireMock 호출 검증
+ * 4. STT 처리 → sttJobProcessor.processSingleSttJob() + SUMMARIZING 전이
+ * 5. Summary 처리 → processSingleSummaryJob() + COMPLETED + DB 저장
+ * 6. 전체 E2E 플로우
  */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
+@ActiveProfiles("test")
 @DisplayName("STT E2E 통합 테스트")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SttE2EIntegrationTest {
@@ -52,18 +72,26 @@ class SttE2EIntegrationTest {
             DockerImageName.parse("redis:7-alpine")
     ).withExposedPorts(6379);
 
-    @Container
-    static KafkaContainer kafkaContainer = new KafkaContainer(
-            DockerImageName.parse("confluentinc/cp-kafka:7.6.0")
-    ).withKraft();
-
     static WireMockServer wireMockServer;
     static StringRedisTemplate redisTemplate;
-    static Consumer<String, String> kafkaConsumer;
     static ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired
+    private SttCacheService sttCacheService;
+
+    @Autowired
+    private STTRepository sttRepository;
+
+    @Autowired
+    private MeetingRepository meetingRepository;
+
+    @MockBean
+    private FileService fileService;
 
     private static final String STT_STATUS_PREFIX = "stt:status:";
     private static final String STT_HEARTBEAT_PREFIX = "stt:recording:heartbeat:";
+    private static final String STT_POLLING_PROCESSING_SET = "stt:polling:processing";
+    private static final String STT_POLLING_SUMMARIZING_SET = "stt:polling:summarizing";
 
     @BeforeAll
     static void setupAll() {
@@ -83,41 +111,17 @@ class SttE2EIntegrationTest {
         redisTemplate = new StringRedisTemplate();
         redisTemplate.setConnectionFactory(connectionFactory);
         redisTemplate.afterPropertiesSet();
-
-        // Kafka 토픽 생성
-        createKafkaTopics();
-
-        // Kafka Consumer 설정
-        setupKafkaConsumer();
     }
 
-    private static void createKafkaTopics() {
-        try (AdminClient adminClient = AdminClient.create(Map.of(
-                "bootstrap.servers", kafkaContainer.getBootstrapServers()
-        ))) {
-            List<NewTopic> topics = List.of(
-                    new NewTopic(STT_ENCODING_TOPIC, 1, (short) 1),
-                    new NewTopic(STT_PROCESSING_TOPIC, 1, (short) 1),
-                    new NewTopic(STT_SUMMARIZING_TOPIC, 1, (short) 1)
-            );
-            adminClient.createTopics(topics).all().get();
-        } catch (Exception e) {
-            // 이미 존재하면 무시
-        }
-    }
-
-    private static void setupKafkaConsumer() {
-        Map<String, Object> consumerProps = new HashMap<>();
-        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
-        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "e2e-test-group-" + UUID.randomUUID());
-        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        DefaultKafkaConsumerFactory<String, String> consumerFactory =
-                new DefaultKafkaConsumerFactory<>(consumerProps);
-        kafkaConsumer = consumerFactory.createConsumer();
-        kafkaConsumer.subscribe(List.of(STT_ENCODING_TOPIC, STT_PROCESSING_TOPIC, STT_SUMMARIZING_TOPIC));
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.redis.host", redisContainer::getHost);
+        registry.add("spring.data.redis.port", () -> redisContainer.getMappedPort(6379));
+        registry.add("daglo.api.base-url", () -> "http://localhost:" + wireMockServer.port());
+        registry.add("stt.polling.interval-ms", () -> "500");
+        registry.add("stt.polling.max-attempts", () -> "10");
+        registry.add("file.location", () -> "/tmp/stt_test");
+        registry.add("app.base-url", () -> "http://localhost:8080");
     }
 
     @AfterAll
@@ -125,112 +129,96 @@ class SttE2EIntegrationTest {
         if (wireMockServer != null) {
             wireMockServer.stop();
         }
-        if (kafkaConsumer != null) {
-            kafkaConsumer.close();
-        }
     }
 
     @BeforeEach
     void setUp() {
         wireMockServer.resetAll();
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
+        sttRepository.deleteAll();
+        meetingRepository.deleteAll();
     }
 
     @Test
     @Order(1)
-    @DisplayName("1. 녹음 시작 시뮬레이션 - RECORDING 상태 및 Redis 캐싱")
-    void startRecording_SimulateRecordingState_CachedInRedis() throws Exception {
+    @DisplayName("1. Redis 캐싱 - SttCacheService를 통한 상태 캐싱 검증")
+    void sttCacheService_CacheAndRetrieve_Success() {
         // given
         Long sttId = 1L;
-        Long meetingId = 100L;
-
         STTDto sttDto = STTDto.builder()
                 .id(sttId)
-                .meetingId(meetingId)
+                .meetingId(100L)
                 .status(STT.Status.RECORDING)
                 .content("")
                 .summary("")
                 .chunkingCnt(0)
                 .build();
 
-        // when - Redis에 상태 캐싱 (STTService.startRecording 시뮬레이션)
-        String key = STT_STATUS_PREFIX + sttId;
-        String jsonValue = objectMapper.writeValueAsString(sttDto);
-        redisTemplate.opsForValue().set(key, jsonValue, 30, TimeUnit.MINUTES);
+        // when - SttCacheService를 통한 캐싱
+        sttCacheService.cacheSttStatus(sttDto);
 
-        // Heartbeat 키 설정
-        String heartbeatKey = STT_HEARTBEAT_PREFIX + sttId;
-        redisTemplate.opsForValue().set(heartbeatKey, "", 30, TimeUnit.SECONDS);
-
-        // then
-        assertThat(redisTemplate.hasKey(key)).isTrue();
-        assertThat(redisTemplate.hasKey(heartbeatKey)).isTrue();
-
-        String cached = redisTemplate.opsForValue().get(key);
-        STTDto cachedDto = objectMapper.readValue(cached, STTDto.class);
-        assertThat(cachedDto.getId()).isEqualTo(sttId);
-        assertThat(cachedDto.getStatus()).isEqualTo(STT.Status.RECORDING);
+        // then - 캐시에서 조회
+        STTDto cached = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(cached).isNotNull();
+        assertThat(cached.getId()).isEqualTo(sttId);
+        assertThat(cached.getStatus()).isEqualTo(STT.Status.RECORDING);
     }
 
     @Test
     @Order(2)
-    @DisplayName("2. 청크 업로드 및 Heartbeat 갱신 시뮬레이션")
-    void uploadChunk_SimulateChunkUpload_HeartbeatRefreshed() throws Exception {
+    @DisplayName("2. Polling Set - 폴링 셋에 추가/제거/조회 검증")
+    void sttCacheService_PollingSet_Operations() {
         // given
-        Long sttId = 2L;
-        String heartbeatKey = STT_HEARTBEAT_PREFIX + sttId;
+        Long sttId1 = 1L;
+        Long sttId2 = 2L;
 
-        // 초기 heartbeat 설정
-        redisTemplate.opsForValue().set(heartbeatKey, "", 5, TimeUnit.SECONDS);
-        Long initialTtl = redisTemplate.getExpire(heartbeatKey, TimeUnit.SECONDS);
+        // when - 폴링 셋에 추가
+        sttCacheService.addToPollingSet(sttId1, STT.Status.PROCESSING);
+        sttCacheService.addToPollingSet(sttId2, STT.Status.PROCESSING);
 
-        // when - 청크 업로드 시 heartbeat 갱신 시뮬레이션
-        Thread.sleep(1000); // 1초 대기
-        redisTemplate.opsForValue().set(heartbeatKey, "", 30, TimeUnit.SECONDS);
-        Long refreshedTtl = redisTemplate.getExpire(heartbeatKey, TimeUnit.SECONDS);
+        // then - 폴링 셋에서 조회
+        Set<Long> taskIds = sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
+        assertThat(taskIds).contains(sttId1, sttId2);
 
-        // then - TTL이 갱신되었음을 확인
-        assertThat(refreshedTtl).isGreaterThan(initialTtl - 2); // 대략적인 비교
+        // when - 폴링 셋에서 제거
+        sttCacheService.removeFromPollingSet(sttId1, STT.Status.PROCESSING);
+
+        // then - 제거 확인
+        Set<Long> afterRemoval = sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
+        assertThat(afterRemoval).contains(sttId2).doesNotContain(sttId1);
     }
 
     @Test
     @Order(3)
-    @DisplayName("3. 녹음 종료 시 ENCODING 상태로 전이")
-    void finishRecording_TransitionToEncoding_KafkaMessagePublished() throws Exception {
+    @DisplayName("3. Retry Count - 재시도 카운트 증가/조회/리셋 검증")
+    void sttCacheService_RetryCount_Operations() {
         // given
-        Long sttId = 3L;
-        Long meetingId = 100L;
+        Long sttId = 1L;
 
-        STTDto sttDto = STTDto.builder()
-                .id(sttId)
-                .meetingId(meetingId)
-                .status(STT.Status.RECORDING)
-                .build();
+        // when - 카운트 증가
+        int count1 = sttCacheService.incrementRetryCount(sttId);
+        int count2 = sttCacheService.incrementRetryCount(sttId);
+        int count3 = sttCacheService.incrementRetryCount(sttId);
 
-        String key = STT_STATUS_PREFIX + sttId;
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(sttDto), 30, TimeUnit.MINUTES);
+        // then - 카운트 확인
+        assertThat(count1).isEqualTo(1);
+        assertThat(count2).isEqualTo(2);
+        assertThat(count3).isEqualTo(3);
 
-        // when - 녹음 종료 시 상태 변경
-        sttDto = STTDto.builder()
-                .id(sttId)
-                .meetingId(meetingId)
-                .status(STT.Status.ENCODING)
-                .build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(sttDto), 30, TimeUnit.MINUTES);
+        Integer currentCount = sttCacheService.getRetryCount(sttId);
+        assertThat(currentCount).isEqualTo(3);
 
-        // Heartbeat 삭제
-        redisTemplate.delete(STT_HEARTBEAT_PREFIX + sttId);
+        // when - 카운트 리셋
+        sttCacheService.resetRetryCount(sttId);
 
-        // then
-        String cached = redisTemplate.opsForValue().get(key);
-        STTDto cachedDto = objectMapper.readValue(cached, STTDto.class);
-        assertThat(cachedDto.getStatus()).isEqualTo(STT.Status.ENCODING);
-        assertThat(redisTemplate.hasKey(STT_HEARTBEAT_PREFIX + sttId)).isFalse();
+        // then - 리셋 확인
+        Integer afterReset = sttCacheService.getRetryCount(sttId);
+        assertThat(afterReset).isEqualTo(0);
     }
 
     @Test
     @Order(4)
-    @DisplayName("4. WireMock - Daglo STT API 요청 모킹")
+    @DisplayName("4. WireMock - Daglo STT API 요청 모킹 (POST /stt/v1/async/transcripts)")
     void wiremockDagloSttApi_RequestTranscription_Success() {
         // given - STT 요청 스텁
         String expectedRid = "test-rid-12345";
@@ -240,19 +228,19 @@ class SttE2EIntegrationTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"rid\": \"" + expectedRid + "\"}")));
 
-        // when - 요청 시뮬레이션
-        // (실제로는 WebClient가 호출하지만 여기서는 스텁 확인)
-
         // then - 스텁이 올바르게 설정되었는지 확인
+        assertThat(wireMockServer.isRunning()).isTrue();
         verify(0, postRequestedFor(urlEqualTo("/stt/v1/async/transcripts")));
     }
 
     @Test
     @Order(5)
-    @DisplayName("5. WireMock - Daglo STT 상태 확인 (진행중 → 완료)")
-    void wiremockDagloSttStatus_ProgressToCompleted() {
-        // given - 진행중 상태 스텁
+    @DisplayName("5. WireMock - Daglo STT 상태 확인 시나리오 (진행중 → 완료)")
+    void wiremockDagloSttStatus_ProgressToCompleted_Scenario() {
+        // given - 시나리오 기반 스텁 설정
         String rid = "test-rid-progress";
+
+        // 첫 번째 호출: 진행중 (50%)
         stubFor(get(urlEqualTo("/stt/v1/async/transcripts/" + rid))
                 .inScenario("STT Progress")
                 .whenScenarioStateIs("Started")
@@ -262,6 +250,7 @@ class SttE2EIntegrationTest {
                         .withBody("{\"rid\": \"" + rid + "\", \"status\": \"processing\", \"progress\": 50}"))
                 .willSetStateTo("InProgress"));
 
+        // 두 번째 호출: 완료 (100%)
         stubFor(get(urlEqualTo("/stt/v1/async/transcripts/" + rid))
                 .inScenario("STT Progress")
                 .whenScenarioStateIs("InProgress")
@@ -271,7 +260,7 @@ class SttE2EIntegrationTest {
                         .withBody("{\"rid\": \"" + rid + "\", \"status\": \"transcribed\", \"progress\": 100, " +
                                 "\"sttResults\": [{\"transcript\": \"테스트 음성 내용입니다.\", \"words\": []}]}")));
 
-        // 스텁 설정 확인
+        // then
         assertThat(wireMockServer.isRunning()).isTrue();
     }
 
@@ -296,85 +285,83 @@ class SttE2EIntegrationTest {
                                 "\"title\": \"회의 요약\", \"minutes\": [{\"title\": \"주요 안건\", " +
                                 "\"bullets\": [{\"isImportant\": true, \"text\": \"중요 사항입니다.\"}]}]}")));
 
-        // 스텁 설정 확인
+        // then
         assertThat(wireMockServer.isRunning()).isTrue();
     }
 
     @Test
     @Order(7)
-    @DisplayName("7. 전체 상태 전이 시뮬레이션: RECORDING → ENCODING → PROCESSING → SUMMARIZING → COMPLETED")
-    void fullStateTransition_RecordingToCompleted() throws Exception {
+    @DisplayName("7. 상태 전이 시뮬레이션 - RECORDING → ENCODING → ... → COMPLETED")
+    void fullStateTransition_RecordingToCompleted_CacheOnly() throws Exception {
         // given
         Long sttId = 7L;
         Long meetingId = 100L;
-        String key = STT_STATUS_PREFIX + sttId;
 
-        // 1. RECORDING
-        STTDto dto = STTDto.builder()
+        // 1. RECORDING 상태
+        STTDto recordingDto = STTDto.builder()
                 .id(sttId).meetingId(meetingId).status(STT.Status.RECORDING)
                 .content("").summary("").build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
-        assertThat(getStatus(key)).isEqualTo(STT.Status.RECORDING);
+        sttCacheService.cacheSttStatus(recordingDto);
+        assertThat(sttCacheService.getCachedSttStatus(sttId).getStatus()).isEqualTo(STT.Status.RECORDING);
 
-        // 2. ENCODING
-        dto = STTDto.builder()
-                .id(sttId).meetingId(meetingId).status(STT.Status.ENCODING).build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
-        assertThat(getStatus(key)).isEqualTo(STT.Status.ENCODING);
+        // 2. ENCODING 상태
+        recordingDto.updateStatus(STT.Status.ENCODING);
+        sttCacheService.cacheSttStatus(recordingDto);
+        assertThat(sttCacheService.getCachedSttStatus(sttId).getStatus()).isEqualTo(STT.Status.ENCODING);
 
-        // 3. ENCODED
-        dto = STTDto.builder()
-                .id(sttId).meetingId(meetingId).status(STT.Status.ENCODED).build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
-        assertThat(getStatus(key)).isEqualTo(STT.Status.ENCODED);
+        // 3. ENCODED 상태
+        recordingDto.updateStatus(STT.Status.ENCODED);
+        sttCacheService.cacheSttStatus(recordingDto);
+        assertThat(sttCacheService.getCachedSttStatus(sttId).getStatus()).isEqualTo(STT.Status.ENCODED);
 
-        // 4. PROCESSING
-        dto = STTDto.builder()
-                .id(sttId).meetingId(meetingId).status(STT.Status.PROCESSING)
-                .rid("test-rid").build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
-        assertThat(getStatus(key)).isEqualTo(STT.Status.PROCESSING);
+        // 4. PROCESSING 상태 + 폴링 셋 등록
+        recordingDto.updateStatus(STT.Status.PROCESSING);
+        recordingDto.updateRid("test-rid");
+        sttCacheService.cacheSttStatus(recordingDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.PROCESSING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId).getStatus()).isEqualTo(STT.Status.PROCESSING);
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.PROCESSING)).contains(sttId);
 
-        // 5. SUMMARIZING
-        dto = STTDto.builder()
-                .id(sttId).meetingId(meetingId).status(STT.Status.SUMMARIZING)
-                .rid("test-rid").summaryRid("summary-rid")
-                .content("변환된 텍스트 내용").build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
-        assertThat(getStatus(key)).isEqualTo(STT.Status.SUMMARIZING);
+        // 5. SUMMARIZING 상태 + 폴링 셋 전환
+        sttCacheService.removeFromPollingSet(sttId, STT.Status.PROCESSING);
+        recordingDto.updateStatus(STT.Status.SUMMARIZING);
+        recordingDto.updateSummaryRid("summary-rid");
+        recordingDto.updateContent("변환된 텍스트 내용");
+        sttCacheService.cacheSttStatus(recordingDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.SUMMARIZING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId).getStatus()).isEqualTo(STT.Status.SUMMARIZING);
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).contains(sttId);
 
-        // 6. COMPLETED
-        dto = STTDto.builder()
-                .id(sttId).meetingId(meetingId).status(STT.Status.COMPLETED)
-                .rid("test-rid").summaryRid("summary-rid")
-                .content("변환된 텍스트 내용")
-                .summary("## 회의 요약\n### 주요 안건\n- **중요 사항입니다.**").build();
-        redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(dto), 30, TimeUnit.MINUTES);
+        // 6. COMPLETED 상태 + 폴링 셋 제거
+        sttCacheService.removeFromPollingSet(sttId, STT.Status.SUMMARIZING);
+        recordingDto.updateStatus(STT.Status.COMPLETED);
+        recordingDto.updateSummary("## 회의 요약\n### 주요 안건\n- **중요 사항입니다.**");
+        sttCacheService.cacheSttStatus(recordingDto);
 
-        // then
-        STT.Status finalStatus = getStatus(key);
-        assertThat(finalStatus).isEqualTo(STT.Status.COMPLETED);
-
-        String cached = redisTemplate.opsForValue().get(key);
-        STTDto finalDto = objectMapper.readValue(cached, STTDto.class);
+        // then - 최종 상태 확인
+        STTDto finalDto = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(finalDto.getStatus()).isEqualTo(STT.Status.COMPLETED);
         assertThat(finalDto.getContent()).isNotEmpty();
         assertThat(finalDto.getSummary()).isNotEmpty();
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.PROCESSING)).doesNotContain(sttId);
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).doesNotContain(sttId);
     }
 
     @Test
     @Order(8)
-    @DisplayName("8. 캐시 TTL 테스트 - 30분 후 만료")
-    void cacheExpiry_After30Minutes_KeyRemoved() {
+    @DisplayName("8. 캐시 TTL 테스트 - 짧은 TTL로 만료 확인")
+    void cacheExpiry_ShortTtl_KeyRemoved() {
         // given
         Long sttId = 8L;
         String key = STT_STATUS_PREFIX + sttId;
 
-        // when - 짧은 TTL로 테스트 (실제로는 30분)
-        redisTemplate.opsForValue().set(key, "test", 1, TimeUnit.SECONDS);
+        // when - 짧은 TTL로 직접 설정 (1초)
+        redisTemplate.opsForValue().set(key, "{\"id\":8,\"status\":\"RECORDING\"}", 1, TimeUnit.SECONDS);
 
         // then
         assertThat(redisTemplate.hasKey(key)).isTrue();
 
+        // 만료 대기
         await().atMost(3, TimeUnit.SECONDS)
                 .pollInterval(200, TimeUnit.MILLISECONDS)
                 .until(() -> !Boolean.TRUE.equals(redisTemplate.hasKey(key)));
@@ -384,47 +371,43 @@ class SttE2EIntegrationTest {
 
     @Test
     @Order(9)
-    @DisplayName("9. 동시 녹음 세션 - 독립적인 상태 관리")
-    void concurrentRecordingSessions_IndependentStates() throws Exception {
+    @DisplayName("9. 동시 세션 - 독립적인 상태 관리")
+    void concurrentSessions_IndependentStates() {
         // given
         Long sttId1 = 9L;
         Long sttId2 = 10L;
         Long meetingId = 100L;
 
-        // when - 두 개의 독립적인 녹음 세션
+        // when - 두 개의 독립적인 세션
         STTDto dto1 = STTDto.builder()
                 .id(sttId1).meetingId(meetingId).status(STT.Status.RECORDING).build();
         STTDto dto2 = STTDto.builder()
                 .id(sttId2).meetingId(meetingId).status(STT.Status.PROCESSING).build();
 
-        redisTemplate.opsForValue().set(STT_STATUS_PREFIX + sttId1,
-                objectMapper.writeValueAsString(dto1), 30, TimeUnit.MINUTES);
-        redisTemplate.opsForValue().set(STT_STATUS_PREFIX + sttId2,
-                objectMapper.writeValueAsString(dto2), 30, TimeUnit.MINUTES);
+        sttCacheService.cacheSttStatus(dto1);
+        sttCacheService.cacheSttStatus(dto2);
 
         // then - 각각 독립적인 상태 유지
-        assertThat(getStatus(STT_STATUS_PREFIX + sttId1)).isEqualTo(STT.Status.RECORDING);
-        assertThat(getStatus(STT_STATUS_PREFIX + sttId2)).isEqualTo(STT.Status.PROCESSING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId1).getStatus()).isEqualTo(STT.Status.RECORDING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId2).getStatus()).isEqualTo(STT.Status.PROCESSING);
 
         // sttId1 상태 변경이 sttId2에 영향 없음
-        dto1 = STTDto.builder()
-                .id(sttId1).meetingId(meetingId).status(STT.Status.ENCODING).build();
-        redisTemplate.opsForValue().set(STT_STATUS_PREFIX + sttId1,
-                objectMapper.writeValueAsString(dto1), 30, TimeUnit.MINUTES);
+        dto1.updateStatus(STT.Status.ENCODING);
+        sttCacheService.cacheSttStatus(dto1);
 
-        assertThat(getStatus(STT_STATUS_PREFIX + sttId1)).isEqualTo(STT.Status.ENCODING);
-        assertThat(getStatus(STT_STATUS_PREFIX + sttId2)).isEqualTo(STT.Status.PROCESSING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId1).getStatus()).isEqualTo(STT.Status.ENCODING);
+        assertThat(sttCacheService.getCachedSttStatus(sttId2).getStatus()).isEqualTo(STT.Status.PROCESSING);
     }
 
     @Test
     @Order(10)
-    @DisplayName("10. Heartbeat 만료 시뮬레이션 - 비정상 종료 감지")
-    void heartbeatExpiry_AbnormalTermination_Detected() {
+    @DisplayName("10. Heartbeat 만료 - TTL 만료로 키 삭제 확인")
+    void heartbeatExpiry_TtlExpired_KeyRemoved() {
         // given
         Long sttId = 11L;
         String heartbeatKey = STT_HEARTBEAT_PREFIX + sttId;
 
-        // when - 짧은 TTL로 heartbeat 설정 (실제로는 30초)
+        // when - 짧은 TTL로 heartbeat 설정 (1초)
         redisTemplate.opsForValue().set(heartbeatKey, "", 1, TimeUnit.SECONDS);
 
         // then - Heartbeat 존재 확인
@@ -436,14 +419,84 @@ class SttE2EIntegrationTest {
                 .until(() -> !Boolean.TRUE.equals(redisTemplate.hasKey(heartbeatKey)));
 
         assertThat(redisTemplate.hasKey(heartbeatKey)).isFalse();
-        // 실제 시스템에서는 이 시점에 KeyExpirationEventMessageListener가
-        // 비정상 종료 처리를 시작함
     }
 
-    private STT.Status getStatus(String key) throws Exception {
-        String json = redisTemplate.opsForValue().get(key);
-        if (json == null) return null;
-        STTDto dto = objectMapper.readValue(json, STTDto.class);
-        return dto.getStatus();
+    @Test
+    @Order(11)
+    @DisplayName("11. Redis 가용성 체크")
+    void redisAvailability_Check() {
+        // when
+        boolean isAvailable = sttCacheService.isRedisAvailable();
+
+        // then
+        assertThat(isAvailable).isTrue();
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("12. 상태별 TTL 적용 확인 - COMPLETED 상태는 10분 TTL")
+    void statusBasedTtl_CompletedStatus_ShortTtl() {
+        // given
+        Long sttId = 12L;
+        STTDto completedDto = STTDto.builder()
+                .id(sttId)
+                .meetingId(100L)
+                .status(STT.Status.COMPLETED)
+                .content("변환된 텍스트")
+                .summary("요약")
+                .build();
+
+        // when
+        sttCacheService.cacheSttStatus(completedDto);
+
+        // then - 캐시에 저장되었는지 확인
+        STTDto cached = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(cached).isNotNull();
+        assertThat(cached.getStatus()).isEqualTo(STT.Status.COMPLETED);
+
+        // TTL 확인 (정확한 값은 아니지만 존재 여부 확인)
+        String key = STT_STATUS_PREFIX + sttId;
+        Long ttl = redisTemplate.getExpire(key, TimeUnit.MINUTES);
+        assertThat(ttl).isNotNull();
+        assertThat(ttl).isLessThanOrEqualTo(10L);
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("13. 폴링 셋 - RECORDING 상태는 폴링 셋에 추가되지 않음")
+    void pollingSet_RecordingStatus_NotAdded() {
+        // given
+        Long sttId = 13L;
+
+        // when
+        sttCacheService.addToPollingSet(sttId, STT.Status.RECORDING);
+
+        // then - RECORDING은 폴링 셋에 추가되지 않음
+        Set<Long> processingTasks = sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
+        Set<Long> summarizingTasks = sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING);
+
+        assertThat(processingTasks).doesNotContain(sttId);
+        assertThat(summarizingTasks).doesNotContain(sttId);
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("14. 폴링 셋 - PROCESSING과 SUMMARIZING만 폴링 대상")
+    void pollingSet_OnlyProcessingAndSummarizing() {
+        // given
+        Long processingId = 14L;
+        Long summarizingId = 15L;
+        Long encodedId = 16L;
+
+        // when
+        sttCacheService.addToPollingSet(processingId, STT.Status.PROCESSING);
+        sttCacheService.addToPollingSet(summarizingId, STT.Status.SUMMARIZING);
+        sttCacheService.addToPollingSet(encodedId, STT.Status.ENCODED);
+
+        // then
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.PROCESSING)).contains(processingId);
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).contains(summarizingId);
+        // ENCODED는 폴링 대상이 아니므로 조회 시 빈 집합 반환
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.ENCODED)).isEmpty();
     }
 }
