@@ -1,11 +1,10 @@
-package com.codehows.daehobe.stt.service.scheduler;
+package com.codehows.daehobe.stt.service.processing;
 
 import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
-import com.codehows.daehobe.stt.service.processing.SttJobProcessor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

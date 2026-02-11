@@ -24,7 +24,6 @@ public class STTDto {
     private Long meetingId;
     private STT.Status status;
     private FileDto file;
-    private Integer chunkingCnt;
     private Long memberId;
     private Integer progress;
     private Integer retryCount;
@@ -64,7 +63,6 @@ public class STTDto {
                                 ? stt.getMeeting().getId()
                                 : null
                 )
-                .chunkingCnt(stt.getChunkingCnt())
                 .status(stt.getStatus())
                 .memberId(stt.getCreatedBy())
                 .build();
@@ -81,7 +79,6 @@ public class STTDto {
                                 ? stt.getMeeting().getId()
                                 : null
                 )
-                .chunkingCnt(stt.getChunkingCnt())
                 .status(stt.getStatus())
                 .file(audioFile)
                 .memberId(stt.getCreatedBy())
