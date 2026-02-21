@@ -21,7 +21,7 @@ import static com.codehows.daehobe.stt.constant.SttRedisKeys.*;
 @Service
 @RequiredArgsConstructor
 public class SttCacheService {
-    private final StringRedisTemplate hashRedisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
     private static final String STT_STATUS_PREFIX = "stt:status:";
@@ -35,7 +35,7 @@ public class SttCacheService {
             String jsonValue = objectMapper.writeValueAsString(sttDto);
             long ttlMinutes = calculateTtl(sttDto.getStatus());
 
-            hashRedisTemplate.opsForValue().set(key, jsonValue, ttlMinutes, TimeUnit.MINUTES);
+            redisTemplate.opsForValue().set(key, jsonValue, ttlMinutes, TimeUnit.MINUTES);
 
             log.debug("STT status cached - ID: {}, TTL: {} minutes", sttDto.getId(), ttlMinutes);
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class SttCacheService {
     public STTDto getCachedSttStatus(Long sttId) {
         try {
             String key = STT_STATUS_PREFIX + sttId;
-            String jsonValue = hashRedisTemplate.opsForValue().get(key);
+            String jsonValue = redisTemplate.opsForValue().get(key);
 
             return jsonValue != null ? objectMapper.readValue(jsonValue, STTDto.class) : null;
         } catch (Exception e) {
@@ -68,7 +68,7 @@ public class SttCacheService {
         String setKey = getPollingSetKey(status);
         if (setKey != null) {
             double score = System.currentTimeMillis();
-            hashRedisTemplate.opsForZSet().add(setKey, String.valueOf(sttId), score);
+            redisTemplate.opsForZSet().add(setKey, String.valueOf(sttId), score);
             log.debug("Added STT {} to polling ZSet: {} with score: {}", sttId, setKey, score);
         }
     }
@@ -76,7 +76,7 @@ public class SttCacheService {
     public void removeFromPollingSet(Long sttId, STT.Status status) {
         String setKey = getPollingSetKey(status);
         if (setKey != null) {
-            hashRedisTemplate.opsForZSet().remove(setKey, String.valueOf(sttId));
+            redisTemplate.opsForZSet().remove(setKey, String.valueOf(sttId));
             log.debug("Removed STT {} from polling ZSet: {}", sttId, setKey);
         }
     }
@@ -88,7 +88,7 @@ public class SttCacheService {
         }
 
         try {
-            Set<String> members = hashRedisTemplate.opsForZSet().range(setKey, 0, -1);
+            Set<String> members = redisTemplate.opsForZSet().range(setKey, 0, -1);
             if (members == null || members.isEmpty()) {
                 return Collections.emptySet();
             }
@@ -112,7 +112,7 @@ public class SttCacheService {
 
     private void cleanupStaleTasksFromSet(String setKey, long thresholdTime) {
         try {
-            Long removedCount = hashRedisTemplate.opsForZSet()
+            Long removedCount = redisTemplate.opsForZSet()
                     .removeRangeByScore(setKey, 0, thresholdTime);
 
             if (removedCount != null && removedCount > 0) {
@@ -125,7 +125,7 @@ public class SttCacheService {
 
     public boolean isRedisAvailable() {
         try {
-            hashRedisTemplate.hasKey("health-check");
+            redisTemplate.hasKey("health-check");
             return true;
         } catch (Exception e) {
             log.warn("Redis health check failed: {}", e.getMessage());
@@ -135,20 +135,20 @@ public class SttCacheService {
 
     public int incrementRetryCount(Long sttId) {
         String key = STT_RETRY_COUNT_PREFIX + sttId;
-        Long newValue = hashRedisTemplate.opsForValue().increment(key);
-        hashRedisTemplate.expire(key, 30, TimeUnit.MINUTES);
+        Long newValue = redisTemplate.opsForValue().increment(key);
+        redisTemplate.expire(key, 30, TimeUnit.MINUTES);
         return newValue != null ? newValue.intValue() : 1;
     }
 
     public Integer getRetryCount(Long sttId) {
         String key = STT_RETRY_COUNT_PREFIX + sttId;
-        String value = hashRedisTemplate.opsForValue().get(key);
+        String value = redisTemplate.opsForValue().get(key);
         return value != null ? Integer.valueOf(value) : 0;
     }
 
     public void resetRetryCount(Long sttId) {
         String key = STT_RETRY_COUNT_PREFIX + sttId;
-        hashRedisTemplate.delete(key);
+        redisTemplate.delete(key);
     }
 
     private String getPollingSetKey(STT.Status status) {

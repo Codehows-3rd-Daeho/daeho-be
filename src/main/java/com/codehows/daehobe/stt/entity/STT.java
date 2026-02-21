@@ -38,14 +38,7 @@ public class STT extends BaseEntity {
     private Meeting meeting;
 
     @Enumerated(EnumType.STRING)
-    private Status status; // e.g., "RECORDING", "PROCESSING", "SUMMARIZING", "COMPLETED"
-
-    @Column(name = "chunking_cnt")
-    private int chunkingCnt;
-
-    @Column(name = "retry_count")
-    @Builder.Default
-    private Integer retryCount = 0;
+    private Status status; // e.g., "RECORDING", "ENCODING", "ENCODED" "PROCESSING", "SUMMARIZING", "COMPLETED"
 
     public enum Status {
         RECORDING, ENCODING, ENCODED, PROCESSING, SUMMARIZING, COMPLETED
@@ -59,24 +52,12 @@ public class STT extends BaseEntity {
         this.summary = summary;
     }
 
-    public void countChunk() {
-        this.chunkingCnt++;
-    }
 
     public void updateFromDto(STTDto sttDto) {
         this.rid = sttDto.getRid();
         this.summaryRid = sttDto.getSummaryRid();
         this.content = sttDto.getContent();
         this.summary = sttDto.getSummary();
-        this.chunkingCnt = sttDto.getChunkingCnt();
         this.status = sttDto.getStatus();
-    }
-
-    public void incrementRetryCount() {
-        this.retryCount++;
-    }
-
-    public void resetRetryCount() {
-        this.retryCount = 0;
     }
 }

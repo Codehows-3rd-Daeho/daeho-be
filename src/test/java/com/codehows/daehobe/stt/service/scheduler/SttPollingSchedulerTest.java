@@ -7,6 +7,7 @@ import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
 import com.codehows.daehobe.stt.service.processing.SttJobProcessor;
+import com.codehows.daehobe.stt.service.processing.SttPollingScheduler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -11,6 +11,7 @@ import com.codehows.daehobe.logging.entity.Log;
 import com.codehows.daehobe.member.entity.Member;
 import com.codehows.daehobe.logging.repository.LogRepository;
 import com.codehows.daehobe.member.repository.MemberRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Aspect
@@ -40,6 +42,7 @@ public class LoggingAspect {
     private final MemberRepository memberRepository;
     private final LogRepository logRepository;
     private final EntityManager entityManager;
+    private final ObjectMapper objectMapper;
 
     private record BeforeState(Auditable<?> entity, List<String> memberNames) {}
 
@@ -57,19 +60,23 @@ public class LoggingAspect {
         BeforeState beforeState = captureBeforeState(
                 entityId,
                 trackChanges,
-                ((MethodSignature)joinPoint.getSignature()).getReturnType()
+                ((MethodSignature) joinPoint.getSignature()).getReturnType()
         );
 
         Object result = joinPoint.proceed();
 
-        if (!(result instanceof Auditable<?> after)) {
-            return result;
-        }
-
-        if (trackChanges.type() == ChangeType.CREATE || trackChanges.type() == ChangeType.DELETE) {
-            logCreateOrDelete(after, trackChanges, currentMemberName);
+        if (trackChanges.type() == ChangeType.CREATE) {
+            if (result instanceof Auditable<?> created) {
+                logCreateOrDelete(created, ChangeType.CREATE, trackChanges, currentMemberName);
+            }
+        } else if (trackChanges.type() == ChangeType.DELETE && beforeState.entity() != null) {
+            logCreateOrDelete(beforeState.entity(), ChangeType.DELETE, trackChanges, currentMemberName);
         } else if (trackChanges.type() == ChangeType.UPDATE && beforeState.entity() != null) {
-            logUpdate(beforeState, after, trackChanges, currentMemberName);
+            Long id = (Long) beforeState.entity().getId();
+            Object fresh = entityManager.find(beforeState.entity().getClass(), id);
+            if (fresh instanceof Auditable<?> after) {
+                logUpdate(beforeState, after, trackChanges, currentMemberName);
+            }
         }
 
         return result;
@@ -102,12 +109,21 @@ public class LoggingAspect {
         return new BeforeState(beforeEntity, beforeMemberNames);
     }
 
-    private void logCreateOrDelete(Auditable<?> after, TrackChanges trackChanges, String memberName) {
-        if (after instanceof Loggable loggable) {
-            String message = loggable.createLogMessage(trackChanges.type());
-            if (message != null) {
-                saveLog(after, trackChanges, null, message, memberName);
+    private void logCreateOrDelete(Auditable<?> entity, ChangeType type, TrackChanges trackChanges, String memberName) {
+        if (!(entity instanceof Loggable)) return;
+        try {
+            Map<String, Object> msgMap = new LinkedHashMap<>();
+            msgMap.put("type", type.name());
+            String displayValue = entity.getTitle() != null ? entity.getTitle() : "";
+            if (type == ChangeType.CREATE) {
+                msgMap.put("after", displayValue);
+            } else {
+                msgMap.put("before", displayValue);
             }
+            String message = objectMapper.writeValueAsString(msgMap);
+            saveLog(entity, trackChanges, null, message, memberName);
+        } catch (Exception e) {
+            log.error("Failed to build log message for {} entityId={}", type, entity.getId(), e);
         }
     }
 
@@ -119,7 +135,7 @@ public class LoggingAspect {
     }
 
     private void logFieldChanges(Auditable<?> before, Auditable<?> after, TrackChanges trackChanges, String memberName) {
-        if (!(after instanceof Loggable loggable)) return;
+        if (!(after instanceof Loggable)) return;
 
         for (Field field : after.getClass().getDeclaredFields()) {
             if (!field.isAnnotationPresent(AuditableField.class)) continue;
@@ -133,12 +149,16 @@ public class LoggingAspect {
 
                 AuditableField meta = field.getAnnotation(AuditableField.class);
 
-                String message = loggable.createLogMessage(ChangeType.UPDATE, meta.name());
-                if (message != null) {
-                    saveLog(after, trackChanges, meta.name(), message, memberName);
-                }
-            } catch (IllegalAccessException e) {
-                log.error("Error accessing field for audit: {}", field.getName(), e);
+                Map<String, Object> msgMap = new LinkedHashMap<>();
+                msgMap.put("type", "UPDATE");
+                msgMap.put("field", meta.name());
+                msgMap.put("before", toDisplayString(beforeVal));
+                msgMap.put("after", toDisplayString(afterVal));
+                String message = objectMapper.writeValueAsString(msgMap);
+
+                saveLog(after, trackChanges, meta.name(), message, memberName);
+            } catch (Exception e) {
+                log.error("Error processing field for audit: {}", field.getName(), e);
             }
         }
     }
@@ -151,10 +171,28 @@ public class LoggingAspect {
         Collections.sort(afterMemberNames);
 
         if (!beforeIds.equals(afterMemberNames)) {
-            String names = String.join(", ", afterMemberNames);
-            String message = "참여자 > [" + names + "]";
-            saveLog(after, trackChanges, "참여자", message, memberName);
+            try {
+                String beforeNames = "[" + String.join(", ", beforeIds) + "]";
+                String afterNames = "[" + String.join(", ", afterMemberNames) + "]";
+                Map<String, Object> msgMap = new LinkedHashMap<>();
+                msgMap.put("type", "UPDATE");
+                msgMap.put("field", "참여자");
+                msgMap.put("before", beforeNames);
+                msgMap.put("after", afterNames);
+                String message = objectMapper.writeValueAsString(msgMap);
+                saveLog(after, trackChanges, "참여자", message, memberName);
+            } catch (Exception e) {
+                log.error("Failed to build member change log message", e);
+            }
         }
+    }
+
+    private String toDisplayString(Object value) {
+        if (value == null) return "";
+        try {
+            return (String) value.getClass().getMethod("getName").invoke(value);
+        } catch (Exception ignored) {}
+        return String.valueOf(value);
     }
 
     private List<String> getMemberNames(TargetType type, Long id) {

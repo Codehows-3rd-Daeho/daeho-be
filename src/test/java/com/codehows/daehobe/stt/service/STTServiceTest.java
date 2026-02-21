@@ -11,7 +11,6 @@ import com.codehows.daehobe.meeting.repository.MeetingRepository;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.file.service.FileService;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
-import com.codehows.daehobe.stt.service.processing.SttEncodingTaskExecutor;
 import com.codehows.daehobe.stt.service.provider.SttProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +48,6 @@ class STTServiceTest {
     @Mock private org.springframework.data.redis.core.StringRedisTemplate hashRedisTemplate;
     @Mock private SttCacheService sttCacheService;
     @Mock private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
-    @Mock private SttEncodingTaskExecutor sttEncodingTaskExecutor;
     @Mock private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
 
     private STTService sttService;
@@ -64,7 +62,7 @@ class STTServiceTest {
         sttService = new STTService(
             meetingRepository, sttRepository, fileService,
             sttProvider, hashRedisTemplate, sttCacheService,
-            messagingTemplate, sttEncodingTaskExecutor
+            messagingTemplate
         );
         ReflectionTestUtils.setField(sttService, "fileLocation", "/tmp/stt_test");
         ReflectionTestUtils.setField(sttService, "heartbeatTtl", 30L);
@@ -261,7 +259,6 @@ class STTServiceTest {
                 eq(30L),
                 eq(TimeUnit.SECONDS)
         );
-        verify(sttEncodingTaskExecutor, never()).submitEncodingTask(anyLong());
     }
 
     @Test
@@ -287,7 +284,6 @@ class STTServiceTest {
         verify(sttCacheService).cacheSttStatus(any(STTDto.class));
         verify(messagingTemplate).convertAndSend(anyString(), any(STTDto.class));
         verify(hashRedisTemplate).delete("stt:recording:heartbeat:" + recordingStt.getId());
-        verify(sttEncodingTaskExecutor).submitEncodingTask(recordingStt.getId());
     }
 
     @Test

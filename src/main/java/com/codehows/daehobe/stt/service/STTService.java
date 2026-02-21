@@ -10,9 +10,7 @@ import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
-import com.codehows.daehobe.stt.service.processing.SttEncodingTaskExecutor;
 import com.codehows.daehobe.stt.service.provider.SttProvider;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +24,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,7 +53,14 @@ public class STTService {
     private final StringRedisTemplate hashRedisTemplate;
     private final SttCacheService sttCacheService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final SttEncodingTaskExecutor sttEncodingTaskExecutor;
+
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(1))
+            .build();
 
     @Value("${file.location}")
     private String fileLocation;
@@ -120,7 +131,6 @@ public class STTService {
                 .summary("")
                 .content("")
                 .status(STT.Status.RECORDING)
-                .chunkingCnt(0)
                 .build());
 
         String savedFileName = "stt-recording-" + UUID.randomUUID() + ".wav";
@@ -148,7 +158,7 @@ public class STTService {
             sttCacheService.cacheSttStatus(sttDto);
             messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
             hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
-            sttEncodingTaskExecutor.submitEncodingTask(sttId);
+            processSingleEncodingJob(sttId);
         }else {
             // 마지막 청크 시각 업데이트 -> 비정상 종료 처리에 활용 (Heartbeat 갱신)
             hashRedisTemplate.opsForValue().set(
@@ -173,7 +183,6 @@ public class STTService {
                 .summary("")
                 .content("")
                 .status(STT.Status.ENCODED)
-                .chunkingCnt(0)
                 .build());
         File savedFile = fileService.uploadFiles(savedStt.getId(), List.of(file), TargetType.STT).getFirst();
         STTDto sttDto = STTDto.fromEntity(savedStt, FileDto.fromEntity(savedFile));
@@ -207,4 +216,71 @@ public class STTService {
         messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
         return sttDto;
     }
+
+    public void handleAbnormalTermination(Long sttId) {
+        log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
+
+        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+        if (cachedStatus == null || cachedStatus.getStatus() != STT.Status.RECORDING) {
+            log.error("STT entity not found for abnormally terminated session: {}", sttId);
+            return;
+        }
+
+        // Process encoding directly (called from async executor)
+        processSingleEncodingJob(sttId);
+
+        log.info("Completed abnormal termination recovery for STT {}.", sttId);
+    }
+
+    private void processSingleEncodingJob(Long sttId) {
+        try {
+            STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+
+            cachedStatus.updateStatus(STT.Status.ENCODING);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+
+            log.info("Starting encoding job for STT ID: {}", sttId);
+            File originalFile = fileService.getSTTFile(sttId);
+            File encodedFile = fileService.encodeAudioFile(originalFile);
+
+            cachedStatus.updateFile(FileDto.fromEntity(encodedFile));
+            cachedStatus.updateStatus(STT.Status.ENCODED);
+            sttCacheService.cacheSttStatus(cachedStatus);
+            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
+
+            // ENCODED 상태에서 DB 저장 (사용자 복귀 대비)
+            STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
+            stt.setStatus(STT.Status.ENCODED);
+            sttRepository.save(stt);
+
+            log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
+        } catch (Exception e) {
+            log.error("Failed to process encoding job for STT: {}", sttId, e);
+            throw new RuntimeException(e); // Re-throw the exception to be handled by the consumer
+        }
+    }
+
+//    private boolean isFileReadyToBeServed(File sttFile) throws InterruptedException {
+//        String fileUrl = appBaseUrl + sttFile.getPath();
+//        HttpRequest request = HttpRequest.newBuilder()
+//                .uri(URI.create(fileUrl))
+//                .method("HEAD", HttpRequest.BodyPublishers.noBody())
+//                .build();
+//
+//        for (int i = 0; i < 10; i++) {
+//            try {
+//                HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+//                if (response.statusCode() == 200) {
+//                    log.info("File {} is ready to be served. (Attempt: {})", fileUrl, i + 1);
+//                    return true;
+//                }
+//                log.warn("File {} not ready yet. Status: {}. Retrying... (Attempt: {})", fileUrl, response.statusCode(), i + 1);
+//            } catch (IOException e) {
+//                log.warn("HEAD request for {} failed. Retrying... (Attempt: {})", fileUrl, i + 1, e);
+//            }
+//            Thread.sleep(300);
+//        }
+//        return false;
+//    }
 }
