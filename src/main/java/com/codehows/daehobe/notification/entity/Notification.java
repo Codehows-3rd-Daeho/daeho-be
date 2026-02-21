@@ -17,7 +17,8 @@ import org.hibernate.annotations.JoinFormula;
 @AllArgsConstructor
 public class Notification extends BaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notification_seq")
+    @SequenceGenerator(name = "notification_seq", sequenceName = "notification_seq", allocationSize = 50)
     @Column(name = "notification_id", nullable = false)
     private Long id;
 
