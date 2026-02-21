@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -70,14 +71,17 @@ public class JwtFilter extends OncePerRequestFilter {
                             authorities
                     );
 
-                    // SecurityContextHolder는 현재 스레드의 보안 컨텍스트를 저장하는 역할을 합니다.
-                    // 생성된 인증 객체를 Security Context에 저장. 이제 이 요청은 인증된 사용자의 요청으로 간주됨.
-                    // 서버는 JWT를 검증하고 SecurityContext에 인증 정보를 세팅함으로써 @AuthenticationPrincipal 혹은 SecurityContextHolder로 사용자 정보 접근 가능
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    // Spring Security 6: SecurityContextHolderFilter uses a deferred context supplier.
+                    // Calling getContext().setAuthentication() modifies a context instance that may not
+                    // be shared across subsequent getContext() calls (NullSecurityContextRepository for
+                    // STATELESS returns a new empty context on each invocation of the supplier).
+                    // Fix: create a new context and explicitly set it so all subsequent getContext()
+                    // calls return the same instance with authentication already set.
+                    SecurityContext context = SecurityContextHolder.createEmptyContext();
+                    context.setAuthentication(authentication);
+                    SecurityContextHolder.setContext(context);
 
                     System.out.println("MemberId: " + memberId + ", Role: " + role);
-
-
                 }
             } catch (Exception e) {
                 //token 검증 실패시 Authentication 객체 제거

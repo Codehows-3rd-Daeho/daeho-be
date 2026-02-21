@@ -1,13 +1,16 @@
 package com.codehows.daehobe.stt.service.processing;
 
+import com.codehows.daehobe.stt.constant.SttRedisKeys;
 import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.repository.STTRepository;
+import com.codehows.daehobe.stt.service.STTService;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +24,8 @@ public class SttPollingScheduler {
     private final STTRepository sttRepository;
     private final SttJobProcessor sttJobProcessor;
     private final SttCacheService sttCacheService;
+    private final STTService sttService;
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${stt.polling.max-attempts:150}")
     private int maxAttempts;
@@ -65,6 +70,19 @@ public class SttPollingScheduler {
                 }
             } catch (Exception e) {
                 log.error("Error processing summary job for ID: {}", sttId, e);
+            }
+        }
+    }
+
+    @Scheduled(fixedDelayString = "${stt.recording.safety-net-interval-ms:60000}")
+    public void scanOrphanedRecordingTasks() {
+        Set<Long> recordingIds = sttRepository.findIdsByStatus(STT.Status.RECORDING);
+        for (Long sttId : recordingIds) {
+            String heartbeatKey = SttRedisKeys.STT_RECORDING_HEARTBEAT_PREFIX + sttId;
+            Boolean exists = redisTemplate.hasKey(heartbeatKey);
+            if (Boolean.FALSE.equals(exists)) {
+                log.warn("[SafetyNet] No heartbeat for RECORDING sttId={}. Triggering recovery.", sttId);
+                sttService.handleAbnormalTermination(sttId);
             }
         }
     }

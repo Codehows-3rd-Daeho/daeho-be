@@ -26,8 +26,6 @@ public interface STTRepository extends JpaRepository<STT,Long> {
 
     List<STT> findByStatus(STT.Status status);
 
-    List<STT> findByStatusAndRetryCountLessThan(STT.Status status, int maxRetryCount);
-
     @Query("SELECT s.id FROM STT s WHERE s.status = :status")
     Set<Long> findIdsByStatus(@Param("status") STT.Status status);
 }

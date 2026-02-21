@@ -3,7 +3,6 @@ package com.codehows.daehobe.comment.entity;
 import com.codehows.daehobe.logging.AOP.annotations.AuditableField;
 import com.codehows.daehobe.logging.AOP.interfaces.Loggable;
 import com.codehows.daehobe.logging.AOP.interfaces.CommentLogInfoProvider;
-import com.codehows.daehobe.logging.constant.ChangeType;
 import com.codehows.daehobe.common.constant.TargetType;
 import com.codehows.daehobe.comment.dto.CommentRequest;
 import com.codehows.daehobe.common.entity.BaseEntity;
@@ -56,26 +55,8 @@ public class Comment extends BaseEntity implements Auditable<Long>, Loggable, Co
     }
 
     @Override
-    public String createLogMessage(ChangeType type, String fieldName) {
-        if (type != ChangeType.UPDATE) {
-            return null;
-        }
-
-        if ("내용".equals(fieldName)) {
-            return "내용 > " + content;
-        }
-
-        return null;
-    }
-
-
-    @Override
-    public String createLogMessage(ChangeType type) {
-        return switch (type) {
-            case CREATE -> "등록 > " + content;
-            case DELETE -> "삭제 > " + content;
-            default -> null;
-        };
+    public String getTitle() {
+        return content;
     }
 
     @Override

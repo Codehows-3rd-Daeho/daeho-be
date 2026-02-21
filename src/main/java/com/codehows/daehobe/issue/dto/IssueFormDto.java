@@ -3,6 +3,7 @@ package com.codehows.daehobe.issue.dto;
 import com.codehows.daehobe.issue.entity.Issue;
 import com.codehows.daehobe.issue.entity.IssueDepartment;
 import com.codehows.daehobe.issue.entity.IssueMember;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IssueFormDto {
     private Long id; //회의 등록시 사용
     private String title;

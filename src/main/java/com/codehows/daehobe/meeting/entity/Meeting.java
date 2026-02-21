@@ -2,7 +2,6 @@ package com.codehows.daehobe.meeting.entity;
 
 import com.codehows.daehobe.logging.AOP.annotations.AuditableField;
 import com.codehows.daehobe.logging.AOP.interfaces.Loggable;
-import com.codehows.daehobe.logging.constant.ChangeType;
 import com.codehows.daehobe.common.constant.Status;
 import com.codehows.daehobe.meeting.dto.MeetingFormDto;
 import com.codehows.daehobe.common.entity.BaseEntity;
@@ -20,7 +19,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "meeting")
@@ -120,27 +118,4 @@ public class Meeting extends BaseEntity implements Auditable<Long>, Loggable {
         this.endDate = null;
     }
 
-    @Override
-    public String createLogMessage(ChangeType type, String fieldName) {
-        if (type == ChangeType.UPDATE) {
-            return switch (fieldName) {
-                case "제목" -> "제목 > " + title;
-                case "내용" -> "내용 > " + content;
-                case "상태" -> "상태 > " + status;
-                case "카테고리" -> "카테고리 > " + category.getName();
-                case "비고" -> "비고 > " + remarks;
-                default -> null;
-            };
-        }
-        return null;
-    }
-
-    @Override
-    public String createLogMessage(ChangeType type) {
-        return switch (type) {
-            case CREATE -> "등록 > " + title;
-            case DELETE -> "삭제 > " + title;
-            default -> null;
-        };
-    }
 }
