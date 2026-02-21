@@ -2,7 +2,6 @@ package com.codehows.daehobe.issue.entity;
 
 import com.codehows.daehobe.logging.AOP.annotations.AuditableField;
 import com.codehows.daehobe.logging.AOP.interfaces.Loggable;
-import com.codehows.daehobe.logging.constant.ChangeType;
 import com.codehows.daehobe.issue.dto.IssueFormDto;
 import com.codehows.daehobe.common.entity.BaseEntity;
 import com.codehows.daehobe.logging.AOP.interfaces.Auditable;
@@ -14,7 +13,6 @@ import lombok.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "issue")
@@ -77,30 +75,5 @@ public class Issue extends BaseEntity implements Auditable<Long>, Loggable {
     public void delete(){
         this.isDel = true;
     }
-
-    @Override
-    public String createLogMessage(ChangeType type, String fieldName) {
-        if (type == ChangeType.UPDATE) {
-            return switch (fieldName) {
-                case "제목" -> "제목 > " + title;
-                case "내용" -> "내용 > " + content;
-                case "상태" -> "상태 > " + status;
-                case "카테고리" -> "카테고리 > " + category.getName();
-                default -> null;
-            };
-        }
-        return null;
-    }
-
-    @Override
-    public String createLogMessage(ChangeType type) {
-        return switch (type) {
-            case CREATE -> "등록 > " + title;
-            case DELETE -> "삭제 > " + title;
-            default -> null;
-        };
-    }
-
-
 
 }

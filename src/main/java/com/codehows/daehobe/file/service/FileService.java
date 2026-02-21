@@ -94,7 +94,7 @@ public class FileService {
                     .build();
             
             fileRepository.save(newFile);
-            deleteFiles(List.of(originalFile)); // DB에서 originalFile 삭제 및 실제 파일 삭제
+            deleteFiles(List.of(originalFile));
 
             return newFile;
         } catch (IOException e) {

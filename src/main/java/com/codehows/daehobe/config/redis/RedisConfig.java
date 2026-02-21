@@ -65,7 +65,7 @@ public class RedisConfig {
 
     /**
      * Redis 메시지 리스너 컨테이너
-     * Key Expiration 이벤트 수신용 (SttTaskConsumer에서 사용)
+     * Key Expiration 이벤트 수신용 (SttHeartbeatExpirationListener에서 사용)
      */
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(

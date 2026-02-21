@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,71 +34,12 @@ import java.time.Duration;
 public class SttJobProcessor {
 
     private final STTRepository sttRepository;
-    private final FileService fileService;
     @Qualifier("dagloSttProvider")
     private final SttProvider sttProvider;
     private final SttCacheService sttCacheService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @Value("${app.base-url}")
-    private String appBaseUrl;
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(1))
-            .build();
-
-    @Transactional
-    public void handleAbnormalTermination(Long sttId) {
-        log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
-
-        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
-        if (cachedStatus == null || cachedStatus.getStatus() != STT.Status.RECORDING) {
-            log.error("STT entity not found for abnormally terminated session: {}", sttId);
-            return;
-        }
-
-        // Process encoding directly (called from async executor)
-        processSingleEncodingJob(sttId);
-
-        log.info("Completed abnormal termination recovery for STT {}.", sttId);
-    }
-
-    @Transactional
-    public void processSingleEncodingJob(Long sttId) {
-        try {
-            STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
-
-            cachedStatus.updateStatus(STT.Status.ENCODING);
-            sttCacheService.cacheSttStatus(cachedStatus);
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
-
-            log.info("Starting encoding job for STT ID: {}", sttId);
-            File originalFile = fileService.getSTTFile(sttId);
-            File encodedFile = fileService.encodeAudioFile(originalFile);
-            boolean isFileReady = isFileReadyToBeServed(encodedFile);
-            if (!isFileReady) {
-                log.error("File for STT {} is not ready after encoding and retries.", sttId);
-                throw new RuntimeException("Encoded file not available for serving.");
-            }
-
-            cachedStatus.updateFile(FileDto.fromEntity(encodedFile));
-            cachedStatus.updateStatus(STT.Status.ENCODED);
-            sttCacheService.cacheSttStatus(cachedStatus);
-            messagingTemplate.convertAndSend("/topic/stt/updates/" + cachedStatus.getMeetingId(), cachedStatus);
-
-            // ENCODED 상태에서 DB 저장 (사용자 복귀 대비)
-            STT stt = sttRepository.findById(sttId).orElseThrow(EntityNotFoundException::new);
-            stt.setStatus(STT.Status.ENCODED);
-            sttRepository.save(stt);
-
-            log.info("Finished encoding for STT {}. Awaiting user action to start transcription.", sttId);
-        } catch (Exception e) {
-            log.error("Failed to process encoding job for STT: {}", sttId, e);
-            throw new RuntimeException(e); // Re-throw the exception to be handled by the consumer
-        }
-    }
-
+    @Async(value = "sttTaskExecutor")
     @Transactional
     public void processSingleSttJob(Long sttId) {
         STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
@@ -156,6 +98,7 @@ public class SttJobProcessor {
         }
     }
 
+    @Async(value = "sttTaskExecutor")
     @Transactional
     public void processSingleSummaryJob(Long sttId) {
         STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
@@ -211,30 +154,6 @@ public class SttJobProcessor {
             }
             throw new RuntimeException(e);
         }
-    }
-
-    // package-private for testing
-    boolean isFileReadyToBeServed(File sttFile) throws InterruptedException {
-        String fileUrl = appBaseUrl + sttFile.getPath();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(fileUrl))
-                .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                .build();
-
-        for (int i = 0; i < 10; i++) {
-            try {
-                HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-                if (response.statusCode() == 200) {
-                    log.info("File {} is ready to be served. (Attempt: {})", fileUrl, i + 1);
-                    return true;
-                }
-                log.warn("File {} not ready yet. Status: {}. Retrying... (Attempt: {})", fileUrl, response.statusCode(), i + 1);
-            } catch (IOException e) {
-                log.warn("HEAD request for {} failed. Retrying... (Attempt: {})", fileUrl, i + 1, e);
-            }
-            Thread.sleep(300);
-        }
-        return false;
     }
 
     private boolean isUnrecoverableError(Exception e) {

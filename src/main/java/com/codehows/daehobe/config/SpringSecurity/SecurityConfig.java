@@ -2,6 +2,7 @@ package com.codehows.daehobe.config.SpringSecurity;
 
 import com.codehows.daehobe.config.jwtAuth.JwtFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -50,7 +51,7 @@ public class SecurityConfig {
 
                 // 요청 URL 별 접근 권한 설정
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/login","/file/**", "/ws/**", "/actuator/**").permitAll()
+                        .requestMatchers("/login","/file/**", "/ws/**", "/actuator/**", "/error").permitAll()
                         .requestMatchers( "/index.html",  "/sw.js", "/manifest.webmanifest").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN") //admin으로 시작하는 경로는 admin role일 경우에만 접근 가능하도록.
 
@@ -76,6 +77,19 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(); // 해시 함수를 이용하여 암호화하여 저장.
         // 단방향 암호화.(복호화 불가능). 로그인할때마다 hash함수로 유사성 비교.(동일x)
+    }
+
+    // JwtFilter is a @Component, so Spring Boot would auto-register it as a servlet-level filter
+    // in addition to Spring Security adding it to the security filter chain via addFilterBefore().
+    // This double registration causes the filter to run outside the security chain (before
+    // SecurityContextHolderFilter sets up the deferred context), corrupting authentication for
+    // state-changing HTTP methods (POST/PUT/PATCH). Disabling the auto-registration ensures
+    // JwtFilter only runs inside the Spring Security filter chain.
+    @Bean
+    public FilterRegistrationBean<JwtFilter> jwtFilterRegistrationBean(JwtFilter jwtFilter) {
+        FilterRegistrationBean<JwtFilter> registration = new FilterRegistrationBean<>(jwtFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     //스프링 시큐리티에서 기본으로 설정된 인증 매니저(AuthenticationManager)를 Bean으로 등록해두는 메서드
