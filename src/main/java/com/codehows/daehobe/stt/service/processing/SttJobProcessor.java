@@ -9,7 +9,6 @@ import com.codehows.daehobe.stt.dto.SttTranscriptionResult;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
-import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.service.provider.SttProvider;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +37,9 @@ public class SttJobProcessor {
     private final SttProvider sttProvider;
     private final SttCacheService sttCacheService;
     private final SimpMessagingTemplate messagingTemplate;
+
+    @Value("${stt.polling.max-attempts:150}")
+    private int maxAttempts;
 
     @Async(value = "sttTaskExecutor")
     @Transactional
@@ -84,17 +86,16 @@ public class SttJobProcessor {
                 sttCacheService.resetRetryCount(sttId);
             } else {
                 log.info("STT {} is still in progress ({}%). Will retry.", sttId, result.getProgress());
-                throw new SttNotCompletedException("STT job not yet completed for sttId: " + sttId);
+                int retryCount = sttCacheService.incrementRetryCount(sttId);
+                if (retryCount >= maxAttempts) {
+                    handleMaxRetryExceeded(sttId, STT.Status.PROCESSING);
+                }
             }
         } catch (Exception e) {
-            if (e instanceof SttNotCompletedException) {
-                throw e;
-            }
             log.error("Failed to process STT job for sttId: {}", sttId, e);
             if (isUnrecoverableError(e)) {
-                throw new RuntimeException("Unrecoverable error in STT processing for sttId: " + sttId, e);
+                handleMaxRetryExceeded(sttId, STT.Status.PROCESSING);
             }
-            throw new RuntimeException(e);
         }
     }
 
@@ -142,17 +143,28 @@ public class SttJobProcessor {
                 sttRepository.save(stt);
             } else {
                 log.info("STT summary {} is still in progress ({}%). Will retry.", sttId, result.getProgress());
-                throw new SttNotCompletedException("STT summary job not yet completed for sttId: " + sttId);
+                int retryCount = sttCacheService.incrementRetryCount(sttId);
+                if (retryCount >= maxAttempts) {
+                    handleMaxRetryExceeded(sttId, STT.Status.SUMMARIZING);
+                }
             }
         } catch (Exception e) {
-            if (e instanceof SttNotCompletedException) {
-                throw e;
-            }
             log.error("Failed to process summary job for sttId: {}", sttId, e);
             if (isUnrecoverableError(e)) {
-                throw new RuntimeException("Unrecoverable error in summary processing for sttId: " + sttId, e);
+                handleMaxRetryExceeded(sttId, STT.Status.SUMMARIZING);
             }
-            throw new RuntimeException(e);
+        }
+    }
+
+    private void handleMaxRetryExceeded(Long sttId, STT.Status currentStatus) {
+        log.warn("Max retry attempts exceeded for STT {}. Removing from polling set.", sttId);
+        sttCacheService.removeFromPollingSet(sttId, currentStatus);
+        sttCacheService.resetRetryCount(sttId);
+
+        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+        if (cachedStatus != null) {
+            cachedStatus.updateStatus(STT.Status.ENCODED); // ENCODED로 롤백 (사용자 재시도 가능)
+            sttCacheService.cacheSttStatus(cachedStatus);
         }
     }
 

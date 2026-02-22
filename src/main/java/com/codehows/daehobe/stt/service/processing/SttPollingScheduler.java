@@ -3,7 +3,6 @@ package com.codehows.daehobe.stt.service.processing;
 import com.codehows.daehobe.stt.constant.SttRedisKeys;
 import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
-import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.repository.STTRepository;
 import com.codehows.daehobe.stt.service.STTService;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
@@ -27,28 +26,15 @@ public class SttPollingScheduler {
     private final STTService sttService;
     private final StringRedisTemplate redisTemplate;
 
-    @Value("${stt.polling.max-attempts:150}")
-    private int maxAttempts;
+    @Value("${stt.recording.orphan-threshold-hours:3}")
+    private long orphanThresholdHours;
 
     @Scheduled(fixedDelayString = "${stt.polling.interval-ms:2000}")
     public void pollProcessingTasks() {
         Set<Long> taskIds = getTaskIdsWithFallback(STT.Status.PROCESSING);
 
         for (Long sttId : taskIds) {
-            try {
-                sttJobProcessor.processSingleSttJob(sttId);
-                // 성공 시 processor에서 이미 polling set 전환됨
-            } catch (SttNotCompletedException e) {
-                // Redis에서 retry count 증가
-                int retryCount = sttCacheService.incrementRetryCount(sttId);
-                if (retryCount >= maxAttempts) {
-                    handleMaxRetryExceeded(sttId, STT.Status.PROCESSING);
-                } else {
-                    log.debug("STT {} not completed, retry count: {}", sttId, retryCount);
-                }
-            } catch (Exception e) {
-                log.error("Error processing STT job for ID: {}", sttId, e);
-            }
+            sttJobProcessor.processSingleSttJob(sttId);
         }
     }
 
@@ -57,20 +43,7 @@ public class SttPollingScheduler {
         Set<Long> taskIds = getTaskIdsWithFallback(STT.Status.SUMMARIZING);
 
         for (Long sttId : taskIds) {
-            try {
-                sttJobProcessor.processSingleSummaryJob(sttId);
-                // 성공 시 processor에서 이미 polling set에서 제거됨
-            } catch (SttNotCompletedException e) {
-                // Redis에서 retry count 증가
-                int retryCount = sttCacheService.incrementRetryCount(sttId);
-                if (retryCount >= maxAttempts) {
-                    handleMaxRetryExceeded(sttId, STT.Status.SUMMARIZING);
-                } else {
-                    log.debug("Summary {} not completed, retry count: {}", sttId, retryCount);
-                }
-            } catch (Exception e) {
-                log.error("Error processing summary job for ID: {}", sttId, e);
-            }
+            sttJobProcessor.processSingleSummaryJob(sttId);
         }
     }
 
@@ -78,26 +51,25 @@ public class SttPollingScheduler {
     public void scanOrphanedRecordingTasks() {
         Set<Long> recordingIds = sttRepository.findIdsByStatus(STT.Status.RECORDING);
         for (Long sttId : recordingIds) {
-            String heartbeatKey = SttRedisKeys.STT_RECORDING_HEARTBEAT_PREFIX + sttId;
-            Boolean exists = redisTemplate.hasKey(heartbeatKey);
-            if (Boolean.FALSE.equals(exists)) {
-                log.warn("[SafetyNet] No heartbeat for RECORDING sttId={}. Triggering recovery.", sttId);
-                sttService.handleAbnormalTermination(sttId);
+            try {
+                String heartbeatKey = SttRedisKeys.STT_RECORDING_HEARTBEAT_PREFIX + sttId;
+                if (Boolean.TRUE.equals(redisTemplate.hasKey(heartbeatKey))) continue; // 정상 진행 중
+
+                STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+                if (cachedStatus != null) {
+                    // Redis 정상: heartbeat만 없는 실제 고아
+                    if (cachedStatus.getStatus() == STT.Status.RECORDING) {
+                        log.warn("[SafetyNet] Confirmed orphan sttId={}. Triggering recovery.", sttId);
+                        sttService.handleAbnormalTermination(sttId);
+                    }
+                } else {
+                    // 캐시도 없음: Redis 재시작 후 키 소실 가능성
+                    // DB에서 생성 시각 확인, 임계 초과분만 복구 (2차 안전망)
+                    sttService.handleAbnormalTerminationIfStuck(sttId, orphanThresholdHours);
+                }
+            } catch (Exception e) {
+                log.error("[SafetyNet] Error checking sttId={}. Continuing.", sttId, e);
             }
-        }
-    }
-
-    private void handleMaxRetryExceeded(Long sttId, STT.Status currentStatus) {
-        log.warn("Max retry attempts exceeded for STT {}. Removing from polling set.", sttId);
-        sttCacheService.removeFromPollingSet(sttId, currentStatus);
-        sttCacheService.resetRetryCount(sttId);
-
-        // 캐시 상태 업데이트 (실패 표시)
-        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
-        if (cachedStatus != null) {
-            // ENCODED 상태로 롤백 (사용자가 재시도 가능하도록)
-            cachedStatus.updateStatus(STT.Status.ENCODED);
-            sttCacheService.cacheSttStatus(cachedStatus);
         }
     }
 
