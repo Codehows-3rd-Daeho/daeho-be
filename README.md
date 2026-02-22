@@ -4,8 +4,8 @@
 <br>
 <br>
 ## 프로젝트 데모
-![프로젝트 데모1](./daeho1.gif)
-![프로젝트 데모2](./daeho2.gif)
+![프로젝트 데모1](./docs/daeho1.gif)
+![프로젝트 데모2](./docs/daeho2.gif)
 <br>
 ---
 
@@ -24,86 +24,7 @@
 ---
 
 ## 시스템 아키텍처
-
-```mermaid
----
-config:
-  layout: elk
----
-flowchart TB
- subgraph subGraph1["Async Processing"]
-    direction LR
-        EncodingExecutor["SttEncodingTaskExecutor<br>(@Async)"]
-        PollingScheduler["SttPollingScheduler<br>(@Scheduled)"]
-        HeartbeatListener["HeartbeatExpirationListener"]
-  end
- subgraph subGraph2["Spring Boot Application"]
-    direction TB
-    Controller["REST Controllers"]
-    subgraph ServiceLayer["Service Layer"]
-      direction LR
-      SttService["STT Service"]
-      NotificationService["NotificationService"]
-      FileService["FileService"]
-    end
-    subgraph DataAccessLayer["Data Access Layer"]
-      direction LR
-      Repository["Spring Data JPA<br>+ QueryDSL"]
-      RedisTemplate["RedisTemplate"]
-    end
-    subGraph1
-  end
- subgraph subGraphRedisKeyEvent["Key Expiration Events"]
-       KeyExpiry["stt:recording:heartbeat:{id}"]
-  end
- subgraph subGraphRedisKV["Key-Value"]
-        KV["stt:status:{id}<br>stt:retry:{id}<br>notification:dlq"]
-  end
- subgraph subGraphRedisStructs["Data Structures"]
-    direction LR
-        ZSets["Sorted Sets<br><br>stt:polling:processing<br>stt:polling:summarizing"]
-  end
- subgraph subGraphRedis["Redis"]
-    direction TB
-        subGraphRedisKeyEvent
-        subGraphRedisKV
-        subGraphRedisStructs
-  end
- subgraph subGraph3["Infrastructure"]
-    direction LR
-    MySQL[(MySQL)]
-    DiskStorage["Disk Storage"]
-    ffmpeg["ffmpeg"]
-  end
- subgraph subGraph4["Server Host"]
-    direction TB
-        subGraph2
-        subGraph3
-  end
- subgraph subGraph5["External Services"]
-    direction TB
-        DagloService["Daglo STT API"]
-        FCM["Firebase FCM"]
-        APNs["Apple APNs"]
-  end
-    Controller --> SttService & NotificationService
-    SttService --> Repository & FileService
-    NotificationService --> Repository
-    SttService -- "@Async 호출" --> EncodingExecutor
-    PollingScheduler -- "2초 주기 폴링" --> SttService
-    Repository -- Reads/Writes --> MySQL
-    RedisTemplate -- Read/Write --> KV & ZSets
-    SttService --> RedisTemplate
-    NotificationService --> RedisTemplate
-    KeyExpiry -- "만료 이벤트 수신" --> HeartbeatListener
-    HeartbeatListener -- "Encoding 태스크 제출" --> EncodingExecutor
-    SttService -- "STT API Call" --> DagloService
-    NotificationService -- "Chrome / Edge" --> FCM
-    NotificationService -- "Safari" --> APNs
-    FileService -- File I/O --> DiskStorage
-    FileService -- Audio encoding --> ffmpeg
-```
-
+![아키텍처](./docs/architecture.PNG)
 ---
 
 ## 주요 기능 및 기술적 의사결정

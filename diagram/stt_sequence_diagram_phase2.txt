@@ -1,0 +1,23 @@
+%% Phase 2: 인코딩 (ENCODING → ENCODED)
+sequenceDiagram
+    participant Browser as React App
+    participant Backend as Spring Boot
+    participant Redis as Infra: Redis
+    participant DiskStorage as Infra: Disk Storage
+    participant FFmpeg as Infra: FFmpeg
+
+    Note over Backend: @Async 비동기 인코딩 시작
+    Backend->>Redis: 상태 업데이트: ENCODING
+
+    par 인코딩 처리
+        Backend->>+FFmpeg: 오디오 인코딩 요청
+        FFmpeg->>DiskStorage: 인코딩 파일 저장
+        FFmpeg-->>-Backend: 인코딩 완료
+        Backend->>Redis: 상태 업데이트: ENCODED
+    and 클라이언트 폴링
+        Browser->>+Backend: GET /status/{sttId}
+        Backend-->>-Browser: {상태: ENCODING}
+    end
+
+    Browser->>+Backend: GET /status/{sttId}
+    Backend-->>-Browser: {상태: ENCODED}

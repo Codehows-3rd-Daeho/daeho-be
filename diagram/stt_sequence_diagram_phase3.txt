@@ -1,0 +1,47 @@
+%% Phase 3: 변환 및 요약 (PROCESSING → SUMMARIZING → COMPLETED)
+sequenceDiagram
+    participant User
+    participant Browser as React App
+    participant Backend as Spring Boot
+    participant DagloAPI as External: Daglo API
+    participant Redis as Infra: Redis
+    participant Database as Infra: Database
+
+    Note over Browser: 음성 변환 시작
+    User->>Browser: 음성 변환
+    Browser->>+Backend: POST /recording/finish/{sttId}
+    Backend->>+DagloAPI: POST /transcripts/{rid}
+    DagloAPI-->>-Backend: 작업 ID (rid) 반환
+    Backend->>Redis: 상태 업데이트: PROCESSING
+    Backend->>Redis: 폴링 큐 등록 (ZSet)
+    Backend-->>-Browser: {상태: PROCESSING}
+
+    par 클라이언트 폴링
+        Browser->>+Backend: GET /status/{sttId}
+        Backend-->>-Browser: {진행률, 내용}
+    and @Scheduled 스케줄러 (2초 주기)
+        loop STT 변환 폴링
+            Backend->>+DagloAPI: GET /status/{rid}
+            DagloAPI-->>-Backend: {진행률, 내용}
+            Backend->>Redis: 캐시 업데이트
+        end
+
+        Note over Backend: 변환 완료
+        Backend->>+DagloAPI: POST /summary/{rid}
+        DagloAPI-->>-Backend: 작업 ID (rid) 반환
+        Backend->>Redis: 상태 업데이트: SUMMARIZING
+
+        loop 요약 폴링
+            Backend->>+DagloAPI: GET /status/{rid}
+            DagloAPI-->>-Backend: {진행률, 내용}
+            Backend->>Redis: 캐시 업데이트
+        end
+
+        Note over Backend: 요약 완료
+        Backend->>Redis: 상태 업데이트: COMPLETED
+        Backend->>Database: 최종 내용 저장
+    end
+
+    Browser->>Backend: GET /status/{sttId}
+    Backend-->>Browser: {상태: COMPLETED, 최종 결과}
+    Note over Browser: UI에 최종 결과 표시

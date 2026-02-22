@@ -1,0 +1,30 @@
+%% Phase 1: 녹음 (RECORDING)
+sequenceDiagram
+    participant User
+    participant Browser as React App
+    participant Backend as Spring Boot
+    participant Redis as Infra: Redis
+    participant Database as Infra: Database
+    participant DiskStorage as Infra: Disk Storage
+
+    Note over Browser: 녹음 시작
+    User->>Browser: 녹음 시작
+    Browser->>+Backend: POST /recording/start
+    Backend->>Database: STT 정보 생성
+    Backend->>Redis: STT 정보 캐싱(RECORDING)
+    Backend->>Redis: 하트비트 키 등록
+    Backend-->>-Browser: STT ID 반환
+
+    loop Chunk 업로드 (10초 주기)
+        Browser->>Backend: POST /chunk/{sttId}
+        Backend->>DiskStorage: 조각 파일 추가
+        Backend->>Redis: 하트비트 TTL 리셋
+    end
+
+    alt 정상 종료
+        User->>Browser: 녹음 종료
+        Browser->>Backend: POST /chunk/{sttId} (finish=true)
+    else 비정상 종료 (heartbeat 키 만료)
+        Redis-->>Backend: Key Expiration Event 수신
+        Backend->>Backend: 비정상 종료 처리 (리소스 정리)
+    end
