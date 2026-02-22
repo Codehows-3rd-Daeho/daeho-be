@@ -32,9 +32,11 @@ import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -67,6 +69,9 @@ public class STTService {
 
     @Value("${stt.recording.heartbeat-ttl-seconds:30}")
     private long heartbeatTtl;
+
+    // 단일 인스턴스용 in-memory 락: 동일 sttId에 대한 중복 복구 방지
+    private final ConcurrentHashMap<Long, Boolean> recoveryInProgress = new ConcurrentHashMap<>();
 
     @Transactional(readOnly = true)
     public STTDto getSTTById(Long id) {
@@ -157,16 +162,24 @@ public class STTService {
             sttDto.updateStatus(STT.Status.ENCODING);
             sttCacheService.cacheSttStatus(sttDto);
             messagingTemplate.convertAndSend("/topic/stt/updates/" + sttDto.getMeetingId(), sttDto);
-            hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
+            try {
+                hashRedisTemplate.delete(STT_RECORDING_HEARTBEAT_PREFIX + sttId);
+            } catch (Exception e) {
+                log.warn("[Heartbeat] Failed to delete heartbeat for sttId={}. Redis may be unavailable.", sttId, e);
+            }
             processSingleEncodingJob(sttId);
-        }else {
+        } else {
             // 마지막 청크 시각 업데이트 -> 비정상 종료 처리에 활용 (Heartbeat 갱신)
-            hashRedisTemplate.opsForValue().set(
-                    STT_RECORDING_HEARTBEAT_PREFIX + sttId,
-                    "",
-                    heartbeatTtl,
-                    TimeUnit.SECONDS
-            );
+            try {
+                hashRedisTemplate.opsForValue().set(
+                        STT_RECORDING_HEARTBEAT_PREFIX + sttId,
+                        "",
+                        heartbeatTtl,
+                        TimeUnit.SECONDS
+                );
+            } catch (Exception e) {
+                log.warn("[Heartbeat] Failed to renew heartbeat for sttId={}. Redis may be unavailable.", sttId, e);
+            }
         }
 
         return sttDto;
@@ -218,18 +231,42 @@ public class STTService {
     }
 
     public void handleAbnormalTermination(Long sttId) {
-        log.warn("Abnormal termination detected for STT ID: {}. Starting recovery process.", sttId);
+        if (recoveryInProgress.putIfAbsent(sttId, Boolean.TRUE) != null) {
+            log.info("Recovery already in progress for STT {}. Skipping duplicate.", sttId);
+            return;
+        }
+        try {
+            log.warn("Abnormal termination detected for STT ID: {}", sttId);
+            STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
+            if (cachedStatus == null || cachedStatus.getStatus() != STT.Status.RECORDING) {
+                log.warn("STT {} is not in RECORDING state. Skipping recovery.", sttId);
+                return;
+            }
+            processSingleEncodingJob(sttId);
+            log.info("Completed abnormal termination recovery for STT {}.", sttId);
+        } finally {
+            recoveryInProgress.remove(sttId);
+        }
+    }
 
-        STTDto cachedStatus = sttCacheService.getCachedSttStatus(sttId);
-        if (cachedStatus == null || cachedStatus.getStatus() != STT.Status.RECORDING) {
-            log.error("STT entity not found for abnormally terminated session: {}", sttId);
+    // Redis 재시작 후 캐시 없는 고아 복구 (2차 안전망)
+    // createdAt 기준 임계 시간 초과 시 DB로 캐시 재구성 후 handleAbnormalTermination 위임
+    @Transactional
+    public void handleAbnormalTerminationIfStuck(Long sttId, long thresholdHours) {
+        STT stt = sttRepository.findById(sttId).orElse(null);
+        if (stt == null || stt.getStatus() != STT.Status.RECORDING) return;
+
+        LocalDateTime threshold = LocalDateTime.now().minusHours(thresholdHours);
+        if (stt.getCreatedAt().isAfter(threshold)) {
+            log.info("[SafetyNet-DB] sttId={} RECORDING but within threshold. Skipping.", sttId);
             return;
         }
 
-        // Process encoding directly (called from async executor)
-        processSingleEncodingJob(sttId);
+        log.warn("[SafetyNet-DB] sttId={} stuck since {}. Rebuilding cache.", sttId, stt.getCreatedAt());
+        STTDto reconstructed = STTDto.fromEntity(stt);
+        sttCacheService.cacheSttStatus(reconstructed);
 
-        log.info("Completed abnormal termination recovery for STT {}.", sttId);
+        handleAbnormalTermination(sttId);
     }
 
     private void processSingleEncodingJob(Long sttId) {
