@@ -29,110 +29,21 @@
 
 ## 주요 기능
 
+| 기능 | 설명 |
+|------|------|
+| 회원 관리 | JWT 기반 로그인·회원가입, 부서·직급·프로필 이미지 관리 |
+| 이슈 트래킹 | 이슈 생성·수정·삭제, 부서/담당자 지정, 카테고리·상태 필터링, 파일 첨부 |
+| 회의 관리 | 회의 일정 등록, 참여 멤버·부서 초대, 이슈 연계, 파일 첨부 |
+| STT 변환 | 녹음 청크 업로드 → ffmpeg 인코딩 → Daglo API 전사 → AI 요약, Redis로 실시간 상태 추적 |
+| 댓글 & 멘션 | 이슈·회의에 댓글 작성, @멘션 태깅 시 자동 알림 발송 |
+| 푸시 알림 | Web Push(VAPID) + FCM/APNs 분기 처리, 실패 시 DLQ·재시도 |
+| 변경 이력 로깅 | AOP `@TrackChanges`로 이슈·회의의 필드 단위 변경 이력 자동 기록 |
+| 파일 관리 | 이미지·첨부파일 UUID 저장, 이슈·회의·댓글 대상별 연계 |
 
 ---
 
 ## 데이터 모델
-
-```mermaid
-erDiagram
-    member {
-        bigint member_id PK
-        varchar login_id
-        varchar password
-        varchar name
-        varchar email
-        varchar phone
-        enum role "ADMIN, USER"
-        bit is_employed
-        bigint department_id FK
-        bigint job_position_id FK
-    }
-
-    issue {
-        bigint issue_id PK
-        varchar title
-        text content
-        enum status "PLANNED, IN_PROGRESS, COMPLETED"
-        date start_date
-        date end_date
-        bit is_private
-        bit is_del
-        bigint category_id FK
-    }
-
-    meeting {
-        bigint meeting_id PK
-        varchar title
-        text content
-        enum status "PLANNED, IN_PROGRESS, COMPLETED"
-        datetime start_date
-        datetime end_date
-        bit is_private
-        bit is_del
-        bigint issue_id FK
-        bigint category_id FK
-    }
-
-    stt {
-        bigint stt_id PK
-        enum status "RECORDING, ENCODING, ENCODED, PROCESSING, SUMMARIZING, COMPLETED"
-        longtext content
-        text summary
-        varchar rid
-        varchar summary_rid
-        int chunking_cnt
-        int retry_count
-        bigint meeting_id FK
-    }
-
-    log {
-        bigint log_id PK
-        enum change_type "CREATE, UPDATE, DELETE"
-        enum target_type "ISSUE, MEETING, COMMENT, STT, MEMBER"
-        bigint target_id
-        varchar title
-        varchar update_field
-        text message
-        varchar member_name
-    }
-
-    notification {
-        bigint notification_id PK
-        varchar message
-        varchar forward_url
-        bit is_read
-        bigint member_id FK
-    }
-
-    comment {
-        bigint comment_id PK
-        text content
-        enum target_type "ISSUE, MEETING"
-        bigint target_id
-        bit is_del
-        bigint member_id FK
-    }
-
-    file {
-        bigint file_id PK
-        varchar original_name
-        varchar saved_name
-        varchar path
-        bigint size
-        enum target_type "ISSUE, MEETING, STT, MEMBER, COMMENT"
-        bigint target_id
-    }
-
-    member ||--o{ issue : "host"
-    member ||--o{ notification : "receives"
-    member ||--o{ comment : "writes"
-    issue ||--o{ meeting : "has"
-    meeting ||--o| stt : "has"
-    issue ||--o{ log : "tracked_by"
-    meeting ||--o{ log : "tracked_by"
-```
-
+![ERD](./docs/ERD.png)
 ---
 
 ## Getting Started
