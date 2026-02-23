@@ -2,13 +2,12 @@ package com.codehows.daehobe.notification.integration;
 
 import com.codehows.daehobe.notification.dto.NotificationMessageDto;
 import com.codehows.daehobe.notification.dto.PushSubscriptionDto;
+import com.codehows.daehobe.notification.exception.PushNotificationException;
 import com.codehows.daehobe.notification.service.NotificationService;
-import com.codehows.daehobe.notification.webPush.service.PushAsyncService;
 import com.codehows.daehobe.notification.webPush.service.PushSubscriptionService;
+import com.codehows.daehobe.notification.webPush.service.WebPushSender;
 import com.codehows.daehobe.notification.webPush.service.WebPushService;
-import com.codehows.daehobe.notification.dto.PushResult;
 import com.redis.testcontainers.RedisContainer;
-import nl.martijndwars.webpush.Notification;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,21 +19,22 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 
 /**
  * 푸시 알림 통합 테스트
  *
  * 테스트 환경:
  * - Testcontainers Redis
- * - Mock PushAsyncService (실제 푸시 전송 대신)
+ * - Mock WebPushSender (실제 푸시 전송 대신)
  *
  * 검증 사항:
  * 1. 단일 스레드풀(pushAsyncExecutor) 아키텍처 동작
@@ -63,7 +63,7 @@ class NotificationPushIntegrationTest {
     private WebPushService webPushService;
 
     @MockBean
-    private PushAsyncService pushAsyncService;
+    private WebPushSender webPushSender;
 
     private static AtomicInteger pushCallCount;
 
@@ -78,14 +78,11 @@ class NotificationPushIntegrationTest {
     void setUp() {
         pushCallCount = new AtomicInteger(0);
 
-        // Mock PushAsyncService - 성공 응답 시뮬레이션
-        when(pushAsyncService.sendAsync(any(Notification.class))).thenAnswer(invocation -> {
+        // Mock WebPushSender — 성공 응답 시뮬레이션 (카운트 증가)
+        doAnswer(invocation -> {
             pushCallCount.incrementAndGet();
-            Notification notification = invocation.getArgument(0);
-            return CompletableFuture.completedFuture(
-                    PushResult.success(notification.getEndpoint(), 201, 50)
-            );
-        });
+            return null;
+        }).when(webPushSender).sendPushNotification(anyString(), any());
     }
 
     @Test
@@ -201,25 +198,20 @@ class NotificationPushIntegrationTest {
         String memberId = "expired-member";
         registerSubscription(memberId);
 
-        // Mock PushAsyncService - 410 응답 시뮬레이션
-        when(pushAsyncService.sendAsync(any(Notification.class))).thenAnswer(invocation -> {
+        // Mock WebPushSender — 410 응답 시뮬레이션: 구독 삭제 후 예외
+        doAnswer(invocation -> {
+            String id = invocation.getArgument(0);
             pushCallCount.incrementAndGet();
-            Notification notification = invocation.getArgument(0);
-            return CompletableFuture.completedFuture(
-                    PushResult.failure(notification.getEndpoint(), "Gone", 410, 50)
-            );
-        });
+            pushSubscriptionService.deleteSubscription(id);
+            throw new PushNotificationException("Gone", 410);
+        }).when(webPushSender).sendPushNotification(anyString(), any());
 
         NotificationMessageDto messageDto = new NotificationMessageDto();
         messageDto.setMessage("테스트 알림");
         messageDto.setUrl("/test");
 
-        // When: 푸시 전송 (410 응답)
-        try {
-            webPushService.sendNotificationToUser(memberId, messageDto);
-        } catch (Exception e) {
-            // 예상되는 예외 (PushNotificationException)
-        }
+        // When: 푸시 전송 (410 응답 → DLQ 저장)
+        webPushService.sendNotificationToUser(memberId, messageDto);
 
         // Then: 구독 정보 삭제 확인
         assertThat(pushSubscriptionService.hasSubscription(memberId)).isFalse();
@@ -235,15 +227,12 @@ class NotificationPushIntegrationTest {
 
         AtomicInteger retryCount = new AtomicInteger(0);
 
-        // Mock PushAsyncService - 항상 500 오류 반환
-        when(pushAsyncService.sendAsync(any(Notification.class))).thenAnswer(invocation -> {
+        // Mock WebPushSender — 항상 500 오류 반환 (RetryTemplate 재시도 유발)
+        doAnswer(invocation -> {
             retryCount.incrementAndGet();
             pushCallCount.incrementAndGet();
-            Notification notification = invocation.getArgument(0);
-            return CompletableFuture.completedFuture(
-                    PushResult.failure(notification.getEndpoint(), "Server Error", 500, 50)
-            );
-        });
+            throw new PushNotificationException("Server Error", 500);
+        }).when(webPushSender).sendPushNotification(anyString(), any());
 
         NotificationMessageDto messageDto = new NotificationMessageDto();
         messageDto.setMessage("재시도 테스트");
