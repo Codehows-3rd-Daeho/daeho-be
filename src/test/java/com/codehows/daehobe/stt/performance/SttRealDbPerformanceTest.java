@@ -229,7 +229,7 @@ class SttRealDbPerformanceTest {
         // ── 워밍업 ──
         System.out.println("\n  워밍업 중...");
         for (int i = 0; i < warmupIterations; i++) {
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
         }
 
@@ -238,7 +238,7 @@ class SttRealDbPerformanceTest {
         List<Long> dbLatenciesMicros = new ArrayList<>();
         for (int i = 0; i < testIterations; i++) {
             long start = System.nanoTime();
-            List<STT> results = sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            List<STT> results = sttRepository.findByStatus(STT.Status.PROCESSING);
             long end = System.nanoTime();
             dbLatenciesMicros.add((end - start) / 1_000);
 
@@ -305,7 +305,7 @@ class SttRealDbPerformanceTest {
                     .status(STT.Status.PROCESSING)
                     .content("content-" + i)
                     .summary("summary-" + i)
-                    .chunkingCnt(0)
+
                     .build();
             sttCacheService.cacheSttStatus(dto);
         }
@@ -315,7 +315,7 @@ class SttRealDbPerformanceTest {
 
         // ── 워밍업 ──
         for (int cycle = 0; cycle < warmupCycles; cycle++) {
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
         }
 
@@ -327,7 +327,7 @@ class SttRealDbPerformanceTest {
             long start = System.nanoTime();
 
             // 개선 전: DB에서 폴링 대상 조회
-            List<STT> tasks = sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            List<STT> tasks = sttRepository.findByStatus(STT.Status.PROCESSING);
 
             // 각 대상에 대해 캐시 조회 및 업데이트
             for (STT stt : tasks) {

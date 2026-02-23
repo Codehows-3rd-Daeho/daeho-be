@@ -33,6 +33,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import com.codehows.daehobe.common.constant.Status;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -78,6 +80,9 @@ class SttE2EIntegrationTest {
 
     @Autowired
     private SttCacheService sttCacheService;
+
+    @Autowired
+    private SttJobProcessor sttJobProcessor;
 
     @Autowired
     private STTRepository sttRepository;
@@ -151,7 +156,6 @@ class SttE2EIntegrationTest {
                 .status(STT.Status.RECORDING)
                 .content("")
                 .summary("")
-                .chunkingCnt(0)
                 .build();
 
         // when - SttCacheService를 통한 캐싱
@@ -498,5 +502,202 @@ class SttE2EIntegrationTest {
         assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).contains(summarizingId);
         // ENCODED는 폴링 대상이 아니므로 조회 시 빈 집합 반환
         assertThat(sttCacheService.getPollingTaskIds(STT.Status.ENCODED)).isEmpty();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 실제 서비스 호출 기반 E2E 테스트 (Tests 4~6 보완)
+    // WireMock 스텁 + processSingleSttJob/processSingleSummaryJob 직접 호출
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @Order(15)
+    @DisplayName("15. [실제 호출] processSingleSttJob() - PROCESSING 상태 유지 (미완료 응답)")
+    void processSingleSttJob_StillProcessing_RetryCountIncremented() throws Exception {
+        // given: PROCESSING 상태 캐시 설정
+        Long sttId = 15L;
+        String rid = "test-rid-still-processing";
+
+        STTDto processingDto = STTDto.builder()
+                .id(sttId)
+                .meetingId(100L)
+                .status(STT.Status.PROCESSING)
+                .rid(rid)
+                .content("")
+                .summary("")
+                .build();
+        sttCacheService.cacheSttStatus(processingDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.PROCESSING);
+        sttCacheService.resetRetryCount(sttId);
+
+        // WireMock: 미완료 응답 (processing, 50%)
+        wireMockServer.stubFor(get(urlEqualTo("/stt/v1/async/transcripts/" + rid))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"rid\":\"" + rid + "\",\"status\":\"processing\",\"progress\":50}")));
+
+        // when: 실제 processSingleSttJob() 호출
+        sttJobProcessor.processSingleSttJob(sttId);
+
+        // then: PROCESSING 상태 유지, 재시도 카운트 증가
+        await().atMost(5, TimeUnit.SECONDS)
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    Integer retryCount = sttCacheService.getRetryCount(sttId);
+                    assertThat(retryCount).isGreaterThan(0);
+                });
+
+        STTDto cached = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(cached).isNotNull();
+        assertThat(cached.getStatus()).isEqualTo(STT.Status.PROCESSING);
+        assertThat(cached.getProgress()).isEqualTo(50);
+
+        System.out.println("[15] processSingleSttJob() 미완료 → PROCESSING 유지, 재시도 카운트: "
+                + sttCacheService.getRetryCount(sttId));
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("16. [실제 호출] processSingleSttJob() - PROCESSING→SUMMARIZING 전이 (완료 응답)")
+    void processSingleSttJob_Completed_TransitionsToSummarizing() throws Exception {
+        // given: PROCESSING 상태 캐시 설정
+        Long sttId = 16L;
+        String rid = "test-rid-completed";
+        String summaryRid = "summary-rid-16";
+
+        STTDto processingDto = STTDto.builder()
+                .id(sttId)
+                .meetingId(100L)
+                .status(STT.Status.PROCESSING)
+                .rid(rid)
+                .content("")
+                .summary("")
+                .build();
+        sttCacheService.cacheSttStatus(processingDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.PROCESSING);
+        sttCacheService.resetRetryCount(sttId);
+
+        // WireMock: 완료 응답 (transcribed, 100%)
+        wireMockServer.stubFor(get(urlEqualTo("/stt/v1/async/transcripts/" + rid))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"rid\":\"" + rid + "\",\"status\":\"transcribed\"," +
+                                "\"progress\":100,\"sttResults\":[{\"transcript\":\"실제 E2E 테스트 음성 내용\",\"words\":[]}]}")));
+
+        // WireMock: Summary 요청 응답
+        wireMockServer.stubFor(post(urlEqualTo("/nlp/v1/async/minutes"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"rid\":\"" + summaryRid + "\"}")));
+
+        // when: 실제 processSingleSttJob() 호출
+        sttJobProcessor.processSingleSttJob(sttId);
+
+        // then: SUMMARIZING으로 전이
+        await().atMost(8, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    STTDto cached = sttCacheService.getCachedSttStatus(sttId);
+                    assertThat(cached).isNotNull();
+                    assertThat(cached.getStatus()).isEqualTo(STT.Status.SUMMARIZING);
+                });
+
+        STTDto finalCached = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(finalCached.getSummaryRid()).isEqualTo(summaryRid);
+        assertThat(finalCached.getContent()).contains("실제 E2E 테스트 음성 내용");
+
+        // PROCESSING 폴링 셋에서 제거 확인
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.PROCESSING)).doesNotContain(sttId);
+        // SUMMARIZING 폴링 셋에 추가 확인
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).contains(sttId);
+
+        System.out.println("[16] processSingleSttJob() 완료 → PROCESSING→SUMMARIZING 전이 성공");
+        System.out.println("[16] summaryRid=" + finalCached.getSummaryRid());
+        System.out.println("[16] content 길이=" + finalCached.getContent().length());
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("17. [실제 호출] processSingleSummaryJob() - SUMMARIZING→COMPLETED 전이 + DB 저장")
+    void processSingleSummaryJob_Completed_TransitionsToCompletedAndSavedToDb() throws Exception {
+        // given: DB에 Meeting + STT 엔티티 생성 (processSingleSummaryJob의 DB 저장에 필요)
+        Meeting savedMeeting = meetingRepository.save(Meeting.builder()
+                .title("E2E 통합 테스트 회의")
+                .content("Summary 완료 E2E 테스트")
+                .status(Status.IN_PROGRESS)
+                .startDate(LocalDateTime.now())
+                .isDel(false)
+                .isPrivate(false)
+                .build());
+
+        STT savedStt = sttRepository.save(STT.builder()
+                .meeting(savedMeeting)
+                .status(STT.Status.SUMMARIZING)
+                .rid("e2e-rid-17")
+                .summaryRid("e2e-summary-rid-17")
+                .content("E2E 변환된 텍스트")
+                .build());
+
+        Long sttId = savedStt.getId();
+        String summaryRid = "e2e-summary-rid-17";
+
+        // Redis 캐시에도 SUMMARIZING 상태 설정
+        STTDto summarizingDto = STTDto.builder()
+                .id(sttId)
+                .meetingId(savedMeeting.getId())
+                .status(STT.Status.SUMMARIZING)
+                .summaryRid(summaryRid)
+                .content("E2E 변환된 텍스트")
+                .summary("")
+                .build();
+        sttCacheService.cacheSttStatus(summarizingDto);
+        sttCacheService.addToPollingSet(sttId, STT.Status.SUMMARIZING);
+        sttCacheService.resetRetryCount(sttId);
+
+        // WireMock: Summary 완료 응답 (processed, 100%)
+        wireMockServer.stubFor(get(urlEqualTo("/nlp/v1/async/minutes/" + summaryRid))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"rid\":\"" + summaryRid + "\",\"status\":\"processed\"," +
+                                "\"progress\":100,\"title\":\"E2E 회의 요약\"," +
+                                "\"minutes\":[{\"title\":\"주요 안건\"," +
+                                "\"bullets\":[{\"isImportant\":true,\"text\":\"E2E 테스트 완료 항목\"}]}]}")));
+
+        // when: 실제 processSingleSummaryJob() 호출
+        sttJobProcessor.processSingleSummaryJob(sttId);
+
+        // then: COMPLETED로 전이 + DB 저장 확인
+        await().atMost(10, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    STTDto cached = sttCacheService.getCachedSttStatus(sttId);
+                    assertThat(cached).isNotNull();
+                    assertThat(cached.getStatus()).isEqualTo(STT.Status.COMPLETED);
+                });
+
+        // Redis 캐시 검증
+        STTDto completedCached = sttCacheService.getCachedSttStatus(sttId);
+        assertThat(completedCached.getStatus()).isEqualTo(STT.Status.COMPLETED);
+        assertThat(completedCached.getSummary()).isNotBlank();
+
+        // DB 저장 검증 (processSingleSummaryJob의 최종 sttRepository.save 확인)
+        await().atMost(5, TimeUnit.SECONDS)
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    STT dbStt = sttRepository.findById(sttId).orElse(null);
+                    assertThat(dbStt).isNotNull();
+                    assertThat(dbStt.getStatus()).isEqualTo(STT.Status.COMPLETED);
+                    assertThat(dbStt.getSummary()).isNotBlank();
+                });
+
+        // SUMMARIZING 폴링 셋에서 제거 확인
+        assertThat(sttCacheService.getPollingTaskIds(STT.Status.SUMMARIZING)).doesNotContain(sttId);
+
+        System.out.println("[17] processSingleSummaryJob() 완료 → SUMMARIZING→COMPLETED 전이");
+        System.out.println("[17] DB 저장 확인: sttId=" + sttId + ", status=COMPLETED");
+        System.out.println("[17] summary 길이=" + completedCached.getSummary().length());
     }
 }

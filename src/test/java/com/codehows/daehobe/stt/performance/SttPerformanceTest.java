@@ -391,7 +391,7 @@ class SttPerformanceTest {
 
         for (int i = 0; i < iterations; i++) {
             long start = System.nanoTime();
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             long end = System.nanoTime();
 
             latencies.add((end - start) / 1_000_000);
@@ -422,7 +422,7 @@ class SttPerformanceTest {
 
         // ── 워밍업 ──
         for (int i = 0; i < warmupIterations; i++) {
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
         }
 
@@ -430,7 +430,7 @@ class SttPerformanceTest {
         List<Long> dbLatenciesMicros = new ArrayList<>();
         for (int i = 0; i < testIterations; i++) {
             long start = System.nanoTime();
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             long end = System.nanoTime();
             dbLatenciesMicros.add((end - start) / 1_000);  // 마이크로초
         }
@@ -530,7 +530,7 @@ class SttPerformanceTest {
 
         // ── 워밍업 ──
         for (int cycle = 0; cycle < warmupCycles; cycle++) {
-            sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            sttRepository.findIdsByStatus(STT.Status.PROCESSING);
             sttCacheService.getPollingTaskIds(STT.Status.PROCESSING);
         }
 
@@ -541,7 +541,7 @@ class SttPerformanceTest {
             long start = System.nanoTime();
 
             // 개선 전: DB에서 폴링 대상 조회
-            List<STT> tasks = sttRepository.findByStatusAndRetryCountLessThan(STT.Status.PROCESSING, 150);
+            List<STT> tasks = sttRepository.findByStatus(STT.Status.PROCESSING);
 
             // 각 대상에 대해 캐시 조회 및 업데이트 (동일)
             for (int i = 0; i < pollingTargetCount; i++) {
@@ -769,7 +769,7 @@ class SttPerformanceTest {
                 .status(STT.Status.RECORDING)
                 .content("")
                 .summary("")
-                .chunkingCnt(0)
+
                 .build();
     }
 
@@ -781,7 +781,7 @@ class SttPerformanceTest {
                 .status(status)
                 .content("")
                 .summary("")
-                .chunkingCnt(0)
+
                 .build();
     }
 

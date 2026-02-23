@@ -249,6 +249,7 @@ public class MeetingService {
         return meeting;
     }
 
+    @TrackChanges(type = ChangeType.DELETE, target = TargetType.MEETING)
     public Meeting deleteMeeting(Long id) {
         Meeting meeting = getMeetingById(id);
         meeting.deleteMeeting();

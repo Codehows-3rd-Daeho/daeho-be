@@ -5,9 +5,11 @@ import com.codehows.daehobe.stt.dto.STTDto;
 import com.codehows.daehobe.stt.entity.STT;
 import com.codehows.daehobe.stt.exception.SttNotCompletedException;
 import com.codehows.daehobe.stt.repository.STTRepository;
+import com.codehows.daehobe.stt.service.STTService;
 import com.codehows.daehobe.stt.service.cache.SttCacheService;
 import com.codehows.daehobe.stt.service.processing.SttJobProcessor;
 import com.codehows.daehobe.stt.service.processing.SttPollingScheduler;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,12 +37,16 @@ class SttPollingSchedulerTest {
     private SttJobProcessor sttJobProcessor;
     @Mock
     private SttCacheService sttCacheService;
+    @Mock
+    private STTService sttService;
+    @Mock
+    private StringRedisTemplate redisTemplate;
 
     private SttPollingScheduler sttPollingScheduler;
 
     @BeforeEach
     void setUp() {
-        sttPollingScheduler = new SttPollingScheduler(sttRepository, sttJobProcessor, sttCacheService);
+        sttPollingScheduler = new SttPollingScheduler(sttRepository, sttJobProcessor, sttCacheService, sttService, redisTemplate);
         ReflectionTestUtils.setField(sttPollingScheduler, "maxAttempts", 150);
     }
 
